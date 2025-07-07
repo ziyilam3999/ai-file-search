@@ -1,6 +1,6 @@
-from llama_cpp import Llama
 import pathlib
 
+from llama_cpp import Llama
 
 _PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 _MODEL = _PROJECT_ROOT / "ai_models" / "Phi-3-mini-4k-instruct-q4.gguf"

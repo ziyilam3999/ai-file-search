@@ -1,2 +1,5 @@
+__pycache__/
+*.pyc
+extracts/
 .venv/
 ai_models/

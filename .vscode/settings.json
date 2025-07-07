@@ -1,0 +1,15 @@
+{
+  // tell VS Code which formatter to use for ALL languages unless overridden
+  "editor.defaultFormatter": "ms-python.black-formatter",
+
+  // run the formatter every time you save
+  "editor.formatOnSave": true,
+
+  // organise imports (isort) on save
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+
+  // skip the “Are you sure?” dialog on Git Sync
+  "git.confirmSync": false
+}

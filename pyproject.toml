@@ -1,0 +1,33 @@
+[project]
+name = "ai-file-search"
+version = "0.1.0"
+description = "Local AI file-search"
+package-mode = true          # <-- keep or add this (default)
+packages = [{ include = "ai_file_search", from = "src" }]
+authors = [
+    {name = "Anson Lam",email = "ziyilam@gmail.com"}
+]
+readme = "README.md"
+requires-python = "^3.12"
+dependencies = [
+    "pdfminer-six (>=20250506,<20250507)",
+    "python-docx (>=1.2.0,<2.0.0)",
+    "sentence-transformers (>=5.0.0,<6.0.0)",
+    "faiss-cpu (>=1.11.0,<2.0.0)",
+    "watchdog (>=6.0.0,<7.0.0)",
+    "llama-cpp-python (>=0.3.12,<0.4.0)",
+    "loguru (>=0.7.3,<0.8.0)",
+    "psutil (>=7.0.0,<8.0.0)",
+    "tqdm (>=4.67.1,<5.0.0)",
+    "pyyaml (>=6.0.2,<7.0.0)",
+    "typer[all] (>=0.16.0,<0.17.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+

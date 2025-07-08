@@ -1,6 +1,6 @@
 agent:
   goals:
-    - Finish TODO(agent) blocks until all tests pass
+    - Finish TODO(copilot) blocks until all tests pass
     - Keep answers under 2 seconds
   context_paths:
     - "core/**.py"

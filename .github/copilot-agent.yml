@@ -1,0 +1,10 @@
+agent:
+  goals:
+    - Finish TODO(agent) blocks until all tests pass
+    - Keep answers under 2 seconds
+  context_paths:
+    - "core/**.py"
+    - "docs/**"
+    - "prompts/**"
+  excluded_paths:
+    - "tests/fixtures/**"

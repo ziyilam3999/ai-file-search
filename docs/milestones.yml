@@ -1,0 +1,6 @@
+- week: 1
+  goal: "Repo scaffold & agent config"
+  constraints: ["No business logic yet"]
+  acceptance:
+    - "pytest runs (0 tests)"
+    - "pre-commit passes"

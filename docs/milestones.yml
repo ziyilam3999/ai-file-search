@@ -3,4 +3,11 @@
   constraints: ["No business logic yet"]
   acceptance:
     - "pytest runs (0 tests)"
-    - "pre-commit passes"
+    - "pre-commit passes"- week: 2
+  goal: "PDF & DOCX extraction passes tests"
+  constraints:
+    - "Handle Unicode"
+    - "Log errors with loguru"
+  acceptance:
+    - "pytest passes on 20 fixtures"
+    - "logs contain no ERROR lines"

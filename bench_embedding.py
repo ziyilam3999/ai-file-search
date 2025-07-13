@@ -1,0 +1,33 @@
+import sys
+import time, psutil, pathlib
+from pathlib import Path
+from core.embedding import Embedder
+from core.extract import Extractor  # Import your Extractor
+
+extracts_path = Path("extracts")
+if not any(extracts_path.glob("*.txt")):
+    print("No .txt files found in extracts/. Running extractor...")
+    # Example: process all files in sample_docs/ and save to extracts/
+    sample_docs = Path("sample_docs")
+    extracts_path.mkdir(exist_ok=True)
+    for file in sample_docs.glob("*"):
+        text = Extractor().run(file)
+        if text:
+            out_path = extracts_path / (file.stem + ".txt")
+            out_path.write_text(text, encoding="utf-8")
+    # Check again after extraction
+    if not any(extracts_path.glob("*.txt")):
+        print("Extractor did not produce any .txt files. Exiting.")
+        sys.exit(1)
+
+idx = Embedder()
+idx.build_index(extracts_path)
+start = time.time()
+results = idx.query("Who Alice found in wonderland?")
+for i, (file, chunk) in enumerate(results):
+    print(f"Result {i+1}:")
+    print(f"File: {file}")
+    print(f"Chunk: {chunk[:200] if chunk else chunk}\n")
+
+print(f"Search time: { (time.time() - start)*1000:.1f} ms")
+print(f"RAM used: {psutil.virtual_memory().percent}%")

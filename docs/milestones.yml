@@ -3,7 +3,9 @@
   constraints: ["No business logic yet"]
   acceptance:
     - "pytest runs (0 tests)"
-    - "pre-commit passes"- week: 2
+    - "pre-commit passes"
+    
+- week: 2
   goal: "PDF & DOCX extraction passes tests"
   constraints:
     - "Handle Unicode"
@@ -11,3 +13,15 @@
   acceptance:
     - "pytest passes on 20 fixtures"
     - "logs contain no ERROR lines"
+
+- week: 3
+  goal: "Embeddings + FAISS index with benchmark"
+  constraints:
+    - "Build completes in < 60 seconds for 20 docs"      ✅ 40.39s
+    - "Query responds in < 200ms"                        ✅ 10.3ms
+  acceptance:
+    - "pytest passes test_embedding"                     ✅ PASSED
+    - "build_index() completes in < 60 seconds"          ✅ 40.39s
+    - "query() responds in < 200ms average"              ✅ 10.3ms  
+    - "bench_embedding search returns relevant results"   ✅ Working
+    - "Semantic search finds correct passages from literature corpus" ✅ Working

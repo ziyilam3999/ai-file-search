@@ -1,11 +1,13 @@
-import sys
 import pathlib
+import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from core.embedding import Embedder
 
 # Build the index just once before running queries

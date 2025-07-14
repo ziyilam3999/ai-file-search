@@ -1,7 +1,7 @@
 # First, let's create a performance test
 # tests/test_query_performance.py
-import sys
 import pathlib
+import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))

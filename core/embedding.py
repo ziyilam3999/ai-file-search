@@ -119,7 +119,7 @@ class Embedder:
 
         for i in range(0, len(all_chunks), batch_size):
             batch_start_time = time.time()
-            batch = all_chunks[i:i + batch_size]
+            batch = all_chunks[i : i + batch_size]
             batch = [chunk[:256] for chunk in batch]
 
             batch_embeddings = model.encode(
@@ -173,7 +173,9 @@ class Embedder:
         conn.commit()
         conn.close()
         db_insert_time = time.time() - db_insert_start_time
-        logger.success(f"📝 Database insertion completed in {db_insert_time:.3f}s")  # noqa: E501
+        logger.success(
+            f"📝 Database insertion completed in {db_insert_time:.3f}s"
+        )  # noqa: E501
 
         # File saving phase
         save_start_time = time.time()
@@ -250,13 +252,17 @@ class Embedder:
         # Create id->row mapping for fast lookup
         id_to_row = {row[0]: (row[1], row[2]) for row in rows}
 
-        # Return results in the same order as FAISS indices
+        # Return results in the same order as FAISS indices with full info
         results = []
-        for target_id in target_ids:
+        for i, target_id in enumerate(target_ids):
             if target_id in id_to_row:
-                results.append(id_to_row[target_id])
+                file_path, chunk_text = id_to_row[target_id]
+                similarity_score = float(
+                    1.0 - distances[0][i]
+                )  # Convert distance to similarity
+                results.append((chunk_text, file_path, target_id, similarity_score))
             else:
-                results.append((None, None))
+                results.append((None, None, 0, 0.0))  # chunk_id should be int, not None
 
         return results
 

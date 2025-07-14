@@ -1,10 +1,25 @@
 agent:
   goals:
     - Finish TODO(copilot) blocks until all tests pass
-    - Keep answers under 2 seconds
+    - Ensure all pytest and pre-commit hooks pass
+    - Maintain sub-60s build times and sub-200ms query performance
+    - Update BUILD_LOG.md and docs/milestones.yml when new goals are completed
+    - Help implement Weekend 4 goals (Retrieval CLI with cited answers)
   context_paths:
     - "core/**.py"
+    - "daemon/**.py"
+    - "ui/**.py"
+    - "tests/**.py"
+    - "*.py"
     - "docs/**"
     - "prompts/**"
+    - ".github/**"
   excluded_paths:
     - "tests/fixtures/**"
+    - "extracts/**"
+    - "*.log"
+    - "*.faiss"           # FAISS index files
+    - "*.sqlite"          # Database files
+    - "ai_models/**"      # Model files
+    - "__pycache__/**"    # Python cache
+    - "*.gguf"           # Model files

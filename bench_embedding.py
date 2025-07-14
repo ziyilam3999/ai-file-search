@@ -1,6 +1,10 @@
+import pathlib
 import sys
-import time, psutil, pathlib
+import time
 from pathlib import Path
+
+import psutil
+
 from core.embedding import Embedder
 from core.extract import Extractor  # Import your Extractor
 

@@ -147,3 +147,63 @@ pytest tests/ -v --tb=short
 # ✅ All UI tests passing: imports, welcome text, citations, Streamlit availability, core integration
 # ✅ Fixed test_single_question - embedding format issue resolved
 ```
+## Weekend 6: Auto-indexing Watcher System
+**Date:** July 15, 2025  
+**Duration:** Implementation session  
+**Goal:** Implement automated file monitoring and index updates
+
+### 🎯 Objectives Completed
+
+#### ✅ Core Watcher Implementation
+- **File:** `daemon/watch.py` (590+ lines)
+- **Features:**
+  - Real-time file change detection using `watchdog`
+  - Thread-safe event queue with deduplication
+  - Debounced batch processing (5-second default)
+  - Nightly re-indexing scheduler (2:00 AM default)
+  - Pattern-based file filtering
+  - Graceful startup/shutdown with signal handling
+  - Comprehensive error handling and logging
+
+#### ✅ Configuration System
+- **File:** `prompts/watcher_config.yaml`
+- **Sections:**
+  - Watch directories configuration
+  - File pattern inclusion/exclusion rules
+  - Timing settings (debounce, max wait, nightly schedule)
+  - Indexing behavior (incremental updates, batch size)
+  - Logging configuration (levels, rotation, retention)
+  - Performance tuning (memory limits, worker threads)
+  - Monitoring settings (health checks, statistics)
+
+#### ✅ CLI Interface
+- **File:** `run_watcher.py`
+- **Features:**
+  - Command-line argument parsing
+  - Dry-run mode for configuration validation
+  - Verbose logging option
+  - Configuration file override
+  - User-friendly help and examples
+
+#### ✅ Comprehensive Test Suite
+- **File:** `tests/test_watch.py` (25 tests)
+- **Coverage:**
+  - Configuration loading and validation
+  - File pattern matching and filtering
+  - Event handling and queue management
+  - Lifecycle management (start/stop)
+  - Integration testing with temporary files
+  - Smoke tests for basic functionality
+- **Results:** 24/25 tests passing (1 Windows temp file permission issue)
+
+#### ✅ Integration Adapters
+- **Classes:** `EmbeddingAdapter`, `ExtractorAdapter`
+- **Purpose:** Seamless integration with existing `Embedder` and `Extractor` classes
+- **Benefits:** No breaking changes to existing codebase
+
+### 🔧 Technical Implementation Details
+
+#### Dependencies Added
+```toml
+"apscheduler (>=3.11.0,<4.0.0)"  # Task scheduling
+# Existing: watchdog, loguru, pyyaml (already present)

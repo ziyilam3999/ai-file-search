@@ -1,0 +1,63 @@
+# Watcher Configuration for AI File Search
+# This file controls the behavior of the file watcher daemon
+
+# Directories to watch for file changes
+watch_directories:
+  - "sample_docs"
+  - "extracts"
+
+# File patterns to include/exclude
+file_patterns:
+  include:
+    - "*.txt"
+    - "*.pdf"
+    - "*.docx"
+    - "*.md"
+  ignore:
+    - "*.tmp"
+    - "*.log"
+    - "*.pyc"
+    - "__pycache__"
+    - ".git"
+    - "*.swp"
+    - "*.bak"
+
+# Timing configuration
+timing:
+  # How long to wait before processing file changes (seconds)
+  debounce_seconds: 5
+  # Maximum time to wait for more changes before processing (seconds)
+  max_wait_seconds: 30
+  # Time for nightly full re-index (24-hour format)
+  nightly_reindex_time: "02:00"
+
+# Indexing behavior
+indexing:
+  # Whether to update index incrementally or rebuild completely
+  incremental_updates: true
+  # Create backup before updating index
+  backup_before_update: true
+  # Maximum files to process in a single batch
+  batch_size: 50
+
+# Logging configuration
+logging:
+  level: "INFO"
+  file: "logs/watcher.log"
+  rotation: "1 day"
+  retention: "1 week"
+  console_output: true
+
+# Performance settings
+performance:
+  # Maximum memory usage for embeddings (MB)
+  max_memory_mb: 1024
+  # Number of worker threads for processing
+  worker_threads: 2
+
+# Monitoring
+monitoring:
+  # Health check interval (seconds)
+  health_check_interval: 300
+  # Statistics reporting interval (seconds)
+  stats_interval: 3600

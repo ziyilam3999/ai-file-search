@@ -6,7 +6,27 @@ Outputs : index.faiss  +  meta.sqlite
 
 from pathlib import Path
 
-# TODO(copilot): import sentence_transformers, faiss, numpy
+# TODO(copilot): Implement incremental update methods for real-time file processing
+# Current: build_index() processes all files at once (batch mode)
+# Need: add_single_document(), update_single_document(), remove_single_document()
+# Requirements:
+#   - Support single file operations without full rebuild
+#   - Maintain FAISS index consistency
+#   - Update SQLite metadata atomically
+#   - Handle file deletion gracefully
+#   - Preserve existing batch processing performance
+# Related: daemon/watch.py EmbeddingAdapter currently logs actions instead of processing
+
+# TODO(copilot): Optimize FAISS operations for incremental updates
+# Current: IndexFlatL2 with full rebuild approach
+# Optimizations needed:
+#   - Implement efficient vector addition/removal
+#   - Consider IndexIVFFlat for larger datasets
+#   - Batch small incremental updates
+#   - Implement index compaction for deleted documents
+#   - Memory-mapped index files for persistence
+#   - Concurrent read access during updates
+# Performance target: <1 second for single document operations
 
 # Update the constants to create fewer chunks
 CHUNK_SIZE = 400  # Increased back up (fewer total chunks)

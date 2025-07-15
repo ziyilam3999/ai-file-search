@@ -2,7 +2,7 @@
 Purpose : Given a user question, find best answer chunk(s) and cite source files.
 Inputs  : user query (str)
 Outputs : answer (str), citations (list)
-Uses    : prompts/retrieval_prompt.md, all-MiniLM-L6-v2 embeddings
+Uses    : prompts/retrieval_prompt.md, all-MiniLM-L6-v2 embeddings, Phi-3 LLM
 """
 
 from pathlib import Path
@@ -11,9 +11,12 @@ from typing import Any, Dict, List, Tuple
 from loguru import logger
 
 from .embedding import Embedder
+from .llm import get_phi3_llm
 
 
-def answer_question(query: str, top_k: int = 5) -> Tuple[str, List[Dict[str, Any]]]:
+def answer_question(
+    query: str, top_k: int = 2
+) -> Tuple[str, List[Dict[str, Any]]]:  # Changed from 5 to 2
     """
     Answer a question using RAG with numbered citations and page numbers.
 
@@ -72,72 +75,92 @@ def answer_question(query: str, top_k: int = 5) -> Tuple[str, List[Dict[str, Any
 
     context_text = "\n\n".join(context_chunks)
 
-    # 4. Build the full prompt (for future Phi-3 integration)
+    # 4. Build the full prompt for Phi-3
     full_prompt = prompt_template.format(question=query, context=context_text)
-    # Note: full_prompt will be used when Phi-3 integration is added
-    del full_prompt  # Temporarily suppress unused variable warning
+    logger.debug("📝 Prompt length: %d characters", len(full_prompt))
 
-    # 5. Generate answer (simulated for now)
+    # 5. Generate answer using Phi-3
     try:
-        answer = _generate_answer_with_citations(query, results, citations)
+        answer = _generate_answer_with_phi3(full_prompt, citations)
         logger.success(f"✅ Generated answer ({len(answer)} chars)")
         return answer, citations
 
     except Exception as e:
-        logger.error(f"❌ Answer generation failed: {e}")
+        logger.error(f"❌ Phi-3 generation failed: {e}")
+        logger.info("🔄 Falling back to context-based answer")
         fallback_answer = _generate_fallback_answer(query, results, citations)
         return fallback_answer, citations
 
 
-def _generate_answer_with_citations(
-    query: str, results: List, citations: List[Dict]
-) -> str:
+def _generate_answer_with_phi3(prompt: str, citations: List[Dict]) -> str:
     """
-    Generate an answer with proper numbered citations and page references.
-    This is a simulation - replace with actual Phi-3 model integration.
+    Generate an answer using Phi-3 LLM with proper citations.
+
+    Args:
+        prompt: The formatted prompt with question and context
+        citations: List of citation dictionaries for reference
+
+    Returns:
+        AI-generated answer with citations
     """
-    # Extract key information from the best chunks
-    if not results:
+    try:
+        # Get Phi-3 instance
+        llm = get_phi3_llm()
+
+        # Generate answer using Phi-3
+        raw_answer = llm.generate_answer(
+            prompt=prompt,
+            max_tokens=512,
+            temperature=0.1,  # Low temperature for factual answers
+            stop_sequences=["<|im_end|>", "\n\nQuestion:", "\n\nContext:"],
+        )
+
+        # Clean up the answer and ensure citations are properly formatted
+        answer = raw_answer.strip()
+
+        # Add citations section if not already present
+        if "Citations:" not in answer and citations:
+            citations_text = "\n\nCitations:"
+            for citation in citations:
+                citations_text += "\n[{}] {}, page {}".format(
+                    citation["id"], citation["file"], citation["page"]
+                )
+            answer += citations_text
+
+        return answer
+
+    except Exception as e:
+        logger.error(f"❌ Phi-3 generation error: {e}")
+        # Fall back to context-based answer if Phi-3 fails
+        return _generate_context_based_answer(citations)
+
+
+def _generate_context_based_answer(citations: List[Dict]) -> str:
+    """
+    Generate a simple answer based on context when Phi-3 is unavailable.
+    """
+    if not citations:
         return "I couldn't find relevant information to answer your question."
 
-    # Simple answer generation based on available chunks
-    answer_parts = []
+    # Use the best chunk as the basis for the answer
+    best_citation = citations[0]
+    answer = f"Based on the available information: " f"{best_citation['chunk'][:300]}"
 
-    # Always try to provide some answer based on the retrieved chunks
-    if len(results) >= 1:
-        best_chunk = results[0][0]
-        if best_chunk and len(best_chunk.strip()) > 20:
-            answer_parts.append(
-                f"Based on the available information, " f"{best_chunk[:200]}... [1]"
-            )
+    if len(best_citation["chunk"]) > 300:
+        answer += "..."
 
-        if len(results) >= 2:
-            second_chunk = results[1][0]
-            if second_chunk and len(second_chunk.strip()) > 20:
-                answer_parts.append(f"Additionally, {second_chunk[:150]}... [2]")
-
-    # If no good chunks found, provide a generic response
-    if not answer_parts:
-        answer_parts.append(
-            "I found some relevant passages but they may not directly "
-            "answer your question. Please check the citations below "
-            "for more context."
-        )
+    # Add citation reference
+    answer += f" [1]"
 
     # Add citations section
     citations_text = "\n\nCitations:"
     for citation in citations:
         citations_text += (
-            f"\n[{citation['id']}] {citation['file']}, " f"page {citation['page']}"
+            f"\n[{citation['id']}] {citation['file']}, page {citation['page']}"
         )
 
-    answer = " ".join(answer_parts) + citations_text
-
-    # Add note about simulation
-    answer += (
-        "\n\n(Note: This is a simulated response. "
-        "Integrate Phi-3 model for actual AI-generated answers.)"
-    )
+    answer += citations_text
+    answer += "\n\n(Note: Generated using context extraction - Phi-3 unavailable)"
 
     return answer
 

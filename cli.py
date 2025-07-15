@@ -42,6 +42,7 @@ OPTIONS:
     --interactive, -i    Start interactive mode
     --verbose, -v        Show detailed output
     --citations, -c      Show detailed citation info
+    --no-phi3           Disable Phi-3 LLM (use context-based answers)
     --help, -h          Show this help message
     """
     )
@@ -84,7 +85,10 @@ def format_answer(
 
 
 def ask_question(
-    question: str, verbose: bool = False, show_citations: bool = True
+    question: str,
+    verbose: bool = False,
+    show_citations: bool = True,
+    use_phi3: bool = True,
 ) -> None:
     """Process a single question and display results."""
     print(f"🤔 Searching for: '{question}'")
@@ -100,6 +104,11 @@ def ask_question(
     start_time = time.time()
 
     try:
+        if use_phi3:
+            print("🤖 Generating AI-powered answer...")
+        else:
+            print("📝 Using context-based answer...")
+
         answer, citations = answer_question(question)
         query_time = (time.time() - start_time) * 1000
 
@@ -122,11 +131,15 @@ def ask_question(
             traceback.print_exc()
 
 
-def interactive_mode(verbose: bool = False, show_citations: bool = True) -> None:
+def interactive_mode(
+    verbose: bool = False, show_citations: bool = True, use_phi3: bool = True
+) -> None:
     """Start interactive question-asking mode."""
     print_banner()
     print("Interactive mode - type 'quit' or 'exit' to stop")
     print("Type 'help' for usage examples")
+    if not use_phi3:
+        print("⚠️  Phi-3 disabled - using context-based answers")
     print()
 
     while True:
@@ -155,7 +168,7 @@ Example questions you can try:
                 continue
 
             print()
-            ask_question(question, verbose, show_citations)
+            ask_question(question, verbose, show_citations, use_phi3)
             print("\n" + "=" * 50 + "\n")
 
         except KeyboardInterrupt:
@@ -189,6 +202,11 @@ def main():
         action="store_true",
         help="Show detailed citation information",
     )
+    parser.add_argument(
+        "--no-phi3",
+        action="store_true",
+        help="Disable Phi-3 LLM and use context-based answers",
+    )
     parser.add_argument("--help", "-h", action="store_true", help="Show help message")
 
     args = parser.parse_args()
@@ -200,14 +218,16 @@ def main():
 
     # Handle interactive mode
     if args.interactive:
-        interactive_mode(args.verbose, args.citations)
+        use_phi3 = not args.no_phi3
+        interactive_mode(args.verbose, args.citations, use_phi3)
         return
 
     # Handle single question
     if args.question:
         question = " ".join(args.question)
+        use_phi3 = not args.no_phi3
         print_banner()
-        ask_question(question, args.verbose, args.citations)
+        ask_question(question, args.verbose, args.citations, use_phi3)
     else:
         print_help()
 

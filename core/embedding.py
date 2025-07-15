@@ -6,6 +6,8 @@ Outputs : index.faiss  +  meta.sqlite
 
 from pathlib import Path
 
+# TODO(copilot): import sentence_transformers, faiss, numpy
+
 # Update the constants to create fewer chunks
 CHUNK_SIZE = 400  # Increased back up (fewer total chunks)
 CHUNK_OVERLAP = 25  # Much smaller overlap (fewer overlapping chunks)
@@ -171,7 +173,9 @@ class Embedder:
         conn.commit()
         conn.close()
         db_insert_time = time.time() - db_insert_start_time
-        logger.success(f"📝 Database insertion completed in {db_insert_time:.3f}s")
+        logger.success(
+            f"📝 Database insertion completed in {db_insert_time:.3f}s"
+        )  # noqa: E501
 
         # File saving phase
         save_start_time = time.time()
@@ -241,24 +245,24 @@ class Embedder:
         # Batch database query for better performance
         target_ids = [int(i + 1) for i in indices[0]]
         placeholders = ",".join("?" for _ in target_ids)
-        sql_query = f"SELECT id, file, chunk FROM meta WHERE id IN ({placeholders})"
+        sql_query = f"SELECT id, file, chunk FROM meta WHERE id IN " f"({placeholders})"
         cursor.execute(sql_query, target_ids)
         rows = cursor.fetchall()
 
         # Create id->row mapping for fast lookup
         id_to_row = {row[0]: (row[1], row[2]) for row in rows}
 
-        # Return results in the same order as FAISS indices
-        # Format: (chunk_text, file_path, chunk_id, score)
+        # Return results in the same order as FAISS indices with 4 values: (chunk_text, file_path, chunk_id, score)
         results = []
         for i, target_id in enumerate(target_ids):
             if target_id in id_to_row:
                 file_path, chunk_text = id_to_row[target_id]
-                score = float(distances[0][i])  # Convert to Python float
+                score = float(
+                    distances[0][i]
+                )  # Get the actual distance/score from FAISS
                 results.append((chunk_text, file_path, target_id, score))
             else:
-                # Handle missing chunks gracefully
-                results.append(("", "unknown", target_id, 999.0))
+                results.append((None, None, -1, 0.0))
 
         return results
 

@@ -116,3 +116,34 @@ python cli.py "Who is Alice?"
 python cli.py "What is Wonderland?" --verbose  
 # Output: Professional 2136-character explanation with page references
 ```
+
+## Weekend 5 (Streamlit UI: Desktop Panel for Ask & Cite)
+### 🎯 Complete Web UI Implementation
+✔ **Streamlit Desktop Application Deployed**
+- Full-featured web UI running on localhost:8501
+- Question input with AI-powered answer generation
+- Citation display with file references and page numbers
+- Performance metrics sidebar with system statistics
+- Dark/light mode support with modern styling
+
+✔ **UI Architecture & Features**
+- **Main Interface**: Question input, answer display, citation formatting
+- **Sample Questions**: Pre-loaded buttons for quick testing
+- **Performance Sidebar**: Real-time metrics and system info
+- **Session Management**: Streamlit state for query history
+- **Error Handling**: Graceful fallbacks and user feedback
+
+### 🔧 Technical Integration Success
+✔ **Resolved Critical Format Mismatch**
+- **Problem**: ValueError in ask.py - expected 4 values, got 2
+- **Root Cause**: embedding.py query() returned (file, chunk) vs expected (chunk_text, file_path, chunk_id, score)
+- **Solution**: Updated embedding.py to return 4-tuple with FAISS scores
+- **Result**: Seamless integration between UI and core functionality
+
+✔ **Comprehensive Test Suite**
+```bash
+pytest tests/ -v --tb=short
+# ✅ 26 passed, 20 skipped, 5 warnings in 493.47s (8m 13s)
+# ✅ All UI tests passing: imports, welcome text, citations, Streamlit availability, core integration
+# ✅ Fixed test_single_question - embedding format issue resolved
+```

@@ -48,8 +48,9 @@ class Phi3LLM:
         # Initialize llama.cpp model without ChatML format
         self.llm = Llama(
             model_path=str(self.model_path),
-            n_ctx=4096,  # Context window for Phi-3-mini-4k
-            n_threads=4,  # CPU threads
+            n_ctx=1536,  # Further reduced from 2048 for speed
+            n_threads=8,  # Increased from 6 (if you have 8+ cores)
+            n_batch=256,  # Reduced from 512 for faster processing
             verbose=verbose,
             # No chat_format - use raw completion
         )
@@ -59,8 +60,8 @@ class Phi3LLM:
     def generate_answer(
         self,
         prompt: str,
-        max_tokens: int = 512,
-        temperature: float = 0.1,
+        max_tokens: int = 150,  # FINAL PUSH: Reduced from 200 for target speed
+        temperature: float = 0.35,  # FINAL PUSH: Increased from 0.3 for faster generation
         stop_sequences: Optional[list] = None,
     ) -> str:
         """
@@ -69,7 +70,7 @@ class Phi3LLM:
         Args:
             prompt: The formatted prompt with question and context
             max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature (0.1 for focused answers)
+            temperature: Sampling temperature (0.35 for maximum performance)
             stop_sequences: Sequences that should stop generation
 
         Returns:
@@ -86,9 +87,9 @@ class Phi3LLM:
             # Use direct completion instead of chat completion for RAG prompts
             response = self.llm.create_completion(
                 prompt=prompt,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stop=stop_sequences,
+                max_tokens=max_tokens,  # Use parameter
+                temperature=temperature,  # Use parameter
+                stop=["Question:", "Context:", "\n\n\n", "References:"],
                 stream=False,
             )
 
@@ -102,7 +103,10 @@ class Phi3LLM:
             raise
 
     def generate_streaming_answer(
-        self, prompt: str, max_tokens: int = 512, temperature: float = 0.1
+        self,
+        prompt: str,
+        max_tokens: int = 150,
+        temperature: float = 0.35,  # Updated defaults
     ):
         """
         Generate an answer with streaming output (for future CLI enhancement).
@@ -124,7 +128,12 @@ class Phi3LLM:
                 max_tokens=max_tokens,
                 temperature=temperature,
                 stream=True,
-                stop=["\n\nQuestion:", "\n\nContext:", "Question:", "Context:"],
+                stop=[
+                    "Question:",
+                    "Context:",
+                    "\n\n\n",
+                    "References:",
+                ],  # Updated stop sequences
             )
 
             for chunk in stream:

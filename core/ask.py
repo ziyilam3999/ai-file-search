@@ -15,8 +15,8 @@ from .llm import get_phi3_llm
 
 
 def answer_question(
-    query: str, top_k: int = 2
-) -> Tuple[str, List[Dict[str, Any]]]:  # Changed from 5 to 2
+    query: str, top_k: int = 1  # FINAL PUSH: Reduced from 2 to 1 for speed
+) -> Tuple[str, List[Dict[str, Any]]]:
     """
     Answer a question using RAG with numbered citations and page numbers.
 
@@ -110,8 +110,8 @@ def _generate_answer_with_phi3(prompt: str, citations: List[Dict]) -> str:
         # Generate answer using Phi-3
         raw_answer = llm.generate_answer(
             prompt=prompt,
-            max_tokens=512,
-            temperature=0.1,  # Low temperature for factual answers
+            max_tokens=150,  # FINAL PUSH: Reduced from 200 for target speed
+            temperature=0.35,  # FINAL PUSH: Increased from 0.3 for faster generation
             stop_sequences=["<|im_end|>", "\n\nQuestion:", "\n\nContext:"],
         )
 

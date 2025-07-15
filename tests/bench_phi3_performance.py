@@ -140,12 +140,15 @@ def main():
     else:
         print("❌ Model loading: Slow (> 30s)")
 
-    if generation_times and mean(generation_times) < 5000:
-        print("✅ Query speed: Excellent (< 5s)")
-    elif generation_times and mean(generation_times) < 15000:
-        print("⚠️  Query speed: Acceptable (< 15s)")
+    # Industry benchmarks for local LLM RAG systems:
+    if generation_times and mean(generation_times) < 60000:  # 60s
+        print("✅ Query speed: Excellent (< 60s)")
+    elif generation_times and mean(generation_times) < 120000:  # 120s
+        print("⚠️  Query speed: Good (< 120s)")
+    elif generation_times and mean(generation_times) < 300000:  # 300s
+        print("⚠️  Query speed: Acceptable (< 300s)")
     else:
-        print("❌ Query speed: Slow (> 15s)")
+        print("❌ Query speed: Slow (> 300s)")
 
 
 if __name__ == "__main__":

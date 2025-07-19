@@ -84,6 +84,13 @@ def format_answer(
     return "\n".join(output)
 
 
+def print_search_results(results):
+    for result in results:
+        print(f"Found in: {result['path']}")
+        print(result["chunk"])
+        print("-" * 40)
+
+
 def ask_question(
     question: str,
     verbose: bool = False,

@@ -48,6 +48,13 @@ def format_citations(citations):
     return "\n\n".join(formatted)
 
 
+def print_search_results(results):
+    for result in results:
+        print(f"Found in: {result['path']}")
+        print(result["chunk"])
+        print("-" * 40)
+
+
 def main():
     """Main Streamlit application"""
 

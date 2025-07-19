@@ -30,19 +30,31 @@ class Embedder:
         return self._model
 
     def _get_index(self):
-        """Lazy load and cache the FAISS index."""
+        """Lazy load and cache the FAISS index, create if missing."""
         if self._index is None:
+            import os
+
             import faiss
 
-            self._index = faiss.read_index("index.faiss")
+            if not os.path.exists("index.faiss"):
+                # Create a new empty index if not present
+                self._index = faiss.IndexFlatL2(384)
+            else:
+                self._index = faiss.read_index("index.faiss")
         return self._index
 
     def _get_connection(self):
-        """Lazy load and cache the database connection."""
+        """Lazy load and cache the database connection, create table if missing."""
         if self._conn is None:
             import sqlite3
 
             self._conn = sqlite3.connect("meta.sqlite")
+            cursor = self._conn.cursor()
+            cursor.execute(
+                "CREATE TABLE IF NOT EXISTS meta "
+                "(id INTEGER PRIMARY KEY, file TEXT, chunk TEXT)"
+            )
+            self._conn.commit()
         return self._conn
 
     def build_index(self, extracts_path=Path("extracts")):
@@ -106,7 +118,7 @@ class Embedder:
             f"📝 Processed {file_count} files into {len(all_chunks)} "
             f"chunks in {chunk_processing_time:.2f} seconds"
         )
-        avg_chunks = len(all_chunks) / file_count
+        avg_chunks = (len(all_chunks) / file_count) if file_count > 0 else 0
         logger.info(f"📊 Average chunks per file: {avg_chunks:.1f}")
 
         # Embedding generation phase
@@ -149,7 +161,7 @@ class Embedder:
                 )
 
         embed_time = time.time() - embed_start_time
-        chunks_per_second = len(all_chunks) / embed_time
+        chunks_per_second = (len(all_chunks) / embed_time) if embed_time > 0 else 0
         logger.success(
             f"🎯 Embedding generation completed in {embed_time:.2f} "
             f"seconds ({chunks_per_second:.1f} chunks/sec)"
@@ -159,9 +171,15 @@ class Embedder:
         faiss_start_time = time.time()
         logger.info("🔍 Building FAISS index...")
         embeddings_array = np.array(embeddings, dtype=np.float32)
-        index.add(embeddings_array)
-        faiss_time = time.time() - faiss_start_time
-        logger.success(f"🏗️ FAISS index built in {faiss_time:.3f} seconds")
+        if embeddings_array.shape[0] > 0:
+            index.add(embeddings_array)
+            faiss_time = time.time() - faiss_start_time
+            logger.success(f"🏗️ FAISS index built in {faiss_time:.3f} seconds")
+        else:
+            faiss_time = time.time() - faiss_start_time
+            logger.info(
+                "No embeddings to add to FAISS index (empty directory or no valid chunks)."
+            )
 
         # Database insertion phase
         db_insert_start_time = time.time()
@@ -172,6 +190,7 @@ class Embedder:
         )
         conn.commit()
         conn.close()
+        self._conn = None  # Invalidate cached connection after rebuild
         db_insert_time = time.time() - db_insert_start_time
         logger.success(
             f"📝 Database insertion completed in {db_insert_time:.3f}s"

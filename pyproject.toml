@@ -2,7 +2,7 @@
 name = "ai-file-search"
 version = "0.1.0"
 description = "Local AI file-search"
-package-mode = true          # <-- keep or add this (default)
+package-mode = true
 packages = [{ include = "ai_file_search", from = "src" }]
 authors = [
     {name = "Anson Lam",email = "ziyilam@gmail.com"}
@@ -21,7 +21,8 @@ dependencies = [
     "tqdm (>=4.67.1,<5.0.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
     "typer[all] (>=0.16.0,<0.17.0)",
-    "apscheduler (>=3.11.0,<4.0.0)"
+    "apscheduler (>=3.11.0,<4.0.0)",
+    "streamlit (>=1.35.0,<2.0.0)"
 ]
 
 [build-system]
@@ -34,12 +35,10 @@ pre-commit = "^4.2.0"
 pytest = "^8.4.1"
 types-pyyaml = "^6.0.12.20250516"
 
-# Black configuration - tells the black robot how to organize
 [tool.black]
 line-length = 88
 target-version = ['py312']
 
-# isort configuration - tells the isort robot to follow black robot's rules
 [tool.isort]
 profile = "black"
 multi_line_output = 3

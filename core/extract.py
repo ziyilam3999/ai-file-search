@@ -60,8 +60,15 @@ class Extractor:
             return self._extract_pdf(path)
         elif path.suffix.lower() == DOCX_EXT:
             return self._extract_docx(path)
-        elif path.suffix.lower() == ".txt":
-            return path.read_text(encoding="utf-8")
+        elif path.suffix.lower() in [".txt", ".md"]:
+            try:
+                return path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                try:
+                    return path.read_text(encoding="latin-1")
+                except Exception as e:
+                    logger.error(f"Failed to read {path.suffix.upper()}: {e}")
+                    return ""
         else:
             logger.error(f"Unsupported file type: {path.suffix}")
             return ""

@@ -223,8 +223,7 @@ class EmbeddingAdapter:
 
                 # Clear database
                 conn = sqlite3.connect("meta.sqlite")
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM meta")
+                conn.execute("DELETE FROM meta")
                 conn.commit()
                 conn.close()
 
@@ -242,6 +241,10 @@ class EmbeddingAdapter:
             logger.error(f"Error clearing index: {e}")
             self._stats["operations_failed"] += 1
             return False
+
+    def build_index(self, extracts_path: Path) -> None:
+        """Delegate to the underlying Embedder's build_index method."""
+        self.embedder.build_index(extracts_path=extracts_path)
 
     def get_adapter_stats(self) -> Dict[str, Any]:
         """Get detailed statistics about adapter operations."""
@@ -293,10 +296,10 @@ class EmbeddingAdapter:
 
             # Get current index and database
             index = self.embedder._get_index()
-            conn = sqlite3.connect("meta.sqlite")
-            cursor = conn.cursor()
+            conn = self.embedder._get_connection()
 
             # Get next available ID
+            cursor = conn.cursor()
             cursor.execute("SELECT MAX(id) FROM meta")
             max_id = cursor.fetchone()[0]
             next_id = (max_id or 0) + 1
@@ -306,9 +309,9 @@ class EmbeddingAdapter:
             index.add(embeddings_array)
 
             # Add metadata to database
+            # Store the full relative path, not just the filename!
             metadata_entries = [
-                (next_id + i, os.path.basename(file_path), chunk)
-                for i, chunk in enumerate(chunks)
+                (next_id + i, file_path, chunk) for i, chunk in enumerate(chunks)
             ]
 
             cursor.executemany(
@@ -316,7 +319,7 @@ class EmbeddingAdapter:
             )
 
             conn.commit()
-            conn.close()
+            # conn.close()
 
             return True
 
@@ -329,13 +332,11 @@ class EmbeddingAdapter:
         try:
             import sqlite3
 
-            filename = os.path.basename(file_path)
-
-            conn = sqlite3.connect("meta.sqlite")
+            # Use the full relative path for matching, not just the basename
+            conn = self.embedder._get_connection()  # <-- Use the helper!
             cursor = conn.cursor()
 
-            # Find existing entries
-            cursor.execute("SELECT id FROM meta WHERE file = ?", (filename,))
+            cursor.execute("SELECT id FROM meta WHERE file = ?", (file_path,))
             existing_ids = [row[0] for row in cursor.fetchall()]
 
             if existing_ids:
@@ -346,10 +347,10 @@ class EmbeddingAdapter:
                 )
                 conn.commit()
                 logger.debug(
-                    f"Removed {len(existing_ids)} existing chunks for {filename}"
+                    f"Removed {len(existing_ids)} existing chunks for {file_path}"
                 )
 
-            conn.close()
+            # conn.close()
             return len(existing_ids) > 0
 
         except Exception as e:
@@ -379,6 +380,45 @@ class EmbeddingAdapter:
 
         except Exception as e:
             logger.debug(f"Error cleaning up backups: {e}")
+
+    def search(self, query: str) -> list:
+        """
+        Search the index for the given query and return a list of dicts with 'path' and 'chunk' keys.
+        """
+        try:
+            # Use the Embedder's query method to get results with 'id'
+            results = self.embedder.query(query)
+            import sqlite3
+
+            conn = sqlite3.connect("meta.sqlite")
+            # cursor = conn.cursor()
+            formatted = []
+            for r in results:
+                # r is a tuple: (file, chunk) or (file, chunk, id)
+                if isinstance(r, dict):
+                    file_path = r.get("file") or r.get("path")
+                    chunk = r.get("chunk")
+                elif isinstance(r, tuple):
+                    # Try to unpack (file, chunk) or (id, file, chunk)
+                    if len(r) == 3:
+                        _, file_path, chunk = r
+                    elif len(r) == 2:
+                        file_path, chunk = r
+                    else:
+                        file_path, chunk = None, None
+                else:
+                    file_path, chunk = None, None
+                formatted.append(
+                    {
+                        "path": file_path,
+                        "chunk": chunk,
+                    }
+                )
+            conn.close()
+            return formatted
+        except Exception as e:
+            logger.error(f"Error in search: {e}")
+            return []
 
 
 class ExtractorAdapter:
@@ -796,7 +836,15 @@ class FileWatcher:
 
                 # Add to embedding index
                 if self.embedding_manager is not None:
-                    self.embedding_manager.add_document(file_path, content)
+                    # Compute relative path for citation
+                    for base_dir in self.config.get("watch_directories", []):
+                        if file_path.startswith(base_dir):
+                            rel_path = os.path.relpath(file_path, base_dir)
+                            break
+                    else:
+                        rel_path = file_path  # fallback, should not happen
+
+                    self.embedding_manager.add_document(rel_path, content)
                 else:
                     logger.error("Embedding manager not initialized")
                     return 0
@@ -890,39 +938,32 @@ class FileWatcher:
             ):
                 self.embedding_manager.clear_index()
             else:
-                # Reinitialize if clear is not available
                 self.embedding_manager = EmbeddingAdapter()
 
-            # Reindex all files
-            total_files = 0
+            # Recursively find all files
             watch_dirs = self.config.get("watch_directories", [])
+            include_patterns = self.config.get("file_patterns", {}).get("include", [])
+            all_files = self._get_all_files(watch_dirs, include_patterns)
 
-            for watch_dir in watch_dirs:
-                if os.path.exists(watch_dir):
-                    for root, dirs, files in os.walk(watch_dir):
-                        for file in files:
-                            file_path = os.path.join(root, file)
+            total_files = 0
+            for file_path in all_files:
+                try:
+                    if self.document_extractor is not None:
+                        text = self.document_extractor.extract_text(file_path)
+                        if text.strip() and self.embedding_manager is not None:
+                            # Compute relative path for citation
+                            for base_dir in watch_dirs:
+                                if file_path.startswith(base_dir):
+                                    rel_path = os.path.relpath(file_path, base_dir)
+                                    break
+                            else:
+                                rel_path = file_path  # fallback, should not happen
 
-                            # Check if file matches patterns
-                            if self._should_process_file_patterns(file_path):
-                                try:
-                                    if self.document_extractor is not None:
-                                        text = self.document_extractor.extract_text(
-                                            file_path
-                                        )
-                                        if (
-                                            text.strip()
-                                            and self.embedding_manager is not None
-                                        ):
-                                            self.embedding_manager.add_document(
-                                                file_path, text
-                                            )
-                                            total_files += 1
-                                except Exception as e:
-                                    logger.error(f"Error reindexing {file_path}: {e}")
-                                    self._stats["errors"] = (
-                                        self._stats.get("errors") or 0
-                                    ) + 1
+                            self.embedding_manager.add_document(rel_path, text)
+                            total_files += 1
+                except Exception as e:
+                    logger.error(f"Error reindexing {file_path}: {e}")
+                    self._stats["errors"] = (self._stats.get("errors") or 0) + 1
 
             # Save the new index
             if self.embedding_manager is not None:
@@ -1065,34 +1106,44 @@ class FileWatcher:
 
         except Exception as e:
             logger.error(f"Error stopping file watcher: {e}")
-
-    def run(self) -> None:
-        """Run the file watcher until interrupted."""
-        try:
-            self.start()
-
-            # Set up signal handlers for graceful shutdown
-            def signal_handler(signum, frame) -> None:
-                logger.info(f"Received signal {signum}, shutting down...")
-                self.stop()
-                sys.exit(0)
-
-            signal.signal(signal.SIGINT, signal_handler)
-            signal.signal(signal.SIGTERM, signal_handler)
-
-            logger.info("File watcher is running. Press Ctrl+C to stop.")
-
-            # Keep running until stopped
-            while self._running:
-                time.sleep(1)
+            time.sleep(1)
 
         except KeyboardInterrupt:
             logger.info("Shutdown requested by user")
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
             logger.error(traceback.format_exc())
-        finally:
+        # The recursive self.stop() call is removed to prevent infinite recursion!
+
+    def run(self) -> None:
+        """Start the watcher and keep it running until interrupted."""
+        try:
+            self.start()
+            while self._running:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            logger.info("Keyboard interrupt received. Stopping watcher...")
             self.stop()
+
+    def _get_all_files(self, base_dirs: List[str], patterns: List[str]) -> List[str]:
+        """
+        Recursively find all files matching patterns in all base_dirs and subfolders.
+        Returns relative paths for citation.
+        """
+        found_files = []
+        for base_dir in base_dirs:
+            for root, dirs, files in os.walk(base_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(file_path, base_dir)
+                    # Check include patterns
+                    for pattern in patterns:
+                        if fnmatch.fnmatch(file, pattern):
+                            found_files.append(os.path.join(base_dir, rel_path))
+                            break
+        return found_files
+
+    # TODO(copilot): Use _get_all_files in reindex and other relevant places
 
 
 def main() -> None:

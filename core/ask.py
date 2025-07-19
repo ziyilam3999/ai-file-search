@@ -63,7 +63,7 @@ def answer_question(
         citations.append(
             {
                 "id": i,
-                "file": Path(file_path).name,  # Just filename, not full path
+                "file": file_path,  # Relative path for citation (e.g., subfolder/doc.txt)
                 "page": estimated_page,
                 "chunk": (
                     chunk_text[:200] + "..." if len(chunk_text) > 200 else chunk_text

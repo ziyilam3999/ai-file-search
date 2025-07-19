@@ -24,11 +24,15 @@ import yaml  # type: ignore
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from watchdog.events import (FileCreatedEvent, FileDeletedEvent,
-                             FileModifiedEvent)
+from watchdog.events import FileCreatedEvent, FileDeletedEvent, FileModifiedEvent
 
-from daemon.watch import (EmbeddingAdapter, ExtractorAdapter,
-                          FileChangeHandler, FileChangeQueue, FileWatcher)
+from daemon.watch import (
+    EmbeddingAdapter,
+    ExtractorAdapter,
+    FileChangeHandler,
+    FileChangeQueue,
+    FileWatcher,
+)
 
 
 class TestWatcherConfig:

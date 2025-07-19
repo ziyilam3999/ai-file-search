@@ -24,7 +24,6 @@ dependencies = [
     "apscheduler (>=3.11.0,<4.0.0)"
 ]
 
-
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -34,5 +33,20 @@ black = "^25.1.0"
 pre-commit = "^4.2.0"
 pytest = "^8.4.1"
 types-pyyaml = "^6.0.12.20250516"
+
+# Black configuration - tells the black robot how to organize
+[tool.black]
+line-length = 88
+target-version = ['py312']
+
+# isort configuration - tells the isort robot to follow black robot's rules
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
 
 

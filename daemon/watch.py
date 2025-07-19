@@ -26,8 +26,12 @@ import yaml  # type: ignore
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from loguru import logger
-from watchdog.events import (FileCreatedEvent, FileDeletedEvent,
-                             FileModifiedEvent, FileSystemEventHandler)
+from watchdog.events import (
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileSystemEventHandler,
+)
 from watchdog.observers import Observer
 
 # Import our core modules
@@ -35,7 +39,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.embedding import Embedder
 from core.extract import Extractor
 
-# TODO(copilot): Replace EmbeddingAdapter mock logging with real incremental updates
+# COMPLETED: Replace EmbeddingAdapter mock logging with real incremental updates
 # Current: Adapter logs "Would add document" / "Would save index"
 # Need: Call actual Embedder incremental methods when available
 # Requirements:
@@ -76,34 +80,305 @@ from core.extract import Extractor
 
 
 class EmbeddingAdapter:
-    """Adapter to make the existing Embedder class work with the watcher."""
+    """Enhanced adapter with real incremental updates to the FAISS index."""
 
     def __init__(self) -> None:
         self.embedder = Embedder()
-        self._pending_changes: List[Tuple[str, str, Optional[str]]] = []
+        self._stats: Dict[str, Any] = {
+            "documents_added": 0,
+            "documents_removed": 0,
+            "operations_failed": 0,
+            "last_operation_time": 0,
+            "index_size": 0,
+        }
+        self._pending_operations: List[Tuple[str, str, Optional[str]]] = []
+        self._operation_lock = threading.Lock()
 
-    def add_document(self, file_path: str, text: str) -> None:
-        """Add a document to the pending changes list."""
-        # For now, just log that we would add this document
-        logger.info(f"Would add document: {file_path}")
-        self._pending_changes.append(("add", file_path, text))
+        # Pre-warm the model to avoid first-operation delay
+        self._pre_warm_model()
 
-    def remove_document(self, file_path: str) -> None:
+    def _pre_warm_model(self) -> None:
+        """Pre-warm the embedding model to avoid delays on first use."""
+        try:
+            logger.debug("Pre-warming embedding model...")
+            model = self.embedder._get_model()
+            # Generate a dummy embedding to initialize everything
+            model.encode(["initialization"], show_progress_bar=False)
+            logger.debug("Model pre-warming completed")
+        except Exception as e:
+            logger.warning(f"Model pre-warming failed: {e}")
+
+    def add_document(self, file_path: str, text: str) -> bool:
+        """Add a document to the index with real incremental updates."""
+        operation_start = time.time()
+
+        try:
+            with self._operation_lock:
+                logger.debug(f"Adding document to index: {file_path}")
+
+                # Step 1: Remove existing document if it exists (for updates)
+                self._remove_existing_document(file_path)
+
+                # Step 2: Process the text into chunks
+                chunks = self._process_text_to_chunks(text)
+                if not chunks:
+                    logger.warning(f"No valid chunks generated for {file_path}")
+                    return False
+
+                # Step 3: Generate embeddings for chunks
+                embeddings = self._generate_embeddings(chunks)
+                if not embeddings:
+                    logger.error(f"Failed to generate embeddings for {file_path}")
+                    self._stats["operations_failed"] += 1
+                    return False
+
+                # Step 4: Add to FAISS index and database
+                success = self._add_to_faiss_and_db(file_path, chunks, embeddings)
+
+                if success:
+                    self._stats["documents_added"] += 1
+                    self._stats["index_size"] = self._get_current_index_size()
+                    logger.info(
+                        f"Successfully added document: {file_path} ({len(chunks)} chunks)"
+                    )
+                else:
+                    self._stats["operations_failed"] += 1
+                    logger.error(f"Failed to add document: {file_path}")
+
+                self._stats["last_operation_time"] = time.time()
+                processing_time = time.time() - operation_start
+                logger.debug(f"Document processing took {processing_time:.3f} seconds")
+
+                return success
+
+        except Exception as e:
+            self._stats["operations_failed"] += 1
+            logger.error(f"Error adding document {file_path}: {e}")
+            return False
+
+    def remove_document(self, file_path: str) -> bool:
         """Remove a document from the index."""
-        # For now, just log that we would remove this document
-        logger.info(f"Would remove document: {file_path}")
-        self._pending_changes.append(("remove", file_path, None))
+        try:
+            with self._operation_lock:
+                logger.debug(f"Removing document from index: {file_path}")
 
-    def save_index(self) -> None:
-        """Save the index - for now just log the pending changes."""
-        if self._pending_changes:
-            logger.info(f"Would save index with {len(self._pending_changes)} changes")
-            self._pending_changes.clear()
+                success = self._remove_existing_document(file_path)
 
-    def clear_index(self) -> None:
-        """Clear the index."""
-        logger.info("Would clear index")
-        self._pending_changes.clear()
+                if success:
+                    self._stats["documents_removed"] += 1
+                    self._stats["index_size"] = self._get_current_index_size()
+                    logger.info(f"Successfully removed document: {file_path}")
+                else:
+                    logger.warning(f"Document not found in index: {file_path}")
+
+                self._stats["last_operation_time"] = time.time()
+                return success
+
+        except Exception as e:
+            self._stats["operations_failed"] += 1
+            logger.error(f"Error removing document {file_path}: {e}")
+            return False
+
+    def save_index(self) -> bool:
+        """Save the current index state to disk."""
+        try:
+            import faiss
+
+            # Get current index
+            index = self.embedder._get_index()
+
+            # Save to disk with backup
+            backup_path = f"index_backup_{int(time.time())}.faiss"
+            if os.path.exists("index.faiss"):
+                import shutil
+
+                shutil.copy2("index.faiss", backup_path)
+                logger.debug(f"Created backup: {backup_path}")
+
+            faiss.write_index(index, "index.faiss")
+            logger.info("Index successfully saved to disk")
+
+            # Clean up old backups (keep only last 3)
+            self._cleanup_old_backups()
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Error saving index: {e}")
+            self._stats["operations_failed"] += 1
+            return False
+
+    def clear_index(self) -> bool:
+        """Clear the entire index (used for full reindex)."""
+        try:
+            import sqlite3
+
+            import faiss
+
+            with self._operation_lock:
+                logger.info("Clearing entire index")
+
+                # Create new empty index
+                new_index = faiss.IndexFlatL2(384)  # Same dimension as model
+
+                # Clear database
+                conn = sqlite3.connect("meta.sqlite")
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM meta")
+                conn.commit()
+                conn.close()
+
+                # Replace the index
+                self.embedder._index = new_index
+
+                # Reset stats
+                self._stats["index_size"] = 0
+                self._stats["last_operation_time"] = time.time()
+
+                logger.info("Index cleared successfully")
+                return True
+
+        except Exception as e:
+            logger.error(f"Error clearing index: {e}")
+            self._stats["operations_failed"] += 1
+            return False
+
+    def get_adapter_stats(self) -> Dict[str, Any]:
+        """Get detailed statistics about adapter operations."""
+        stats = self._stats.copy()
+        stats["pending_operations"] = len(self._pending_operations)
+        return stats
+
+    def _process_text_to_chunks(self, text: str) -> List[str]:
+        """Process text into chunks using the embedder's chunking logic."""
+        try:
+            chunks = self.embedder._chunk_text(text)
+            # Filter out very short chunks
+            valid_chunks = [chunk for chunk in chunks if len(chunk.strip()) >= 20]
+            return valid_chunks
+        except Exception as e:
+            logger.error(f"Error chunking text: {e}")
+            return []
+
+    def _generate_embeddings(self, chunks: List[str]) -> Optional[List]:
+        """Generate embeddings for a list of chunks."""
+        try:
+            model = self.embedder._get_model()
+
+            # Truncate chunks to model's max length
+            processed_chunks = [chunk[:256] for chunk in chunks]
+
+            embeddings = model.encode(
+                processed_chunks,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+                show_progress_bar=False,
+            )
+
+            return embeddings.tolist()
+
+        except Exception as e:
+            logger.error(f"Error generating embeddings: {e}")
+            return None
+
+    def _add_to_faiss_and_db(
+        self, file_path: str, chunks: List[str], embeddings: List
+    ) -> bool:
+        """Add chunks and embeddings to FAISS index and metadata database."""
+        try:
+            import sqlite3
+
+            import faiss
+            import numpy as np
+
+            # Get current index and database
+            index = self.embedder._get_index()
+            conn = sqlite3.connect("meta.sqlite")
+            cursor = conn.cursor()
+
+            # Get next available ID
+            cursor.execute("SELECT MAX(id) FROM meta")
+            max_id = cursor.fetchone()[0]
+            next_id = (max_id or 0) + 1
+
+            # Add embeddings to FAISS
+            embeddings_array = np.array(embeddings, dtype=np.float32)
+            index.add(embeddings_array)
+
+            # Add metadata to database
+            metadata_entries = [
+                (next_id + i, os.path.basename(file_path), chunk)
+                for i, chunk in enumerate(chunks)
+            ]
+
+            cursor.executemany(
+                "INSERT INTO meta (id, file, chunk) VALUES (?, ?, ?)", metadata_entries
+            )
+
+            conn.commit()
+            conn.close()
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Error adding to FAISS and DB: {e}")
+            return False
+
+    def _remove_existing_document(self, file_path: str) -> bool:
+        """Remove existing document chunks from index (for updates)."""
+        try:
+            import sqlite3
+
+            filename = os.path.basename(file_path)
+
+            conn = sqlite3.connect("meta.sqlite")
+            cursor = conn.cursor()
+
+            # Find existing entries
+            cursor.execute("SELECT id FROM meta WHERE file = ?", (filename,))
+            existing_ids = [row[0] for row in cursor.fetchall()]
+
+            if existing_ids:
+                # Remove from database
+                placeholders = ",".join("?" for _ in existing_ids)
+                cursor.execute(
+                    f"DELETE FROM meta WHERE id IN ({placeholders})", existing_ids
+                )
+                conn.commit()
+                logger.debug(
+                    f"Removed {len(existing_ids)} existing chunks for {filename}"
+                )
+
+            conn.close()
+            return len(existing_ids) > 0
+
+        except Exception as e:
+            logger.error(f"Error removing existing document: {e}")
+            return False
+
+    def _get_current_index_size(self) -> int:
+        """Get the current number of vectors in the index."""
+        try:
+            index = self.embedder._get_index()
+            return index.ntotal
+        except Exception:
+            return 0
+
+    def _cleanup_old_backups(self) -> None:
+        """Clean up old backup files, keeping only the last 3."""
+        try:
+            import glob
+
+            backup_files = glob.glob("index_backup_*.faiss")
+            backup_files.sort(reverse=True)  # Most recent first
+
+            # Remove all but the 3 most recent
+            for old_backup in backup_files[3:]:
+                os.remove(old_backup)
+                logger.debug(f"Removed old backup: {old_backup}")
+
+        except Exception as e:
+            logger.debug(f"Error cleaning up backups: {e}")
 
 
 class ExtractorAdapter:

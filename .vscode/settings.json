@@ -2,14 +2,27 @@
   // tell VS Code which formatter to use for ALL languages unless overridden
   "editor.defaultFormatter": "ms-python.black-formatter",
 
-  // run the formatter every time you save
-  "editor.formatOnSave": true,
-
-  // organise imports (isort) on save
-  "editor.codeActionsOnSave": {
-    "source.organizeImports": "explicit"
+  // Completely disable all formatting on save
+  "editor.formatOnSave": false,
+  "editor.formatOnPaste": false,
+  "editor.formatOnType": false,
+  
+  // Disable all code actions on save
+  "editor.codeActionsOnSave": {},
+  
+  // Python-specific overrides to be extra sure
+  "[python]": {
+    "editor.formatOnSave": false,
+    "editor.formatOnPaste": false,
+    "editor.formatOnType": false,
+    "editor.codeActionsOnSave": {},
+    "editor.defaultFormatter": null
   },
-
-  // skip the “Are you sure?” dialog on Git Sync
+  
+  // Disable specific Python extension behaviors
+  "python.formatting.provider": "none",
+  "python.linting.enabled": false,
+  
+  // skip the "Are you sure?" dialog on Git Sync
   "git.confirmSync": false
 }

@@ -1,0 +1,17 @@
+2025-07-16 21:37:25 | INFO     | daemon.watch:__init__:289 - FileWatcher initialized
+2025-07-16 21:37:25 | INFO     | daemon.watch:_load_config:304 - Configuration loaded from prompts/watcher_config.yaml
+2025-07-16 21:37:25 | INFO     | daemon.watch:__init__:289 - FileWatcher initialized
+2025-07-16 21:37:26 | INFO     | daemon.watch:_load_config:304 - Configuration loaded from C:\Users\ziyil\AppData\Local\Temp\tmp3vtr0icw.yaml
+2025-07-16 21:37:27 | INFO     | daemon.watch:__init__:289 - FileWatcher initialized
+2025-07-16 21:37:49 | INFO     | daemon.watch:__init__:289 - FileWatcher initialized
+2025-07-16 21:52:07 | INFO     | daemon.watch:__init__:289 - FileWatcher initialized
+2025-07-16 21:52:07 | INFO     | daemon.watch:_load_config:304 - Configuration loaded from prompts/watcher_config.yaml
+2025-07-16 21:52:07 | INFO     | daemon.watch:__init__:289 - FileWatcher initialized
+2025-07-16 21:52:07 | INFO     | daemon.watch:_load_config:304 - Configuration loaded from C:\Users\ziyil\AppData\Local\Temp\tmp64uaz6gy.yaml
+2025-07-16 21:52:09 | INFO     | daemon.watch:__init__:289 - FileWatcher initialized
+2025-07-16 21:52:24 | INFO     | daemon.watch:__init__:289 - FileWatcher initialized
+2025-07-16 22:05:31 | INFO     | daemon.watch:__init__:289 - FileWatcher initialized
+2025-07-16 22:06:56 | INFO     | daemon.watch:__init__:289 - FileWatcher initialized
+2025-07-16 22:06:56 | INFO     | daemon.watch:_initialize_components:369 - Initializing embedding manager...
+2025-07-16 22:06:56 | INFO     | daemon.watch:_initialize_components:372 - Initializing document extractor...
+2025-07-16 22:06:56 | INFO     | daemon.watch:_initialize_components:375 - Core components initialized successfully

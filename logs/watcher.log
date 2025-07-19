@@ -1,27 +1,7 @@
-2025-07-15 21:33:07 | INFO     | daemon.watch:__init__:228 - FileWatcher initialized
-2025-07-15 21:34:04 | INFO     | daemon.watch:__init__:228 - FileWatcher initialized
-2025-07-15 21:34:04 | INFO     | daemon.watch:_load_config:243 - Configuration loaded from prompts/watcher_config.yaml
-2025-07-15 21:34:04 | INFO     | daemon.watch:__init__:228 - FileWatcher initialized
-2025-07-15 21:34:04 | INFO     | daemon.watch:_load_config:243 - Configuration loaded from C:\Users\ziyil\AppData\Local\Temp\tmpystsif8h.yaml
-2025-07-15 21:34:05 | INFO     | daemon.watch:__init__:228 - FileWatcher initialized
-2025-07-15 21:35:33 | INFO     | daemon.watch:__init__:228 - FileWatcher initialized
-2025-07-15 21:35:33 | INFO     | daemon.watch:start:620 - Starting file watcher...
-2025-07-15 21:35:33 | INFO     | daemon.watch:_initialize_components:308 - Initializing embedding manager...
-2025-07-15 21:35:33 | INFO     | daemon.watch:_initialize_components:311 - Initializing document extractor...
-2025-07-15 21:35:33 | INFO     | daemon.watch:_initialize_components:314 - Core components initialized successfully
-2025-07-15 21:35:33 | INFO     | daemon.watch:_setup_file_watching:327 - Watching directory: sample_docs
-2025-07-15 21:35:33 | INFO     | daemon.watch:_setup_file_watching:327 - Watching directory: extracts
-2025-07-15 21:35:33 | INFO     | daemon.watch:_setup_scheduler:348 - Scheduled nightly reindex at 02:00
-2025-07-15 21:35:33 | INFO     | daemon.watch:_process_file_changes:356 - File processing worker started
-2025-07-15 21:35:33 | INFO     | daemon.watch:start:645 - File watcher started successfully
-2025-07-15 21:35:33 | INFO     | daemon.watch:run:695 - File watcher is running. Press Ctrl+C to stop.
-2025-07-15 21:47:58 | INFO     | daemon.watch:_process_file_changes:367 - Processing 1 file changes
-2025-07-15 21:47:58 | INFO     | daemon.watch:add_document:53 - Would add document: sample_docs\test_watcher.txt
-2025-07-15 21:47:58 | INFO     | daemon.watch:save_index:65 - Would save index with 1 changes
-2025-07-15 21:47:58 | INFO     | daemon.watch:_add_to_index:460 - Index updated with 1 files
-2025-07-15 21:47:58 | INFO     | daemon.watch:_process_change_batch:423 - Batch processed: 0 added, 1 updated, 0 deleted
-2025-07-15 21:48:38 | INFO     | daemon.watch:_process_file_changes:367 - Processing 1 file changes
-2025-07-15 21:48:38 | INFO     | daemon.watch:add_document:53 - Would add document: sample_docs\A Christmas Carol in Prose; Being a Ghost Story of Christmas.txt
-2025-07-15 21:48:38 | INFO     | daemon.watch:save_index:65 - Would save index with 1 changes
-2025-07-15 21:48:38 | INFO     | daemon.watch:_add_to_index:460 - Index updated with 1 files
-2025-07-15 21:48:38 | INFO     | daemon.watch:_process_change_batch:423 - Batch processed: 0 added, 1 updated, 0 deleted
+2025-07-19 12:56:12 | INFO     | daemon.watch:__init__:567 - FileWatcher initialized
+2025-07-19 12:56:12 | INFO     | daemon.watch:_initialize_components:647 - Initializing embedding manager...
+2025-07-19 12:56:26 | INFO     | daemon.watch:_initialize_components:650 - Initializing document extractor...
+2025-07-19 12:56:26 | INFO     | daemon.watch:_initialize_components:653 - Core components initialized successfully
+2025-07-19 12:56:26 | INFO     | daemon.watch:add_document:146 - Successfully added document: test_integration.txt (1 chunks)
+2025-07-19 12:56:26 | INFO     | daemon.watch:remove_document:175 - Successfully removed document: test_integration.txt
+2025-07-19 12:56:26 | INFO     | daemon.watch:save_index:204 - Index successfully saved to disk

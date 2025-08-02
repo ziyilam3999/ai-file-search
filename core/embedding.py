@@ -271,13 +271,16 @@ class Embedder:
         # Create id->row mapping for fast lookup
         id_to_row = {row[0]: (row[1], row[2]) for row in rows}
 
-        # Return results in the same order as FAISS indices
+        # Return results in the same order as FAISS indices with score and chunk_id
         results = []
-        for target_id in target_ids:
+        for i, target_id in enumerate(target_ids):
             if target_id in id_to_row:
-                results.append(id_to_row[target_id])
+                file_path, chunk_text = id_to_row[target_id]
+                # Return (chunk_text, file_path, chunk_id, score) format expected by ask.py
+                score = float(distances[0][i])  # Distance from FAISS
+                results.append((chunk_text, file_path, target_id, score))
             else:
-                results.append((None, None))
+                results.append((None, None, target_id, float("inf")))
 
         return results
 

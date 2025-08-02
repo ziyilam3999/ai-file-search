@@ -48,13 +48,25 @@ class TestWatcherConfig:
             }
             yaml.dump(config_data, f)
             f.flush()
+            temp_file_path = f.name
 
+        try:
+            watcher = FileWatcher(config_path=temp_file_path)
+            assert watcher.config["watch_directories"] == ["test_dir"]
+            assert watcher.config["timing"]["debounce_seconds"] == 10
+        finally:
             try:
-                watcher = FileWatcher(config_path=f.name)
-                assert watcher.config["watch_directories"] == ["test_dir"]
-                assert watcher.config["timing"]["debounce_seconds"] == 10
-            finally:
-                os.unlink(f.name)
+                os.unlink(temp_file_path)
+            except PermissionError:
+                # On Windows, sometimes the file is still locked
+                import time
+
+                time.sleep(0.1)
+                try:
+                    os.unlink(temp_file_path)
+                except PermissionError:
+                    # If still locked, just leave it for OS cleanup
+                    pass
 
     def test_load_missing_config(self):
         """Test behavior when config file is missing."""
@@ -431,6 +443,290 @@ class TestIntegration:
         assert handler._should_process_file(txt_file)
         assert not handler._should_process_file(tmp_file)
         assert not handler._should_process_file(py_file)
+
+
+class TestNestedFolderHandling:
+    """Test handling of nested folder structures."""
+
+    def setup_method(self):
+        """Set up test environment with nested directory structure."""
+        self.temp_dir = tempfile.mkdtemp()
+
+        # Create nested directory structure
+        self.level1_dir = os.path.join(self.temp_dir, "level1")
+        self.level2_dir = os.path.join(self.level1_dir, "level2")
+        self.level3_dir = os.path.join(self.level2_dir, "level3")
+
+        # Create the directories
+        os.makedirs(self.level3_dir, exist_ok=True)
+
+        # Create additional nested structures
+        self.docs_dir = os.path.join(self.temp_dir, "documents")
+        self.projects_dir = os.path.join(self.docs_dir, "projects")
+        self.archive_dir = os.path.join(self.docs_dir, "archive", "2024")
+
+        os.makedirs(self.projects_dir, exist_ok=True)
+        os.makedirs(self.archive_dir, exist_ok=True)
+
+        self.test_config = {
+            "watch_directories": [self.temp_dir],
+            "file_patterns": {"include": ["*.txt", "*.md"], "ignore": ["*.tmp"]},
+            "timing": {"debounce_seconds": 0.1, "max_wait_seconds": 1},
+            "indexing": {"batch_size": 10},
+            "logging": {"level": "ERROR", "console_output": False},
+        }
+
+        # Create config file
+        self.config_file = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        )
+        yaml.dump(self.test_config, self.config_file)
+        self.config_file.close()
+
+    def teardown_method(self):
+        """Clean up test resources."""
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+        if hasattr(self, "config_file"):
+            try:
+                os.unlink(self.config_file.name)
+            except PermissionError:
+                pass
+
+    def test_nested_file_detection(self):
+        """Test that files in nested directories are detected."""
+        # Create files at different nesting levels
+        files_to_create = [
+            (self.temp_dir, "root.txt", "Root level content"),
+            (self.level1_dir, "level1.txt", "Level 1 content"),
+            (self.level2_dir, "level2.md", "Level 2 markdown"),
+            (self.level3_dir, "level3.txt", "Level 3 deep content"),
+            (self.projects_dir, "project.txt", "Project documentation"),
+            (self.archive_dir, "archive.md", "Archived document"),
+        ]
+
+        for directory, filename, content in files_to_create:
+            file_path = os.path.join(directory, filename)
+            with open(file_path, "w") as f:
+                f.write(content)
+
+        watcher = FileWatcher(config_path=self.config_file.name)
+        handler = FileChangeHandler(watcher.file_queue, watcher.config)
+
+        # Test that all files would be processed
+        for directory, filename, _ in files_to_create:
+            file_path = os.path.join(directory, filename)
+            assert handler._should_process_file(
+                file_path
+            ), f"File {file_path} should be processed"
+
+    def test_nested_directory_creation_detection(self):
+        """Test detection of files created in new nested directories."""
+        watcher = FileWatcher(config_path=self.config_file.name)
+
+        # Create a new deeply nested directory structure
+        new_nested_dir = os.path.join(self.temp_dir, "new", "very", "deep", "folder")
+        os.makedirs(new_nested_dir, exist_ok=True)
+
+        # Create a file in the new nested directory
+        test_file = os.path.join(new_nested_dir, "deep_file.txt")
+        with open(test_file, "w") as f:
+            f.write("Content in deeply nested file")
+
+        handler = FileChangeHandler(watcher.file_queue, watcher.config)
+
+        # Simulate file creation event
+        from watchdog.events import FileCreatedEvent
+
+        event = FileCreatedEvent(test_file)
+        handler.on_created(event)
+
+        # Check that the event was queued
+        assert watcher.file_queue.size() == 1
+        changes = watcher.file_queue.get_pending_changes()
+        assert changes[0][0] == test_file
+        assert changes[0][1] == "created"
+
+    @patch("daemon.watch.EmbeddingAdapter")
+    @patch("daemon.watch.ExtractorAdapter")
+    def test_nested_folder_deletion_handling(self, mock_extractor, mock_embedding):
+        """Test handling of files when nested folders are deleted."""
+        # Create nested structure with files
+        nested_folder = os.path.join(self.temp_dir, "to_delete", "subfolder")
+        os.makedirs(nested_folder, exist_ok=True)
+
+        files_in_nested = [
+            os.path.join(nested_folder, "file1.txt"),
+            os.path.join(nested_folder, "file2.md"),
+            os.path.join(self.temp_dir, "to_delete", "file3.txt"),
+        ]
+
+        for file_path in files_in_nested:
+            with open(file_path, "w") as f:
+                f.write(f"Content for {os.path.basename(file_path)}")
+
+        watcher = FileWatcher(config_path=self.config_file.name)
+        handler = FileChangeHandler(watcher.file_queue, watcher.config)
+
+        # Simulate deletion of files (as would happen when folder is deleted)
+        from watchdog.events import FileDeletedEvent
+
+        for file_path in files_in_nested:
+            event = FileDeletedEvent(file_path)
+            handler.on_deleted(event)
+
+        # Check that all deletions were queued
+        assert watcher.file_queue.size() == len(files_in_nested)
+        changes = watcher.file_queue.get_pending_changes()
+
+        deleted_files = [change[0] for change in changes]
+        for file_path in files_in_nested:
+            assert file_path in deleted_files
+
+    def test_relative_path_generation_for_nested_files(self):
+        """Test that relative paths are correctly generated for nested files."""
+        # Create files in various nested locations
+        test_cases = [
+            (self.level3_dir, "deep.txt", "level1/level2/level3/deep.txt"),
+            (self.projects_dir, "proj.md", "documents/projects/proj.md"),
+            (self.archive_dir, "old.txt", "documents/archive/2024/old.txt"),
+        ]
+
+        for directory, filename, expected_rel_path in test_cases:
+            file_path = os.path.join(directory, filename)
+            with open(file_path, "w") as f:
+                f.write("Test content")
+
+            # Calculate relative path as the system would
+            actual_rel_path = os.path.relpath(file_path, self.temp_dir)
+            # Normalize path separators for cross-platform compatibility
+            actual_rel_path = actual_rel_path.replace("\\", "/")
+            expected_rel_path = expected_rel_path.replace("\\", "/")
+
+            assert (
+                actual_rel_path == expected_rel_path
+            ), f"Expected {expected_rel_path}, got {actual_rel_path}"
+
+    @patch("daemon.watch.EmbeddingAdapter")
+    @patch("daemon.watch.ExtractorAdapter")
+    def test_bulk_nested_folder_operations(self, mock_extractor, mock_embedding):
+        """Test bulk operations on nested folder structures."""
+        # Mock the components
+        mock_extractor_instance = Mock()
+        mock_extractor_instance.extract_text.return_value = "Test content"
+        mock_extractor.return_value = mock_extractor_instance
+
+        mock_embedding_instance = Mock()
+        mock_embedding.return_value = mock_embedding_instance
+
+        watcher = FileWatcher(config_path=self.config_file.name)
+        watcher.embedding_manager = mock_embedding_instance
+        watcher.document_extractor = mock_extractor_instance
+
+        # Create multiple nested directories with files
+        nested_structures = [
+            "folder1/subfolder1/subsubfolder1",
+            "folder1/subfolder2/subsubfolder2",
+            "folder2/subfolder1/deep/deeper",
+            "folder3/a/b/c/d/e",
+        ]
+
+        created_files = []
+        for structure in nested_structures:
+            full_path = os.path.join(self.temp_dir, structure)
+            os.makedirs(full_path, exist_ok=True)
+
+            # Create 2-3 files in each deepest folder
+            for i in range(2):
+                file_path = os.path.join(full_path, f"file_{i}.txt")
+                with open(file_path, "w") as f:
+                    f.write(f"Content for file {i} in {structure}")
+                created_files.append(file_path)
+
+        # Start watcher to detect all files
+        watcher.start()
+
+        try:
+            # Give time for all files to be detected
+            time.sleep(0.5)
+
+            # The watcher should be running and processing files
+            assert watcher._running
+
+            # Now simulate deleting entire nested structures
+            handler = FileChangeHandler(watcher.file_queue, watcher.config)
+
+            # Clear the queue first
+            watcher.file_queue.clear()
+
+            # Simulate deletion of all files
+            from watchdog.events import FileDeletedEvent
+
+            for file_path in created_files:
+                event = FileDeletedEvent(file_path)
+                handler.on_deleted(event)
+
+            # Check that all deletions were captured
+            assert watcher.file_queue.size() == len(created_files)
+
+        finally:
+            watcher.stop()
+
+    def test_ignore_patterns_in_nested_folders(self):
+        """Test that ignore patterns work correctly in nested folder structures."""
+        # Create nested structure with mix of files to include and ignore
+        test_structure = [
+            ("docs/important", "report.txt", True),  # Should be included
+            ("docs/important", "temp.tmp", False),  # Should be ignored
+            ("docs/cache", "data.txt", True),  # Should be included
+            (
+                "docs/cache/__pycache__",
+                "module.pyc",
+                False,
+            ),  # Should be ignored (dir pattern)
+            ("level1/level2", "document.md", True),  # Should be included
+            ("level1/level2", "debug.log", False),  # Should be ignored
+        ]
+
+        # Update config to include more ignore patterns
+        updated_config = self.test_config.copy()
+        updated_config["file_patterns"]["ignore"] = [
+            "*.tmp",
+            "*.log",
+            "*.pyc",
+            "__pycache__/*",
+        ]
+
+        config_file = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        )
+        yaml.dump(updated_config, config_file)
+        config_file.close()
+
+        try:
+            watcher = FileWatcher(config_path=config_file.name)
+            handler = FileChangeHandler(watcher.file_queue, watcher.config)
+
+            for folder, filename, should_process in test_structure:
+                # Create the directory structure
+                full_dir = os.path.join(self.temp_dir, folder)
+                os.makedirs(full_dir, exist_ok=True)
+
+                # Create the file
+                file_path = os.path.join(full_dir, filename)
+                with open(file_path, "w") as f:
+                    f.write("Test content")
+
+                # Test if it should be processed
+                result = handler._should_process_file(file_path)
+                assert (
+                    result == should_process
+                ), f"File {file_path} processing result {result} != expected {should_process}"
+
+        finally:
+            try:
+                os.unlink(config_file.name)
+            except PermissionError:
+                pass
 
 
 # Smoke tests for basic functionality

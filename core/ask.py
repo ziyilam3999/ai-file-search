@@ -1,4 +1,4 @@
-"""⚙️  ask.py
+"""CORE: ask.py
 Purpose : Given a user question, find best answer chunk(s) and cite source files.
 Inputs  : user query (str)
 Outputs : answer (str), citations (list)
@@ -28,7 +28,7 @@ def answer_question(
         Tuple of (answer_text, citations)
         where citations is [{"id": int, "file": str, "page": int, "chunk": str}]
     """
-    logger.info(f"🤔 Answering question: '{query}'")
+    logger.info(f"THINKING: Answering question: '{query}'")
 
     # 1. Embed the question and find top chunks
     embedder = Embedder()
@@ -40,7 +40,7 @@ def answer_question(
             [],
         )
 
-    logger.info(f"📚 Found {len(results)} relevant chunks")
+    logger.info(f"FOUND: {len(results)} relevant chunks")
 
     # 2. Load prompt template
     prompt_path = Path(__file__).parent.parent / "prompts" / "retrieval_prompt.md"
@@ -48,7 +48,7 @@ def answer_question(
         with open(prompt_path, "r", encoding="utf-8") as f:
             prompt_template = f.read()
     except FileNotFoundError:
-        logger.error(f"❌ Prompt template not found: {prompt_path}")
+        logger.error(f"ERROR: Prompt template not found: {prompt_path}")
         return "Error: Prompt template not found.", []
 
     # 3. Format context from chunks with numbered citations
@@ -77,17 +77,17 @@ def answer_question(
 
     # 4. Build the full prompt for Phi-3
     full_prompt = prompt_template.format(question=query, context=context_text)
-    logger.debug("📝 Prompt length: %d characters", len(full_prompt))
+    logger.debug("INFO: Prompt length: %d characters", len(full_prompt))
 
     # 5. Generate answer using Phi-3
     try:
         answer = _generate_answer_with_phi3(full_prompt, citations)
-        logger.success(f"✅ Generated answer ({len(answer)} chars)")
+        logger.success(f"SUCCESS: Generated answer ({len(answer)} chars)")
         return answer, citations
 
     except Exception as e:
-        logger.error(f"❌ Phi-3 generation failed: {e}")
-        logger.info("🔄 Falling back to context-based answer")
+        logger.error(f"ERROR: Phi-3 generation failed: {e}")
+        logger.info("FALLBACK: Falling back to context-based answer")
         fallback_answer = _generate_fallback_answer(query, results, citations)
         return fallback_answer, citations
 
@@ -130,7 +130,7 @@ def _generate_answer_with_phi3(prompt: str, citations: List[Dict]) -> str:
         return answer
 
     except Exception as e:
-        logger.error(f"❌ Phi-3 generation error: {e}")
+        logger.error(f"ERROR: Phi-3 generation error: {e}")
         # Fall back to context-based answer if Phi-3 fails
         return _generate_context_based_answer(citations)
 

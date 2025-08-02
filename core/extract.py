@@ -1,4 +1,4 @@
-"""⚙️  core/extract.py
+"""CORE: extract.py
 Purpose : Convert PDF, DOCX, TXT to plain UTF-8.
 Inputs  : pathlib.Path
 Outputs : str

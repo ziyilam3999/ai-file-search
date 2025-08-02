@@ -1,0 +1,19 @@
+Database Design and Architecture Guidelines
+
+1. Database Schema Design
+- Normalize data to eliminate redundancy
+- Use appropriate data types for each column
+- Implement proper indexing strategies
+- Design for scalability and performance
+
+2. Query Optimization
+- Write efficient SQL queries
+- Use EXPLAIN to analyze query performance
+- Implement proper caching strategies
+- Consider read replicas for heavy workloads
+
+3. Data Modeling Best Practices
+- Use foreign keys to maintain referential integrity
+- Implement proper constraints and validations
+- Design clear table relationships
+- Document your database schema thoroughly

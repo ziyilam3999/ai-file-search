@@ -1,4 +1,4 @@
-"""🔍 AI File Search CLI
+"""CLI: AI File Search CLI
 A command-line interface for semantic document search with citations.
 
 Usage:
@@ -18,7 +18,7 @@ from core.ask import answer_question
 
 def print_banner():
     """Print a nice welcome banner."""
-    print("🔍 AI File Search")
+    print("AI File Search")
     print("=" * 50)
 
 
@@ -26,7 +26,7 @@ def print_help():
     """Print usage help."""
     print(
         """
-🔍 AI File Search CLI
+AI File Search CLI
 
 USAGE:
     python cli.py "your question here"
@@ -55,18 +55,18 @@ def format_answer(
     output = []
 
     # Main answer
-    output.append("🤖 Answer:")
+    output.append("ANSWER:")
     output.append("-" * 30)
     output.append(answer)
 
     if show_citations and citations:
-        output.append(f"\n📚 Citations ({len(citations)} sources):")
+        output.append(f"\nCITATIONS: ({len(citations)} sources):")
         output.append("-" * 30)
 
         for citation in citations:
             if verbose:
                 # Detailed citation info
-                score_bar = "█" * int(citation["score"] * 10) + "░" * (
+                score_bar = "=" * int(citation["score"] * 10) + "-" * (
                     10 - int(citation["score"] * 10)
                 )
                 output.append(
@@ -98,12 +98,12 @@ def ask_question(
     use_phi3: bool = True,
 ) -> None:
     """Process a single question and display results."""
-    print(f"🤔 Searching for: '{question}'")
+    print(f"SEARCHING: '{question}'")
     print()
 
     # Check if index exists
     if not Path("index.faiss").exists():
-        print("❌ Error: No search index found!")
+        print("ERROR: No search index found!")
         print("   Please run: python bench_embedding.py")
         return
 
@@ -112,9 +112,9 @@ def ask_question(
 
     try:
         if use_phi3:
-            print("🤖 Generating AI-powered answer...")
+            print("GENERATING: AI-powered answer...")
         else:
-            print("📝 Using context-based answer...")
+            print("INFO: Using context-based answer...")
 
         answer, citations = answer_question(question)
         query_time = (time.time() - start_time) * 1000
@@ -124,14 +124,14 @@ def ask_question(
         print(formatted_output)
 
         # Performance info
-        print(f"\n⚡ Query completed in {query_time:.1f}ms")
+        print(f"\nTIMING: Query completed in {query_time:.1f}ms")
 
         if verbose and citations:
             avg_score = sum(c["score"] for c in citations) / len(citations)
-            print(f"📊 Average relevance score: {avg_score:.3f}")
+            print(f"STATS: Average relevance score: {avg_score:.3f}")
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"ERROR: {e}")
         if verbose:
             import traceback
 
@@ -146,18 +146,18 @@ def interactive_mode(
     print("Interactive mode - type 'quit' or 'exit' to stop")
     print("Type 'help' for usage examples")
     if not use_phi3:
-        print("⚠️  Phi-3 disabled - using context-based answers")
+        print("WARNING: Phi-3 disabled - using context-based answers")
     print()
 
     while True:
         try:
-            question = input("🔍 Ask a question: ").strip()
+            question = input("Ask a question: ").strip()
 
             if not question:
                 continue
 
             if question.lower() in ["quit", "exit", "q"]:
-                print("👋 Goodbye!")
+                print("Goodbye!")
                 break
 
             if question.lower() in ["help", "h", "?"]:
@@ -179,10 +179,10 @@ Example questions you can try:
             print("\n" + "=" * 50 + "\n")
 
         except KeyboardInterrupt:
-            print("\n👋 Goodbye!")
+            print("\nGoodbye!")
             break
         except EOFError:
-            print("\n👋 Goodbye!")
+            print("\nGoodbye!")
             break
 
 

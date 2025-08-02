@@ -1,4 +1,4 @@
-"""⚙️  core/embedding.py
+"""CORE: core/embedding.py
 Purpose : Chunk plain text, convert to embeddings, save to FAISS.
 Inputs  : extracts/<file>.txt
 Outputs : index.faiss  +  meta.sqlite
@@ -30,31 +30,19 @@ class Embedder:
         return self._model
 
     def _get_index(self):
-        """Lazy load and cache the FAISS index, create if missing."""
+        """Lazy load and cache the FAISS index."""
         if self._index is None:
-            import os
-
             import faiss
 
-            if not os.path.exists("index.faiss"):
-                # Create a new empty index if not present
-                self._index = faiss.IndexFlatL2(384)
-            else:
-                self._index = faiss.read_index("index.faiss")
+            self._index = faiss.read_index("index.faiss")
         return self._index
 
     def _get_connection(self):
-        """Lazy load and cache the database connection, create table if missing."""
+        """Lazy load and cache the database connection."""
         if self._conn is None:
             import sqlite3
 
             self._conn = sqlite3.connect("meta.sqlite")
-            cursor = self._conn.cursor()
-            cursor.execute(
-                "CREATE TABLE IF NOT EXISTS meta "
-                "(id INTEGER PRIMARY KEY, file TEXT, chunk TEXT)"
-            )
-            self._conn.commit()
         return self._conn
 
     def build_index(self, extracts_path=Path("extracts")):
@@ -69,15 +57,15 @@ class Embedder:
 
         # Start timing the entire process
         total_start_time = time.time()
-        logger.info("🚀 Starting FAISS index build process...")
+        logger.info("STARTING: FAISS index build process...")
 
         # Model loading phase
         model_start_time = time.time()
-        logger.info("📚 Loading lightweight model...")
+        logger.info("LOADING: lightweight model...")
         model = SentenceTransformer("all-MiniLM-L6-v2")
         model.max_seq_length = 96
         model_load_time = time.time() - model_start_time
-        logger.success(f"✅ Model loaded in {model_load_time:.2f} seconds")
+        logger.success(f"SUCCESS: Model loaded in {model_load_time:.2f} seconds")
 
         # Database setup phase
         db_start_time = time.time()
@@ -90,7 +78,7 @@ class Embedder:
         )
         cursor.execute("DELETE FROM meta")
         db_setup_time = time.time() - db_start_time
-        logger.info(f"🗄️ Database setup completed in {db_setup_time:.3f}s")
+        logger.info(f"DATABASE: setup completed in {db_setup_time:.3f}s")
 
         # Text processing phase
         chunk_start_time = time.time()
@@ -99,7 +87,7 @@ class Embedder:
         chunk_id = 1
         file_count = 0
 
-        logger.info("📄 Processing files and creating chunks...")
+        logger.info("PROCESSING: files and creating chunks...")
         for file in extracts_path.glob("*.txt"):
             with open(file, "r", encoding="utf-8") as f:
                 text = f.read()
@@ -115,15 +103,15 @@ class Embedder:
 
         chunk_processing_time = time.time() - chunk_start_time
         logger.success(
-            f"📝 Processed {file_count} files into {len(all_chunks)} "
+            f"PROCESSED: {file_count} files into {len(all_chunks)} "
             f"chunks in {chunk_processing_time:.2f} seconds"
         )
-        avg_chunks = (len(all_chunks) / file_count) if file_count > 0 else 0
-        logger.info(f"📊 Average chunks per file: {avg_chunks:.1f}")
+        avg_chunks = len(all_chunks) / file_count
+        logger.info(f"STATS: Average chunks per file: {avg_chunks:.1f}")
 
         # Embedding generation phase
         embed_start_time = time.time()
-        logger.info(f"🧠 Encoding {len(all_chunks)} chunks in batches...")
+        logger.info(f"ENCODING: {len(all_chunks)} chunks in batches...")
 
         batch_size = 512
         embeddings = []
@@ -149,106 +137,99 @@ class Embedder:
             if i % (batch_size * 2) == 0:
                 chunks_per_second = len(batch) / batch_time
                 logger.info(
-                    f"⚡ Processed batch {batches_processed}: "
+                    f"BATCH: Processed batch {batches_processed}: "
                     f"{len(batch)} chunks in {batch_time:.2f}s "
                     f"({chunks_per_second:.1f} chunks/sec)"
                 )
                 progress_pct = 100 * (i + batch_size) / len(all_chunks)
                 progress_chunks = min(i + batch_size, len(all_chunks))
                 logger.info(
-                    f"📈 Progress: {progress_chunks}/{len(all_chunks)} "
+                    f"PROGRESS: {progress_chunks}/{len(all_chunks)} "
                     f"chunks ({progress_pct:.1f}%)"
                 )
 
         embed_time = time.time() - embed_start_time
-        chunks_per_second = (len(all_chunks) / embed_time) if embed_time > 0 else 0
+        chunks_per_second = len(all_chunks) / embed_time
         logger.success(
-            f"🎯 Embedding generation completed in {embed_time:.2f} "
+            f"EMBEDDING: generation completed in {embed_time:.2f} "
             f"seconds ({chunks_per_second:.1f} chunks/sec)"
         )
 
         # FAISS index building phase
         faiss_start_time = time.time()
-        logger.info("🔍 Building FAISS index...")
+        logger.info("BUILDING: FAISS index...")
         embeddings_array = np.array(embeddings, dtype=np.float32)
-        if embeddings_array.shape[0] > 0:
-            index.add(embeddings_array)
-            faiss_time = time.time() - faiss_start_time
-            logger.success(f"🏗️ FAISS index built in {faiss_time:.3f} seconds")
-        else:
-            faiss_time = time.time() - faiss_start_time
-            logger.info(
-                "No embeddings to add to FAISS index (empty directory or no valid chunks)."
-            )
+        index.add(embeddings_array)
+        faiss_time = time.time() - faiss_start_time
+        logger.success(f"FAISS: index built in {faiss_time:.3f} seconds")
 
         # Database insertion phase
         db_insert_start_time = time.time()
-        logger.info("💾 Inserting metadata to database...")
+        logger.info("INSERTING: metadata to database...")
         cursor.executemany(
             "INSERT INTO meta (id, file, chunk) VALUES (?, ?, ?)",
             chunk_metadata,
         )
         conn.commit()
         conn.close()
-        self._conn = None  # Invalidate cached connection after rebuild
         db_insert_time = time.time() - db_insert_start_time
-        logger.success(
-            f"📝 Database insertion completed in {db_insert_time:.3f}s"
-        )  # noqa: E501
+        logger.success(f"DATABASE: insertion completed in {db_insert_time:.3f}s")
 
         # File saving phase
         save_start_time = time.time()
         faiss.write_index(index, "index.faiss")
         save_time = time.time() - save_start_time
-        logger.success(f"💽 Index saved to disk in {save_time:.3f} seconds")
+        logger.success(f"SAVED: Index saved to disk in {save_time:.3f} seconds")
 
         # Final summary
         total_time = time.time() - total_start_time
-        logger.success("🎉 Index build completed successfully!")
-        logger.info("📊 Performance Summary:")
+        logger.success("SUCCESS: Index build completed successfully!")
+        logger.info("PERFORMANCE: Summary:")
 
         model_pct = 100 * model_load_time / total_time
-        logger.info(
-            f"   📚 Model loading: {model_load_time:.2f}s " f"({model_pct:.1f}%)"
-        )
+        logger.info(f"   MODEL: loading: {model_load_time:.2f}s " f"({model_pct:.1f}%)")
 
         chunk_pct = 100 * chunk_processing_time / total_time
         logger.info(
-            f"   📄 Text processing: {chunk_processing_time:.2f}s "
-            f"({chunk_pct:.1f}%)"
+            f"   TEXT: processing: {chunk_processing_time:.2f}s " f"({chunk_pct:.1f}%)"
         )
 
         embed_pct = 100 * embed_time / total_time
         logger.info(
-            f"   🧠 Embedding generation: {embed_time:.2f}s " f"({embed_pct:.1f}%)"
+            f"   EMBEDDING: generation: {embed_time:.2f}s " f"({embed_pct:.1f}%)"
         )
 
         faiss_pct = 100 * faiss_time / total_time
-        logger.info(f"   🏗️ FAISS indexing: {faiss_time:.3f}s " f"({faiss_pct:.1f}%)")
+        logger.info(f"   FAISS: indexing: {faiss_time:.3f}s " f"({faiss_pct:.1f}%)")
 
         db_pct = 100 * db_insert_time / total_time
-        logger.info(f"   💾 Database ops: {db_insert_time:.3f}s " f"({db_pct:.1f}%)")
+        logger.info(f"   DATABASE: ops: {db_insert_time:.3f}s " f"({db_pct:.1f}%)")
 
         save_pct = 100 * save_time / total_time
-        logger.info(f"   💽 File saving: {save_time:.3f}s " f"({save_pct:.1f}%)")
+        logger.info(f"   SAVE: file saving: {save_time:.3f}s " f"({save_pct:.1f}%)")
 
-        logger.info(f"   ⏱️ Total time: {total_time:.2f}s")
+        logger.info(f"   TOTAL: time: {total_time:.2f}s")
 
         processing_rate = len(all_chunks) / total_time
-        logger.info(f"   📈 Processing rate: {processing_rate:.1f} chunks/s")
+        logger.info(f"   RATE: Processing rate: {processing_rate:.1f} chunks/s")
 
         if total_time < 60:
-            target_msg = f"✅ Performance target met! ({total_time:.2f}s < 60s)"
+            target_msg = f"SUCCESS: Performance target met! ({total_time:.2f}s < 60s)"
             logger.success(target_msg)
         else:
-            target_msg = f"⚠️ Performance target missed ({total_time:.2f}s > 60s)"
+            target_msg = f"WARNING: Performance target missed ({total_time:.2f}s > 60s)"
             logger.warning(target_msg)
 
         chunk_count = len(all_chunks)
         print(f"Index built successfully: {chunk_count} chunks processed")
 
     def query(self, query: str, k: int = 5):
-        """Optimized query with cached model and batch database access."""
+        """Optimized query with cached model and batch database access.
+
+        CRITICAL: This method MUST return 4-tuple format (chunk_text, file_path, chunk_id, score)
+        for UI compatibility and test suite validation. See docs/EMBEDDER_API_SPECIFICATION.md
+        for complete format requirements and troubleshooting guide.
+        """
         import numpy as np
 
         # Use cached model and index (no reloading!)
@@ -271,13 +252,12 @@ class Embedder:
         # Create id->row mapping for fast lookup
         id_to_row = {row[0]: (row[1], row[2]) for row in rows}
 
-        # Return results in the same order as FAISS indices with score and chunk_id
+        # Return results in 4-tuple format: (chunk_text, file_path, chunk_id, score)
         results = []
         for i, target_id in enumerate(target_ids):
             if target_id in id_to_row:
                 file_path, chunk_text = id_to_row[target_id]
-                # Return (chunk_text, file_path, chunk_id, score) format expected by ask.py
-                score = float(distances[0][i])  # Distance from FAISS
+                score = float(distances[0][i])  # Get the distance/score from FAISS
                 results.append((chunk_text, file_path, target_id, score))
             else:
                 results.append((None, None, target_id, float("inf")))

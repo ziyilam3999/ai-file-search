@@ -1,4 +1,4 @@
-"""🤖 llm.py
+"""LLM: llm.py
 Purpose : Phi-3 Local LLM integration for answer generation
 Inputs  : question + context chunks
 Outputs : AI-generated answer with citations
@@ -43,7 +43,7 @@ class Phi3LLM:
         if not self.model_path.exists():
             raise FileNotFoundError(f"Phi-3 model not found: {self.model_path}")
 
-        logger.info(f"🤖 Loading Phi-3 model: {self.model_path.name}")
+        logger.info(f"LOADING: Phi-3 model: {self.model_path.name}")
 
         # Initialize llama.cpp model without ChatML format
         self.llm = Llama(
@@ -55,7 +55,7 @@ class Phi3LLM:
             # No chat_format - use raw completion
         )
 
-        logger.success("✅ Phi-3 model loaded successfully")
+        logger.success("SUCCESS: Phi-3 model loaded successfully")
 
     def generate_answer(
         self,
@@ -79,9 +79,7 @@ class Phi3LLM:
         if stop_sequences is None:
             stop_sequences = ["\n\nQuestion:", "\n\nContext:", "Question:", "Context:"]
 
-        logger.info(
-            f"🤖 Generating answer (max_tokens={max_tokens}, temp={temperature})"
-        )
+        logger.info(f"GENERATING: answer (max_tokens={max_tokens}, temp={temperature})")
 
         try:
             # Use direct completion instead of chat completion for RAG prompts
@@ -95,11 +93,11 @@ class Phi3LLM:
 
             answer = response["choices"][0]["text"].strip()
 
-            logger.success(f"✅ Generated {len(answer)} character answer")
+            logger.success(f"SUCCESS: Generated {len(answer)} character answer")
             return answer
 
         except Exception as e:
-            logger.error(f"❌ Phi-3 generation failed: {e}")
+            logger.error(f"ERROR: Phi-3 generation failed: {e}")
             raise
 
     def generate_streaming_answer(
@@ -119,7 +117,7 @@ class Phi3LLM:
         Yields:
             Token strings as they are generated
         """
-        logger.info("🤖 Starting streaming generation...")
+        logger.info("STREAMING: Starting streaming generation...")
 
         try:
             # Use create_completion with stream=True instead of chat_completion
@@ -141,7 +139,7 @@ class Phi3LLM:
                     yield chunk["choices"][0]["text"]
 
         except Exception as e:
-            logger.error(f"❌ Streaming generation failed: {e}")
+            logger.error(f"ERROR: Streaming generation failed: {e}")
             raise
 
     def is_available(self) -> bool:

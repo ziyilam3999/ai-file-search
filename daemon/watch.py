@@ -1,4 +1,4 @@
-"""⚙️  watch.py
+"""DAEMON: watch.py
 File Watcher Daemon for AI File Search
 
 This module implements a sophisticated file watcher that monitors specified directories

@@ -88,7 +88,7 @@ class Embedder:
         file_count = 0
 
         logger.info("PROCESSING: files and creating chunks...")
-        for file in extracts_path.glob("*.txt"):
+        for file in extracts_path.glob("**/*.txt"):
             with open(file, "r", encoding="utf-8") as f:
                 text = f.read()
             chunks = self._chunk_text(text)
@@ -98,7 +98,9 @@ class Embedder:
                 if len(chunk.strip()) < 20:
                     continue
                 all_chunks.append(chunk if chunk.strip() else "empty")
-                chunk_metadata.append((chunk_id, file.name, chunk))
+                # Store relative path instead of just filename
+                relative_path = file.relative_to(extracts_path)
+                chunk_metadata.append((chunk_id, str(relative_path), chunk))
                 chunk_id += 1
 
         chunk_processing_time = time.time() - chunk_start_time

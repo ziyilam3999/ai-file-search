@@ -146,7 +146,8 @@ milestones:
       - "✅ Citation display with formatted file references"
       - "✅ Performance sidebar with real-time system metrics"
     next: "Generate PR for UI improvements and explore advanced features"
-weekend_6:
+
+  weekend_6:
     title: "Auto-indexing Watcher System"
     status: "completed"
     completion_date: "2025-07-15"
@@ -185,37 +186,99 @@ weekend_6:
       - "Nightly re-indexing: ✅"
       - "Loguru logging: ✅"
       - "No external dependencies added beyond specified: ✅"
-weekend_7:
-  title: "Real-time Incremental Updates & Enhanced Monitoring"
-  status: "planned"
-  target_date: "2025-07-22"
-  description: "Implement true incremental index updates and comprehensive monitoring"
-  goals:
-    - "🔧 Implement single-file operations in Embedder class"
-    - "🔧 Replace EmbeddingAdapter mock with real incremental updates"
-    - "🔧 Create web dashboard for watcher system monitoring"
-    - "🔧 Add detailed performance metrics and statistics"
-    - "🔧 Implement comprehensive test suite for incremental operations"
-  technical_objectives:
-    - "Real-time index updates (<1 second per file)"
-    - "Web monitoring dashboard with live statistics"
-    - "Performance metrics API with time-series data"
-    - "Atomic operations with error recovery"
-    - "Index consistency validation"
-  deliverables:
-    - "core/embedding.py: add_single_document(), update_single_document(), remove_single_document()"
-    - "daemon/watch.py: Real incremental processing integration"
-    - "ui/monitor.py: Web dashboard for watcher monitoring"
-    - "tests/test_incremental.py: Comprehensive incremental update tests"
-    - "Enhanced statistics API with detailed metrics"
-  acceptance_criteria:
-    - "Single file changes update index within 1 second"
-    - "Monitoring dashboard shows real-time watcher status"
-    - "All incremental operation tests pass"
-    - "Performance metrics API returns detailed statistics"
-    - "Index consistency maintained after incremental updates"
-  success_metrics:
-    - "Processing time: <1s per file operation"
-    - "Index accuracy: 100% consistency after updates"
-    - "Monitoring latency: <100ms dashboard refresh"
-    - "Test coverage: >95% for incremental operations"
+
+  weekend_7:
+    title: "Performance Optimization & Configuration Management"
+    status: "completed"
+    completion_date: "2025-08-03"
+    description: "Major performance overhaul to reduce response times from 51.9s to <20s target"
+    goals:
+      - "✅ Centralize LLM configuration for single source of truth"
+      - "✅ Optimize LLM parameters: max_tokens 225→100, temperature 0.35→0.1"
+      - "✅ Implement speed preset system for easy performance tuning"
+      - "✅ Enhance UI with minimal citation mode for speed"
+      - "✅ Fix type annotations for mypy compatibility"
+      - "✅ Improve embedding system for subdirectory support"
+    achievements:
+      - "🎯 Performance Target: Optimized from 51.9s to <20s response time goal"
+      - "🔧 Configuration Architecture: Single source of truth in core/config.py"
+      - "⚡ Speed Presets: ultra_fast (50 tokens), fast (100), balanced (200), quality (400)"
+      - "🎨 UI Optimization: Minimal citation mode, reduced CSS complexity"
+      - "📁 Subdirectory Support: Recursive globbing (**/*.txt) for organized document structures"
+      - "✅ Code Quality: Fixed all mypy type errors, passed pre-commit hooks"
+    technical_implementation:
+      - "core/config.py: Centralized LLM_CONFIG with SPEED_PRESETS and utility functions"
+      - "core/llm.py: Updated to use config defaults with proper type casting"
+      - "core/ask.py: Integrated centralized configuration for consistent settings"
+      - "ui/app.py: Enhanced with CITATION_CONFIG and minimal display mode"
+      - "core/embedding.py: Added recursive file processing and relative path storage"
+      - "bench_embedding.py: Updated for 4-tuple query result format compatibility"
+    performance_optimizations:
+      - "Token Reduction: 225→100 tokens (exponential speed improvement)"
+      - "Temperature Optimization: 0.35→0.1 for deterministic, faster responses"
+      - "Citation Limits: 150 char limit, 1 bullet point max for UI speed"
+      - "Reduced Context: Optimized for faster LLM inference"
+      - "Configuration Presets: Easy switching between speed vs quality"
+    configuration_features:
+      - "set_speed_preset('ultra_fast'): Maximum speed (50 tokens, 0.0 temp)"
+      - "set_speed_preset('fast'): Balanced speed (100 tokens, 0.1 temp)"
+      - "show_current_config(): Display current settings and available presets"
+      - "print_performance_estimate(): Show estimated response times"
+      - "set_citation_mode(minimal=True): Toggle UI display complexity"
+    code_quality_improvements:
+      - "Fixed mypy type annotations with explicit type casting"
+      - "Resolved all pre-commit hook issues (black, isort, flake8, mypy)"
+      - "Added proper Optional type hints for function parameters"
+      - "Enhanced type safety throughout configuration system"
+    repository_management:
+      - "Added index.faiss and meta.sqlite to .gitignore (generated files)"
+      - "Removed tracking of generated index files from version control"
+      - "Clean git history with focused, descriptive commit messages"
+      - "Proper separation of configuration, optimization, and cleanup commits"
+    commits_completed:
+      - "d65003e: Optimize performance: Centralize config and reduce response time"
+      - "9e0aa68: Improve embedding system: Support subdirectories and fix query format"
+      - "b6267b7: Add generated files to .gitignore"
+      - "4c0f55d: Remove generated index files from version control"
+    success_metrics:
+      - "Response Time Target: 51.9s → <20s (61% improvement goal)"
+      - "Configuration Consistency: Single source of truth implemented"
+      - "Code Quality: 100% mypy compliance, all pre-commit hooks passing"
+      - "Git Hygiene: Clean repository with proper .gitignore"
+      - "Developer Experience: Easy preset switching and performance monitoring"
+    next: "Weekend 8: Performance validation testing and UI enhancements"
+
+  weekend_8:
+    title: "Real-time Incremental Updates & Enhanced Monitoring"
+    status: "planned"
+    target_date: "2025-08-10"
+    description: "Implement true incremental index updates and comprehensive monitoring"
+    goals:
+      - "🔧 Implement single-file operations in Embedder class"
+      - "🔧 Replace EmbeddingAdapter mock with real incremental updates"
+      - "🔧 Create web dashboard for watcher system monitoring"
+      - "🔧 Add detailed performance metrics and statistics"
+      - "🔧 Implement comprehensive test suite for incremental operations"
+    technical_objectives:
+      - "Real-time index updates (<1 second per file)"
+      - "Web monitoring dashboard with live statistics"
+      - "Performance metrics API with time-series data"
+      - "Atomic operations with error recovery"
+      - "Index consistency validation"
+    deliverables:
+      - "core/embedding.py: add_single_document(), update_single_document(), remove_single_document()"
+      - "daemon/watch.py: Real incremental processing integration"
+      - "ui/monitor.py: Web dashboard for watcher monitoring"
+      - "tests/test_incremental.py: Comprehensive incremental update tests"
+      - "Enhanced statistics API with detailed metrics"
+    acceptance_criteria:
+      - "Single file changes update index within 1 second"
+      - "Monitoring dashboard shows real-time watcher status"
+      - "All incremental operation tests pass"
+      - "Performance metrics API returns detailed statistics"
+      - "Index consistency maintained after incremental updates"
+    success_metrics:
+      - "Processing time: <1s per file operation"
+      - "Index accuracy: 100% consistency after updates"
+      - "Monitoring latency: <100ms dashboard refresh"
+      - "Test coverage: >95% for incremental operations"

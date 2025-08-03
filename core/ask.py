@@ -10,12 +10,13 @@ from typing import Any, Dict, List, Tuple
 
 from loguru import logger
 
+from .config import LLM_CONFIG
 from .embedding import Embedder
 from .llm import get_phi3_llm
 
 
 def answer_question(
-    query: str, top_k: int = 1  # FINAL PUSH: Reduced from 2 to 1 for speed
+    query: str, top_k: int = 1  # OPTIMIZED: Reduced from 2 to 1 for speed
 ) -> Tuple[str, List[Dict[str, Any]]]:
     """
     Answer a question using RAG with numbered citations and page numbers.
@@ -57,17 +58,20 @@ def answer_question(
 
     for i, (chunk_text, file_path, chunk_id, score) in enumerate(results, 1):
         # Estimate page number from chunk_id (assuming ~3 chunks per page)
-        estimated_page = max(1, (chunk_id // 3) + 1)
+        estimated_page = max(1, (chunk_id % 100) // 20 + 1)
 
-        context_chunks.append(f"[{i}] {chunk_text}")
+        # SPEED OPTIMIZATION: Truncate chunk content for citations (keep full for context)
+        citation_chunk = (
+            chunk_text[:150] + "..." if len(chunk_text) > 150 else chunk_text
+        )
+
+        context_chunks.append(f"[{i}] {chunk_text}")  # Keep full text for AI context
         citations.append(
             {
                 "id": i,
                 "file": file_path,  # Relative path for citation (e.g., subfolder/doc.txt)
                 "page": estimated_page,
-                "chunk": (
-                    chunk_text[:200] + "..." if len(chunk_text) > 200 else chunk_text
-                ),
+                "chunk": citation_chunk,  # Use truncated version for UI display
                 "chunk_id": chunk_id,
                 "score": score,
             }
@@ -79,7 +83,7 @@ def answer_question(
     full_prompt = prompt_template.format(question=query, context=context_text)
     logger.debug("INFO: Prompt length: %d characters", len(full_prompt))
 
-    # 5. Generate answer using Phi-3
+    # 5. Generate answer using Phi-3 with config settings
     try:
         answer = _generate_answer_with_phi3(full_prompt, citations)
         logger.success(f"SUCCESS: Generated answer ({len(answer)} chars)")
@@ -94,7 +98,7 @@ def answer_question(
 
 def _generate_answer_with_phi3(prompt: str, citations: List[Dict]) -> str:
     """
-    Generate an answer using Phi-3 LLM with proper citations.
+    Generate an answer using Phi-3 LLM with config settings.
 
     Args:
         prompt: The formatted prompt with question and context
@@ -107,11 +111,11 @@ def _generate_answer_with_phi3(prompt: str, citations: List[Dict]) -> str:
         # Get Phi-3 instance
         llm = get_phi3_llm()
 
-        # Generate answer using Phi-3
+        # Generate answer using Phi-3 with config settings (single source of truth)
         raw_answer = llm.generate_answer(
             prompt=prompt,
-            max_tokens=150,  # FINAL PUSH: Reduced from 200 for target speed
-            temperature=0.35,  # FINAL PUSH: Increased from 0.3 for faster generation
+            max_tokens=int(LLM_CONFIG["max_tokens"]),  # Ensure int type
+            temperature=float(LLM_CONFIG["temperature"]),  # Ensure float type
             stop_sequences=["<|im_end|>", "\n\nQuestion:", "\n\nContext:"],
         )
 

@@ -11,6 +11,8 @@ from typing import Optional
 
 from loguru import logger
 
+from .config import LLM_CONFIG
+
 
 class Phi3LLM:
     """Phi-3 Local LLM for answer generation."""
@@ -45,12 +47,12 @@ class Phi3LLM:
 
         logger.info(f"LOADING: Phi-3 model: {self.model_path.name}")
 
-        # Initialize llama.cpp model without ChatML format
+        # Initialize llama.cpp model using config settings
         self.llm = Llama(
             model_path=str(self.model_path),
-            n_ctx=1536,  # Further reduced from 2048 for speed
-            n_threads=8,  # Increased from 6 (if you have 8+ cores)
-            n_batch=256,  # Reduced from 512 for faster processing
+            n_ctx=LLM_CONFIG["n_ctx"],  # Use config value
+            n_threads=LLM_CONFIG["n_threads"],  # Use config value
+            n_batch=LLM_CONFIG["n_batch"],  # Use config value
             verbose=verbose,
             # No chat_format - use raw completion
         )
@@ -60,8 +62,8 @@ class Phi3LLM:
     def generate_answer(
         self,
         prompt: str,
-        max_tokens: int = 150,  # FINAL PUSH: Reduced from 200 for target speed
-        temperature: float = 0.35,  # FINAL PUSH: Increased from 0.3 for faster generation
+        max_tokens: int | None = None,  # None = use config default
+        temperature: float | None = None,  # None = use config default
         stop_sequences: Optional[list] = None,
     ) -> str:
         """
@@ -69,24 +71,34 @@ class Phi3LLM:
 
         Args:
             prompt: The formatted prompt with question and context
-            max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature (0.35 for maximum performance)
+            max_tokens: Maximum tokens to generate (None = use config)
+            temperature: Sampling temperature (None = use config)
             stop_sequences: Sequences that should stop generation
 
         Returns:
             Generated answer text
         """
+        # Use config defaults if not specified with explicit type casting
+        actual_max_tokens: int = (
+            max_tokens if max_tokens is not None else int(LLM_CONFIG["max_tokens"])
+        )
+        actual_temperature: float = (
+            temperature if temperature is not None else float(LLM_CONFIG["temperature"])
+        )
+
         if stop_sequences is None:
             stop_sequences = ["\n\nQuestion:", "\n\nContext:", "Question:", "Context:"]
 
-        logger.info(f"GENERATING: answer (max_tokens={max_tokens}, temp={temperature})")
+        logger.info(
+            f"GENERATING: answer (max_tokens={actual_max_tokens}, temp={actual_temperature})"
+        )
 
         try:
             # Use direct completion instead of chat completion for RAG prompts
             response = self.llm.create_completion(
                 prompt=prompt,
-                max_tokens=max_tokens,  # Use parameter
-                temperature=temperature,  # Use parameter
+                max_tokens=actual_max_tokens,  # Use parameter
+                temperature=actual_temperature,  # Use parameter
                 stop=["Question:", "Context:", "\n\n\n", "References:"],
                 stream=False,
             )
@@ -103,28 +115,36 @@ class Phi3LLM:
     def generate_streaming_answer(
         self,
         prompt: str,
-        max_tokens: int = 150,
-        temperature: float = 0.35,  # Updated defaults
+        max_tokens: int | None = None,  # None = use config default
+        temperature: float | None = None,  # None = use config default
     ):
         """
         Generate an answer with streaming output (for future CLI enhancement).
 
         Args:
             prompt: The formatted prompt
-            max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate (None = use config)
+            temperature: Sampling temperature (None = use config)
 
         Yields:
             Token strings as they are generated
         """
+        # Use config defaults if not specified with explicit type casting
+        actual_max_tokens: int = (
+            max_tokens if max_tokens is not None else int(LLM_CONFIG["max_tokens"])
+        )
+        actual_temperature: float = (
+            temperature if temperature is not None else float(LLM_CONFIG["temperature"])
+        )
+
         logger.info("STREAMING: Starting streaming generation...")
 
         try:
             # Use create_completion with stream=True instead of chat_completion
             stream = self.llm.create_completion(
                 prompt=prompt,
-                max_tokens=max_tokens,
-                temperature=temperature,
+                max_tokens=actual_max_tokens,
+                temperature=actual_temperature,
                 stream=True,
                 stop=[
                     "Question:",

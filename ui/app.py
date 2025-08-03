@@ -5,6 +5,7 @@ Usage: streamlit run ui/app.py
 """
 
 # Import our core functionality
+import re
 import sys
 import time
 from pathlib import Path
@@ -27,25 +28,117 @@ def load_welcome_text():
 
 
 def format_citations(citations):
-    """Format citations for display with enhanced orange-purple glass morphism"""
+    """Format citations for display with clean, professional formatting - no emojis, bullet points"""
     if not citations:
         return "No citations available."
 
     formatted = []
     for i, cite in enumerate(citations):
+        # Clean up the file path for better display
+        file_display = cite["file"].replace("\\", "/")
+
+        # Better content processing for bullet points - DISPLAY ALL CONTENT
+        content = cite["chunk"]
+
+        # Enhanced content splitting to preserve ALL content
+        bullet_points = []
+
+        if ". " in content and len(content.split(". ")) > 2:
+            # Split by sentences - NO LIMIT, show all sentences
+            sentences = re.split(r"(?<=\.)\s+", content)
+            parts = [s.strip() for s in sentences if s.strip()]
+
+            for part in parts:  # Remove [:3] limit - show ALL parts
+                # Clean up and ensure proper punctuation
+                part = part.strip()
+                if (
+                    part
+                    and not part.endswith(".")
+                    and not part.endswith("!")
+                    and not part.endswith("?")
+                ):
+                    part += "."
+                if part:  # Only add non-empty parts
+                    bullet_points.append(f"• {part}")
+
+        elif " - " in content and len(content.split(" - ")) > 2:
+            # Split by dashes - NO LIMIT, show all parts
+            parts = [s.strip() for s in content.split(" - ") if s.strip()]
+            for part in parts:  # Remove [:3] limit
+                part = part.strip()
+                # For dash-separated content, ensure each part is complete
+                if (
+                    part
+                    and not part.endswith(".")
+                    and not part.endswith("!")
+                    and not part.endswith("?")
+                ):
+                    if len(part) > 20:  # Only add period for substantial content
+                        part += "."
+                if part:  # Only add non-empty parts
+                    bullet_points.append(f"• {part}")
+
+        elif "\n" in content:
+            # Split by line breaks
+            parts = [s.strip() for s in content.split("\n") if s.strip()]
+            bullet_points = [f"• {part}" for part in parts]
+
+        else:
+            # Fallback: Split into logical chunks of 15-20 words to preserve readability
+            words = content.split()
+            chunk_size = 20  # Fixed reasonable size instead of dividing by 3
+
+            for j in range(0, len(words), chunk_size):
+                chunk = " ".join(words[j : j + chunk_size])
+                if chunk.strip():
+                    bullet_points.append(f"• {chunk}")
+
+        # If no bullet points created, use the full content as one bullet
+        if not bullet_points:
+            bullet_points = [f"• {content}"]
+
+        # Convert bullet points to HTML for proper rendering
+        bullet_html = "<br>".join(bullet_points)
+
+        # Enhanced styling with better spacing and typography
         formatted.append(
-            f'<div class="citation-card" style="background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(20px); color: #ffffff; padding: 1.5rem; border-radius: 20px; margin: 1rem 0; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); min-height: 80px;">'
-            f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">'
-            f'<h4 style="margin: 0; color: #ffffff; font-weight: 600;">SOURCE {i+1}</h4>'
-            f'<span style="background: rgba(230, 126, 34, 0.3); color: #ffffff; padding: 6px 12px; border-radius: 16px; font-size: 12px; font-weight: 500;">Relevance: {cite.get("score", 0):.3f}</span>'
+            f'<div class="citation-card" style="'
+            f"background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%); "
+            f"backdrop-filter: blur(20px); "
+            f"color: #ffffff; "
+            f"padding: 2rem; "
+            f"border-radius: 16px; "
+            f"margin: 1.5rem 0; "
+            f"border: 1px solid rgba(255, 255, 255, 0.15); "
+            f"box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); "
+            f"position: relative; "
+            f"overflow: hidden;"
+            f'">'
+            f'<div style="'
+            f"color: #ffffff; "
+            f"font-size: 14px; "
+            f"line-height: 1.8; "
+            f"font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; "
+            f"font-weight: 400;"
+            f'">'
+            f'<div style="color: #E67E22; font-weight: 600; font-size: 16px; margin-bottom: 1rem;">SOURCE {i+1}</div>'
+            f'<div style="margin-bottom: 0.5rem;"><strong>File:</strong> <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">{file_display}</code></div>'
+            f'<div style="margin-bottom: 0.5rem;"><strong>Score:</strong> {cite.get("score", 0):.3f} | <strong>Page:</strong> {cite["page"]}</div>'
+            f'<div style="margin-top: 1rem;"><strong>Content:</strong></div>'
+            f'<div style="margin-top: 0.5rem; padding-left: 0.5rem; line-height: 1.6;">{bullet_html}</div>'
             f"</div>"
-            f'<p style="margin: 0.8rem 0; color: #e0e0e0; font-weight: 500; font-size: 16px;">{cite["file"]}, page {cite["page"]}</p>'
-            f'<div style="background: rgba(255, 255, 255, 0.1); padding: 1rem; border-radius: 12px; margin-top: 1rem;">'
-            f'<code style="color: #ffffff; font-size: 14px; line-height: 1.6; font-family: \'Inter\', monospace;">{cite["chunk"]}</code>'
-            f"</div>"
+            f'<div style="'
+            f"position: absolute; "
+            f"top: 0; "
+            f"left: 0; "
+            f"width: 4px; "
+            f"height: 100%; "
+            f"background: linear-gradient(135deg, #E67E22 0%, #A855F7 100%); "
+            f"border-radius: 0 0 0 16px;"
+            f'"></div>'
             f"</div>"
         )
-    return "\n\n".join(formatted)
+    return "\n".join(formatted)
 
 
 def print_search_results(results):
@@ -187,19 +280,17 @@ def main():
         min-height: 80px;
     }
 
-    /* Consistent metric cards with darker glass */
-    .metric-card {
+    /* AI Answer card with distinct styling to prevent conflicts */
+    .ai-answer-card {
         background: rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(20px);
-        border-radius: 20px;
+        color: #ffffff;
         padding: 1.5rem;
+        border-radius: 20px;
+        margin: 1rem 0;
         border: 1px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        text-align: center;
         min-height: 80px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
     }
 
     /* Sidebar styling - compact */
@@ -472,16 +563,17 @@ def main():
     with col1:
         # User input with enhanced placeholder
         question = st.text_input(
-            "",
+            "Question",  # Add a proper label
             placeholder="What would you like to know about your documents?",
             label_visibility="collapsed",
             key="main_question_input",
+            on_change=None,  # This will allow Enter key to work
         )
 
     with col2:
         # Submit button
         ask_button = st.button(
-            "SEARCH Ask AI Assistant",
+            "Ask AI Assistant",
             key="ask_button",
             type="primary",
             use_container_width=True,
@@ -505,7 +597,7 @@ def main():
         # Progress indication with animated steps
         progress_container = st.container()
         with progress_container:
-            st.info(f"PROCESSING: **Processing your question:** '{submitted_question}'")
+            st.info(f"**Processing your question:** '{submitted_question}'")
 
             # Step-by-step progress indication
             progress_placeholder = st.empty()
@@ -521,7 +613,7 @@ def main():
             # Step 2: Document search
             with progress_placeholder.container():
                 st.markdown(
-                    '<h4 style="margin: 0; color: #E67E22;">SEARCH: Searching documents...</h4>',
+                    '<h4 style="margin: 0; color: #E67E22;">Searching documents...</h4>',
                     unsafe_allow_html=True,
                 )
             time.sleep(0.5)
@@ -529,7 +621,7 @@ def main():
             # Step 3: Analyzing passages
             with progress_placeholder.container():
                 st.markdown(
-                    '<h4 style="margin: 0; color: #E67E22;">ANALYZE: Analyzing passages...</h4>',
+                    '<h4 style="margin: 0; color: #E67E22;">Analyzing passages...</h4>',
                     unsafe_allow_html=True,
                 )
             time.sleep(0.5)
@@ -537,15 +629,13 @@ def main():
             # Step 4: Generating response
             with progress_placeholder.container():
                 st.markdown(
-                    '<h4 style="margin: 0; color: #A855F7;">GENERATE: Generating response...</h4>',
+                    '<h4 style="margin: 0; color: #A855F7;">Generating response...</h4>',
                     unsafe_allow_html=True,
                 )
 
         # Process the question
         start_time = time.time()
-        with st.spinner(
-            f"FINALIZING: Finalizing answer for: '{submitted_question[:50]}...'"
-        ):
+        with st.spinner(f"Generating answer for: '{submitted_question[:50]}...'"):
             try:
                 # Get answer and citations
                 answer, citations = answer_question(submitted_question)
@@ -598,23 +688,45 @@ def main():
                     # Display the answer
                     st.markdown("## AI: AI Answer")
 
-                    # Create two columns for answer and performance
-                    answer_col, metrics_col = st.columns([3, 1])
+                    # Display the answer with its own unique styling class
+                    st.markdown(
+                        f'<div class="ai-answer-card" style="'
+                        f"background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%); "
+                        f"backdrop-filter: blur(20px); "
+                        f"color: #ffffff; "
+                        f"padding: 2rem; "
+                        f"border-radius: 16px; "
+                        f"margin: 1.5rem 0; "
+                        f"border: 1px solid rgba(255, 255, 255, 0.15); "
+                        f"box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); "
+                        f"position: relative; "
+                        f"overflow: hidden;"
+                        f'">'
+                        f'<div style="'
+                        f"color: #ffffff; "
+                        f"font-size: 16px; "
+                        f"line-height: 1.8; "
+                        f"white-space: pre-wrap; "
+                        f"font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; "
+                        f"font-weight: 400;"
+                        f'">'
+                        f'<div style="color: #A855F7; font-weight: 600; font-size: 18px; margin-bottom: 1rem;">AI RESPONSE</div>'
+                        f'<div style="margin-top: 0.5rem; line-height: 1.8; font-size: 16px;">{answer}</div>'
+                        f"</div>"
+                        f'<div style="'
+                        f"position: absolute; "
+                        f"top: 0; "
+                        f"left: 0; "
+                        f"width: 4px; "
+                        f"height: 100%; "
+                        f"background: linear-gradient(135deg, #A855F7 0%, #E67E22 100%); "
+                        f"border-radius: 0 0 0 16px;"
+                        f'"></div>'
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
 
-                    with answer_col:
-                        # Display the answer in a beautiful container
-                        st.markdown(
-                            f"""
-                            <div class="glass-card">
-                                <div style="color: #ffffff; font-size: 16px; line-height: 1.8;">
-                                    {answer}
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
-
-                    # Display citations if available
+                    # Display citations if available - moved right after answer
                     if citations and len(citations) > 0:
                         st.markdown("## SOURCES: Sources & Citations")
                         citation_html = format_citations(citations)
@@ -622,8 +734,11 @@ def main():
                     else:
                         st.warning("No specific citations found for this query.")
 
-                    # Performance metrics section
-                    with metrics_col:
+                    # Create two columns for performance metrics
+                    col1, col2 = st.columns([2, 1])
+
+                    with col2:
+                        # Performance metrics section
                         st.markdown("### METRICS: Performance Metrics")
 
                         # Response time
@@ -692,12 +807,9 @@ def main():
     elif ask_button:
         st.warning("WARNING: Please enter a question first!")
 
-    # Footer with clean design
-    st.markdown("---")
+    # Footer
     st.markdown(
-        "<div style='text-align: center; color: #888; font-size: 14px; margin-top: 2rem;'>"
-        "<span>SEARCH: <strong>AI File Search</strong></span>"
-        " | "
+        "<div style='text-align: center; margin-top: 3rem; padding: 2rem; color: #888;'>"
         "<span>AI: Powered by <strong>Phi-3</strong></span>"
         " | "
         "<span>KNOWLEDGE: Local Knowledge Base</span>"

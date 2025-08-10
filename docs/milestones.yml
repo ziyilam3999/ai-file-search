@@ -277,8 +277,77 @@ milestones:
       - "All incremental operation tests pass"
       - "Performance metrics API returns detailed statistics"
       - "Index consistency maintained after incremental updates"
-    success_metrics:
-      - "Processing time: <1s per file operation"
-      - "Index accuracy: 100% consistency after updates"
-      - "Monitoring latency: <100ms dashboard refresh"
-      - "Test coverage: >95% for incremental operations"
+  - milestone: "v0.5 - Streaming UI & Accurate Citations"
+    date: "2025-08-09/10"
+    status: "COMPLETED"
+    priority: "HIGH"
+    description: "Implement ChatGPT-like streaming functionality with accurate page citations"
+    
+    objectives:
+      - implement_streaming_ui:
+          description: "Real-time token streaming with visual feedback"
+          status: "COMPLETED"
+          details:
+            - "Streaming text generation with blinking cursor"
+            - "Dynamic citation highlighting with pulse animations"
+            - "Glass morphism UI design improvements"
+            - "Graceful fallback to non-streaming mode"
+        
+      - fix_page_calculations:
+          description: "Accurate document-relative page numbering"
+          status: "COMPLETED" 
+          details:
+            - "Migrated to 4-column database schema with doc_chunk_id"
+            - "Fixed page calculation algorithm using proportional positioning"
+            - "Calibrated words-per-page ratio for realistic page counts"
+            - "Peter Pan correctly shows pages 1-115 instead of impossible numbers"
+        
+      - enhance_database_schema:
+          description: "Support document-relative chunk tracking"
+          status: "COMPLETED"
+          details:
+            - "Added doc_chunk_id column to meta table"
+            - "Implemented 5-tuple query format"
+            - "Rebuilt index with 3,040 chunks and proper schema"
+            - "Maintained backward compatibility with error handling"
+    
+    technical_implementation:
+      files_modified:
+        - "ui/app.py: Streaming UI with animations"
+        - "core/ask.py: Streaming answer generation"
+        - "core/llm.py: Token-level streaming support"
+        - "core/config.py: Centralized configuration and page calculation"
+        - "core/embedding.py: Enhanced database schema and 5-tuple format"
+      
+      new_features:
+        - "Real-time text streaming"
+        - "Blinking cursor animation"
+        - "Dynamic citation highlighting"
+        - "Document-relative page calculations"
+        - "Calibrated page estimation algorithm"
+      
+      performance_improvements:
+        - "Immediate UI response (streaming vs 51.9s wait)"
+        - "Accurate page citations (1-115 for Peter Pan)"
+        - "Proper error handling and fallbacks"
+        - "Centralized configuration management"
+    
+    validation:
+      test_results:
+        - "Streaming functionality works in both modes"
+        - "Page calculations are proportionally accurate"
+        - "Database schema migration successful"
+        - "Error handling gracefully falls back to non-streaming"
+        - "UI animations provide smooth user experience"
+      
+      user_experience:
+        - "ChatGPT-like streaming response"
+        - "Realistic page numbers in citations"
+        - "Visual feedback during generation"
+        - "Professional glass morphism design"
+    
+    next_steps:
+      - "Monitor streaming performance in production"
+      - "Add more document page count calibrations"
+      - "Consider implementing response caching"
+      - "Explore advanced streaming optimizations"

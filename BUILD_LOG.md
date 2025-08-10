@@ -288,3 +288,57 @@ def _generate_answer_with_phi3(self, question: str, context: str) -> str:
     )
     return response["choices"][0]["text"].strip()
 ```
+
+## 2025-08-09/10: Streaming Functionality & Page Calculation Fixes
+
+### 🎯 **Streaming Implementation Completed**
+- **Problem**: 51.9s response time was too slow, needed ChatGPT-like streaming
+- **Solution**: Implemented real-time token streaming with visual feedback
+
+**Files Modified:**
+- `ui/app.py`: Added streaming UI with blinking cursor and dynamic citations
+- `core/ask.py`: Added `streaming` parameter and `_generate_streaming_answer_with_phi3()`
+- `core/llm.py`: Enhanced `generate_streaming_answer()` for token yielding
+- `core/config.py`: Centralized configuration and page calculation logic
+
+**Features Added:**
+- ✅ Real-time text streaming (tokens appear as generated)
+- ✅ Blinking cursor animation during generation
+- ✅ Dynamic citation highlighting with pulse animations
+- ✅ Fallback to non-streaming on errors
+- ✅ Glass morphism UI design improvements
+
+### 🔧 **Database Schema Enhancement**
+- **Problem**: Old 3-column schema couldn't support document-relative page numbering
+- **Solution**: Migrated to 4-column schema with `doc_chunk_id`
+
+**Schema Changes:**
+```sql
+-- Old: (id, file, chunk)
+-- New: (id, file, chunk, doc_chunk_id)
+CREATE TABLE meta (
+    id INTEGER PRIMARY KEY, 
+    file TEXT, 
+    chunk TEXT, 
+    doc_chunk_id INTEGER
+)
+```
+
+### 🔧 **Page Calculation Fixes**
+- **Problem**: Inaccurate page calculations due to chunking changes
+- **Solution**: Centralized page calculation in `core/config.py`
+
+**Key Changes:**
+```python
+# Centralized page calculation logic
+def calculate_page(doc_chunk_id: int, words_per_page: int = 300) -> int:
+    """Calculate page number based on chunk ID and words per page"""
+    effective_step = 1.0 # Default to 1.0 for no scaling
+    estimated_words = doc_chunk_id * effective_step
+    # Calibrated for realistic page counts
+    words_per_page = 440  # Calibrated using Peter Pan (115 pages, 135 chunks)
+    estimated_total_pages = (total_chunks * effective_words_per_chunk) / words_per_page
+    position_percent = doc_chunk_id / total_chunks
+    estimated_page = int(position_percent * estimated_total_pages)
+    return max(1, estimated_page) # Ensure at least page 1
+```

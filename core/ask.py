@@ -6,40 +6,46 @@ Uses    : prompts/retrieval_prompt.md, all-MiniLM-L6-v2 embeddings, Phi-3 LLM
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple, Union
 
 from loguru import logger
 
-from .config import LLM_CONFIG
+from .config import LLM_CONFIG, calculate_document_page
 from .embedding import Embedder
 from .llm import get_phi3_llm
 
 
 def answer_question(
-    query: str, top_k: int = 1  # OPTIMIZED: Reduced from 2 to 1 for speed
-) -> Tuple[str, List[Dict[str, Any]]]:
+    query: str, top_k: int = 1, streaming: bool = False
+) -> Union[
+    Tuple[str, List[Dict[str, Any]]], Tuple[Iterator[str], List[Dict[str, Any]]]
+]:
     """
     Answer a question using RAG with numbered citations and page numbers.
 
     Args:
         query: User's question
         top_k: Number of top chunks to retrieve for context
+        streaming: If True, return generator for streaming; if False, return complete answer
 
     Returns:
-        Tuple of (answer_text, citations)
+        If streaming=False: Tuple of (answer_text, citations)
+        If streaming=True: Tuple of (generator, citations)
         where citations is [{"id": int, "file": str, "page": int, "chunk": str}]
     """
-    logger.info(f"THINKING: Answering question: '{query}'")
+    logger.info(f"THINKING: Answering question: '{query}' (streaming={streaming})")
 
     # 1. Embed the question and find top chunks
     embedder = Embedder()
     results = embedder.query(query, k=top_k)
 
     if not results:
-        return (
-            "I couldn't find any relevant information to answer your question.",
-            [],
+        empty_answer = (
+            "I couldn't find any relevant information to answer your question."
         )
+        if streaming:
+            return (iter([empty_answer]), [])
+        return (empty_answer, [])
 
     logger.info(f"FOUND: {len(results)} relevant chunks")
 
@@ -49,50 +55,58 @@ def answer_question(
         with open(prompt_path, "r", encoding="utf-8") as f:
             prompt_template = f.read()
     except FileNotFoundError:
-        logger.error(f"ERROR: Prompt template not found: {prompt_path}")
-        return "Error: Prompt template not found.", []
+        prompt_template = """
+Context: {context}
 
-    # 3. Format context from chunks with numbered citations
-    context_chunks = []
+Question: {question}
+
+Please provide a comprehensive answer based on the context above. Include specific details and cite your sources using [1], [2], etc.
+
+Answer:"""
+
+    # 3. Build citations first (needed for both streaming and non-streaming)
     citations = []
+    context_parts = []
+    for i, result in enumerate(results):
+        chunk_text, file_path, chunk_id, doc_chunk_id, score = result
+        if chunk_text and file_path:
+            # Calculate actual page within document
+            estimated_page = calculate_document_page(doc_chunk_id)
+            citations.append(
+                {
+                    "id": i + 1,
+                    "file": file_path,
+                    "page": estimated_page,  # Real document page estimate
+                    "chunk": (
+                        chunk_text[:500] + "..."
+                        if len(chunk_text) > 500
+                        else chunk_text
+                    ),
+                }
+            )
+            context_parts.append(f"[{i + 1}] {chunk_text}")
 
-    for i, (chunk_text, file_path, chunk_id, score) in enumerate(results, 1):
-        # Estimate page number from chunk_id (assuming ~3 chunks per page)
-        estimated_page = max(1, (chunk_id % 100) // 20 + 1)
+    # 4. Create the full prompt
+    context = "\n\n".join(context_parts)
+    full_prompt = prompt_template.format(context=context, question=query)
 
-        # SPEED OPTIMIZATION: Truncate chunk content for citations (keep full for context)
-        citation_chunk = (
-            chunk_text[:150] + "..." if len(chunk_text) > 150 else chunk_text
-        )
-
-        context_chunks.append(f"[{i}] {chunk_text}")  # Keep full text for AI context
-        citations.append(
-            {
-                "id": i,
-                "file": file_path,  # Relative path for citation (e.g., subfolder/doc.txt)
-                "page": estimated_page,
-                "chunk": citation_chunk,  # Use truncated version for UI display
-                "chunk_id": chunk_id,
-                "score": score,
-            }
-        )
-
-    context_text = "\n\n".join(context_chunks)
-
-    # 4. Build the full prompt for Phi-3
-    full_prompt = prompt_template.format(question=query, context=context_text)
-    logger.debug("INFO: Prompt length: %d characters", len(full_prompt))
-
-    # 5. Generate answer using Phi-3 with config settings
+    # 5. Generate answer with streaming or non-streaming
     try:
-        answer = _generate_answer_with_phi3(full_prompt, citations)
-        logger.success(f"SUCCESS: Generated answer ({len(answer)} chars)")
-        return answer, citations
-
+        if streaming:
+            # Return streaming generator
+            answer_generator = _generate_streaming_answer_with_phi3(
+                full_prompt, citations
+            )
+            return answer_generator, citations
+        else:
+            # Return complete answer (existing behavior)
+            answer = _generate_answer_with_phi3(full_prompt, citations)
+            return answer, citations
     except Exception as e:
-        logger.error(f"ERROR: Phi-3 generation failed: {e}")
-        logger.info("FALLBACK: Falling back to context-based answer")
+        logger.error(f"ERROR: Answer generation failed: {e}")
         fallback_answer = _generate_fallback_answer(query, results, citations)
+        if streaming:
+            return (iter([fallback_answer]), citations)
         return fallback_answer, citations
 
 
@@ -176,7 +190,7 @@ def _generate_fallback_answer(query: str, results: List, citations: List[Dict]) 
     if not results:
         return "I couldn't find relevant information to answer your question."
 
-    best_chunk, best_file, _, best_score = results[0]
+    best_chunk, best_file, _, _, best_score = results[0]  # Fixed for 5-tuple
     best_citation = citations[0]
 
     answer = (
@@ -190,5 +204,46 @@ def _generate_fallback_answer(query: str, results: List, citations: List[Dict]) 
     return answer
 
 
-# TODO(copilot): Replace _generate_answer_with_citations() with actual
-# Phi-3 model integration
+def _generate_streaming_answer_with_phi3(prompt: str, citations: List[Dict]):
+    """
+    Generate a streaming answer using Phi-3 LLM with config settings.
+
+    Args:
+        prompt: The formatted prompt with question and context
+        citations: List of citation dictionaries for reference
+
+    Yields:
+        Partial answer strings as they are generated
+    """
+    try:
+        # Get Phi-3 instance
+        llm = get_phi3_llm()
+
+        # Generate streaming answer using Phi-3
+        full_answer = ""
+        for token in llm.generate_streaming_answer(
+            prompt=prompt,
+            max_tokens=int(LLM_CONFIG["max_tokens"]),
+            temperature=float(LLM_CONFIG["temperature"]),
+        ):
+            full_answer += token
+            yield token
+
+        # Add citations at the end if not already present
+        if "Citations:" not in full_answer and citations:
+            citations_text = "\n\nCitations:"
+            for citation in citations:
+                citations_text += "\n[{}] {}, page {}".format(
+                    citation["id"], citation["file"], citation["page"]
+                )
+
+            # Stream the citations section
+            for char in citations_text:
+                yield char
+
+    except Exception as e:
+        logger.error(f"ERROR: Phi-3 streaming generation error: {e}")
+        # Fall back to context-based answer
+        fallback_answer = _generate_context_based_answer(citations)
+        for char in fallback_answer:
+            yield char

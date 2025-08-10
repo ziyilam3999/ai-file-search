@@ -141,11 +141,65 @@ def format_citations(citations):
     return "\n".join(formatted)
 
 
-def print_search_results(results):
-    for result in results:
-        print(f"Found in: {result['path']}")
-        print(result["chunk"])
-        print("-" * 40)
+def format_citations_streaming(citations, found_numbers, new_numbers):
+    """Format citations for streaming display with highlighting for new citations."""
+    if not citations:
+        return "No citations available."
+
+    formatted = []
+    formatted.append(
+        '<div style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 12px; margin: 1rem 0;">'
+    )
+
+    for citation in citations:
+        citation_id = citation["id"]
+
+        # Show ALL citations, not just referenced ones (for debugging)
+        if True:  # Changed from: if citation_id in found_numbers:
+            # This citation has been referenced
+            is_new = citation_id in new_numbers
+            highlight_style = (
+                "background: rgba(168, 85, 247, 0.2); animation: pulse 2s;"
+                if is_new
+                else ""
+            )
+
+            file_display = citation["file"].replace("\\", "/")
+            content = citation["chunk"]
+
+            formatted.append(
+                f"""
+            <div style="margin: 1rem 0; padding: 1rem; border-left: 3px solid #A855F7; {highlight_style}">
+                <div style="font-weight: 600; color: #A855F7; margin-bottom: 0.5rem;">
+                    📄 [{citation_id}] {file_display}, page {citation["page"]} {"🆕" if is_new else ""}
+                </div>
+                <div style="color: #E5E7EB; font-size: 14px; line-height: 1.6;">
+                    {content[:200]}...
+                </div>
+            </div>
+            """
+            )
+
+    formatted.append("</div>")
+
+    # Add CSS for pulse animation
+    formatted.append(
+        """
+    <style>
+    @keyframes pulse {
+        0% { background: rgba(168, 85, 247, 0.4); }
+        50% { background: rgba(168, 85, 247, 0.1); }
+        100% { background: rgba(168, 85, 247, 0.2); }
+    }
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+    }
+    </style>
+    """
+    )
+
+    return "".join(formatted)
 
 
 def main():
@@ -605,7 +659,7 @@ def main():
             # Step 1: AI thinking
             with progress_placeholder.container():
                 st.markdown(
-                    '<h4 style="margin: 0; color: #E67E22;">AI: AI is thinking...</h4>',
+                    '<h4 style="margin: 0; color: #E67E22;">🤔 AI is thinking...</h4>',
                     unsafe_allow_html=True,
                 )
             time.sleep(0.5)
@@ -613,7 +667,7 @@ def main():
             # Step 2: Document search
             with progress_placeholder.container():
                 st.markdown(
-                    '<h4 style="margin: 0; color: #E67E22;">Searching documents...</h4>',
+                    '<h4 style="margin: 0; color: #E67E22;">🔍 Searching documents...</h4>',
                     unsafe_allow_html=True,
                 )
             time.sleep(0.5)
@@ -621,74 +675,58 @@ def main():
             # Step 3: Analyzing passages
             with progress_placeholder.container():
                 st.markdown(
-                    '<h4 style="margin: 0; color: #E67E22;">Analyzing passages...</h4>',
+                    '<h4 style="margin: 0; color: #E67E22;">📖 Analyzing passages...</h4>',
                     unsafe_allow_html=True,
                 )
             time.sleep(0.5)
 
-            # Step 4: Generating response
+            # Step 4: Starting AI response
             with progress_placeholder.container():
                 st.markdown(
-                    '<h4 style="margin: 0; color: #A855F7;">Generating response...</h4>',
+                    '<h4 style="margin: 0; color: #A855F7;">🤖 AI is responding...</h4>',
                     unsafe_allow_html=True,
                 )
 
-        # Process the question
+        # Initialize streaming containers
         start_time = time.time()
-        with st.spinner(f"Generating answer for: '{submitted_question[:50]}...'"):
-            try:
-                # Get answer and citations
-                answer, citations = answer_question(submitted_question)
 
-                # Calculate metrics
-                query_time = time.time() - start_time
-                answer_length = len(answer) if answer else 0
-                citation_count = len(citations) if citations else 0
+        # Create containers for streaming content
+        answer_container = st.container()
+        citations_container = st.container()
 
-                # Store performance metrics
-                st.session_state.performance_history["query_times"].append(query_time)
-                st.session_state.performance_history["answer_lengths"].append(
-                    answer_length
-                )
-                st.session_state.performance_history["citation_counts"].append(
-                    citation_count
-                )
+        # Create placeholders for dynamic content
+        with answer_container:
+            st.markdown("## 🤖 AI Response")
+            answer_placeholder = st.empty()
 
-                # Keep only last 20 entries
-                for key in st.session_state.performance_history:
-                    if len(st.session_state.performance_history[key]) > 20:
-                        st.session_state.performance_history[key] = (
-                            st.session_state.performance_history[key][-20:]
-                        )
+        with citations_container:
+            citations_placeholder = st.empty()
 
-                # Clear progress and show success
-                progress_placeholder.empty()
-                with progress_container:
-                    st.markdown(
-                        '<h4 style="margin: 0; color: #22c55e;">SUCCESS: Response generated successfully!</h4>',
-                        unsafe_allow_html=True,
-                    )
+        try:
+            # Get streaming answer and citations
+            answer_generator, citations = answer_question(
+                submitted_question, streaming=True
+            )
 
-                # Display results
-                if answer and answer.strip():
-                    # Success metrics
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Query Time", f"{query_time:.1f}s")
-                    with col2:
-                        st.metric("Answer Length", f"{answer_length} chars")
-                    with col3:
-                        st.metric("Sources Found", citation_count)
+            # Initialize streaming variables
+            streamed_answer = ""
+            citation_numbers_found = set()
 
-                    # Success message
-                    st.success(
-                        f"SUCCESS: **Answer generated successfully!** ({query_time:.1f}s with {len(citations)} sources)"
-                    )
+            # Clear progress and start streaming
+            progress_placeholder.empty()
 
-                    # Display the answer
-                    st.markdown("## AI: AI Answer")
+            # Stream the answer
+            for token in answer_generator:
+                streamed_answer += token
 
-                    # Display the answer with its own unique styling class
+                # Find citation numbers in the current text
+
+                current_citations = set(re.findall(r"\[(\d+)\]", streamed_answer))
+                new_citations = current_citations - citation_numbers_found
+                citation_numbers_found = current_citations
+
+                # Update the answer display with streaming effect
+                with answer_placeholder.container():
                     st.markdown(
                         f'<div class="ai-answer-card" style="'
                         f"background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%); "
@@ -710,8 +748,8 @@ def main():
                         f"font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; "
                         f"font-weight: 400;"
                         f'">'
-                        f'<div style="color: #A855F7; font-weight: 600; font-size: 18px; margin-bottom: 1rem;">AI RESPONSE</div>'
-                        f'<div style="margin-top: 0.5rem; line-height: 1.8; font-size: 16px;">{answer}</div>'
+                        f'<div style="color: #A855F7; font-weight: 600; font-size: 18px; margin-bottom: 1rem;">🤖 AI RESPONSE</div>'
+                        f'<div style="margin-top: 0.5rem; line-height: 1.8; font-size: 16px;">{streamed_answer}<span style="animation: blink 1s infinite;">|</span></div>'
                         f"</div>"
                         f'<div style="'
                         f"position: absolute; "
@@ -719,107 +757,146 @@ def main():
                         f"left: 0; "
                         f"width: 4px; "
                         f"height: 100%; "
-                        f"background: linear-gradient(135deg, #A855F7 0%, #E67E22 100%); "
-                        f"border-radius: 0 0 0 16px;"
+                        f"background: linear-gradient(180deg, #A855F7 0%, #E67E22 100%);"
                         f'"></div>'
                         f"</div>",
                         unsafe_allow_html=True,
                     )
 
-                    # Display citations if available - moved right after answer
-                    if citations and len(citations) > 0:
-                        st.markdown("## SOURCES: Sources & Citations")
-                        citation_html = format_citations(citations)
-                        st.markdown(citation_html, unsafe_allow_html=True)
-                    else:
-                        st.warning("No specific citations found for this query.")
-
-                    # Create two columns for performance metrics
-                    col1, col2 = st.columns([2, 1])
-
-                    with col2:
-                        # Performance metrics section
-                        st.markdown("### METRICS: Performance Metrics")
-
-                        # Response time
-                        st.markdown(
-                            f'<div class="metric-card">'
-                            f'<h4 style="margin: 0; color: #E67E22; font-weight: 600; font-size: 16px;">SPEED: Response Time</h4>'
-                            f'<p style="margin: 0.5rem 0; color: #ffffff; font-size: 24px; font-weight: 700;">{query_time:.1f}s</p>'
-                            f"</div>",
-                            unsafe_allow_html=True,
-                        )
-
-                        # Answer length
-                        st.markdown(
-                            f'<div class="metric-card">'
-                            f'<h4 style="margin: 0; color: #A855F7; font-weight: 600; font-size: 16px;">LENGTH: Answer Length</h4>'
-                            f'<p style="margin: 0.5rem 0; color: #ffffff; font-size: 24px; font-weight: 700;">{answer_length} chars</p>'
-                            f"</div>",
-                            unsafe_allow_html=True,
-                        )
-
-                        # Sources count
-                        st.markdown(
-                            f'<div class="metric-card">'
-                            f'<h4 style="margin: 0; color: #E67E22; font-weight: 600; font-size: 16px;">SOURCES: Sources</h4>'
-                            f'<p style="margin: 0.5rem 0; color: #ffffff; font-size: 24px; font-weight: 700;">{citation_count}</p>'
-                            f"</div>",
-                            unsafe_allow_html=True,
-                        )
-
-                    # Performance feedback
-                    if query_time < 2.0:
-                        st.success(
-                            f"EXCELLENT: Excellent performance! ({query_time:.1f}s)"
-                        )
-                    elif query_time < 5.0:
-                        st.info(f"GOOD: Good performance ({query_time:.1f}s)")
-                    else:
-                        st.warning(
-                            f"SLOW: Response took {query_time:.1f}s - consider optimizing"
-                        )
-
-                else:
-                    st.error(
-                        "No answer generated. Please try rephrasing your question."
+                # Update citations as they're referenced
+                if citations and citation_numbers_found:
+                    formatted_citations = format_citations_streaming(
+                        citations, citation_numbers_found, new_citations
                     )
+                    with citations_placeholder.container():
+                        st.markdown("## 📚 Sources")
+                        st.markdown(formatted_citations, unsafe_allow_html=True)
 
-            except Exception as e:
-                progress_placeholder.empty()
-                st.error(f"ERROR: **Error generating answer:** {str(e)}")
+                # Small delay for smooth streaming effect
+                time.sleep(0.03)
 
-                # Troubleshooting tips
+            # Remove blinking cursor and finalize
+            final_answer = streamed_answer
+            with answer_placeholder.container():
                 st.markdown(
-                    '<h4 style="margin: 0; color: #f56565;">TROUBLESHOOT: Troubleshooting Tips:</h4>',
+                    f'<div class="ai-answer-card" style="'
+                    f"background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%); "
+                    f"backdrop-filter: blur(20px); "
+                    f"color: #ffffff; "
+                    f"padding: 2rem; "
+                    f"border-radius: 16px; "
+                    f"margin: 1.5rem 0; "
+                    f"border: 1px solid rgba(255, 255, 255, 0.15); "
+                    f"box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); "
+                    f"position: relative; "
+                    f"overflow: hidden;"
+                    f'">'
+                    f'<div style="'
+                    f"color: #ffffff; "
+                    f"font-size: 16px; "
+                    f"line-height: 1.8; "
+                    f"white-space: pre-wrap; "
+                    f"font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; "
+                    f"font-weight: 400;"
+                    f'">'
+                    f'<div style="color: #A855F7; font-weight: 600; font-size: 18px; margin-bottom: 1rem;">🤖 AI RESPONSE</div>'
+                    f'<div style="margin-top: 0.5rem; line-height: 1.8; font-size: 16px;">{final_answer}</div>'
+                    f"</div>"
+                    f'<div style="'
+                    f"position: absolute; "
+                    f"top: 0; "
+                    f"left: 0; "
+                    f"width: 4px; "
+                    f"height: 100%; "
+                    f"background: linear-gradient(180deg, #A855F7 0%, #E67E22 100%);"
+                    f'"></div>'
+                    f"</div>",
                     unsafe_allow_html=True,
                 )
-                st.markdown(
-                    """
-                    - Make sure the FAISS index exists (run `python bench_embedding.py`)
-                    - Check that the Phi-3 model is downloaded in `ai_models/`
-                    - Try rephrasing your question
-                    - Ensure your documents are in the `extracts/` folder
-                    """
-                )
 
-    # Handle empty question submission
-    elif ask_button:
-        st.warning("WARNING: Please enter a question first!")
+            # Calculate final metrics
+            query_time = time.time() - start_time
+            answer_length = len(final_answer) if final_answer else 0
+            citation_count = len(citations) if citations else 0
 
-    # Footer
-    st.markdown(
-        "<div style='text-align: center; margin-top: 3rem; padding: 2rem; color: #888;'>"
-        "<span>AI: Powered by <strong>Phi-3</strong></span>"
-        " | "
-        "<span>KNOWLEDGE: Local Knowledge Base</span>"
-        " | "
-        "<span>SPEED: No Cloud Dependencies</span>"
-        "<br><br>"
-        "Built with love using Streamlit & Modern AI"
-        "</div>",
-        unsafe_allow_html=True,
-    )
+            # Store performance metrics
+            st.session_state.performance_history["query_times"].append(query_time)
+            st.session_state.performance_history["answer_lengths"].append(answer_length)
+            st.session_state.performance_history["citation_counts"].append(
+                citation_count
+            )
+
+            # Keep only last 20 entries
+            for key in st.session_state.performance_history:
+                if len(st.session_state.performance_history[key]) > 20:
+                    st.session_state.performance_history[key] = (
+                        st.session_state.performance_history[key][-20:]
+                    )
+
+            # Show final success metrics
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("⏱️ Response Time", f"{query_time:.1f}s")
+            with col2:
+                st.metric("📝 Answer Length", f"{answer_length} chars")
+            with col3:
+                st.metric("📚 Sources Found", citation_count)
+
+            # Final success message
+            st.success(
+                f"✅ **Streaming response completed!** ({query_time:.1f}s with {len(citations)} sources)"
+            )
+
+        except Exception as e:
+            logger.error(f"ERROR: Streaming failed: {e}")
+
+            # Fallback to non-streaming
+            progress_placeholder.empty()
+            with progress_container:
+                st.warning("Streaming failed, falling back to standard response...")
+
+            # Use existing non-streaming approach
+            with st.spinner(f"Generating answer for: '{submitted_question[:50]}...'"):
+                try:
+                    answer, citations = answer_question(
+                        submitted_question, streaming=False
+                    )
+
+                    if answer and answer.strip():
+                        # Show non-streaming result
+                        st.markdown("## 🤖 AI Answer")
+                        st.markdown(
+                            f'<div class="ai-answer-card" style="'
+                            f"background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%); "
+                            f"backdrop-filter: blur(20px); "
+                            f"color: #ffffff; "
+                            f"padding: 2rem; "
+                            f"border-radius: 16px; "
+                            f"margin: 1.5rem 0; "
+                            f"border: 1px solid rgba(255, 255, 255, 0.15); "
+                            f"box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);"
+                            f'">'
+                            f'<div style="color: #A855F7; font-weight: 600; font-size: 18px; margin-bottom: 1rem;">🤖 AI RESPONSE</div>'
+                            f'<div style="margin-top: 0.5rem; line-height: 1.8; font-size: 16px;">{answer}</div>'
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+
+                        # Show citations
+                        if citations:
+                            st.markdown("## 📚 Sources")
+                            formatted_citations = format_citations(citations)
+                            st.markdown(formatted_citations, unsafe_allow_html=True)
+
+                        st.success("✅ Response generated successfully (fallback mode)")
+                    else:
+                        st.error("❌ Unable to generate response. Please try again.")
+
+                except Exception as fallback_error:
+                    logger.error(f"ERROR: Fallback also failed: {fallback_error}")
+                    st.error(
+                        "❌ Unable to generate response. Please check your configuration and try again."
+                    )
 
 
 if __name__ == "__main__":

@@ -115,11 +115,11 @@ class Phi3LLM:
     def generate_streaming_answer(
         self,
         prompt: str,
-        max_tokens: int | None = None,  # None = use config default
-        temperature: float | None = None,  # None = use config default
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ):
         """
-        Generate an answer with streaming output (for future CLI enhancement).
+        Generate an answer with streaming output for real-time UI updates.
 
         Args:
             prompt: The formatted prompt
@@ -137,30 +137,34 @@ class Phi3LLM:
             temperature if temperature is not None else float(LLM_CONFIG["temperature"])
         )
 
-        logger.info("STREAMING: Starting streaming generation...")
+        logger.info(
+            f"STREAMING: Starting generation (max_tokens={actual_max_tokens}, temp={actual_temperature})"
+        )
 
         try:
-            # Use create_completion with stream=True instead of chat_completion
+            # Use create_completion with stream=True
             stream = self.llm.create_completion(
                 prompt=prompt,
                 max_tokens=actual_max_tokens,
                 temperature=actual_temperature,
                 stream=True,
-                stop=[
-                    "Question:",
-                    "Context:",
-                    "\n\n\n",
-                    "References:",
-                ],  # Updated stop sequences
+                stop=["Question:", "Context:", "\n\n\n", "References:"],
             )
 
+            token_count = 0
             for chunk in stream:
-                if chunk["choices"][0].get("text"):
-                    yield chunk["choices"][0]["text"]
+                if "choices" in chunk and len(chunk["choices"]) > 0:
+                    token = chunk["choices"][0].get("text", "")
+                    if token:
+                        token_count += 1
+                        yield token
+
+            logger.success(f"STREAMING: Completed {token_count} tokens")
 
         except Exception as e:
             logger.error(f"ERROR: Streaming generation failed: {e}")
-            raise
+            # Fallback: yield an error message
+            yield f"Error generating response: {str(e)}"
 
     def is_available(self) -> bool:
         """Check if the model is properly loaded and available."""

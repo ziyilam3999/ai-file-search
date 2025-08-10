@@ -365,8 +365,8 @@ class ComprehensiveSystemTest:
                 try:
                     results = em.query("Christmas story", k=1)
                     query_works = (
-                        len(results) > 0 and len(results[0]) == 4
-                    )  # 4-tuple format
+                        len(results) > 0 and len(results[0]) == 5  # Updated for 5-tuple
+                    )  # 5-tuple format
                     details = (
                         f"Returned {len(results)} results with correct format"
                         if query_works

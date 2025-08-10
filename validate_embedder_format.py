@@ -2,7 +2,7 @@
 """
 Embedder Format Validation Script
 
-This script validates that the Embedder.query() method returns the correct 4-tuple format
+This script validates that the Embedder.query() method returns the correct 5-tuple format
 required for UI compatibility and test suite validation.
 
 Usage:
@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 
 def validate_embedder_format():
-    """Validate that embedder returns correct 4-tuple format."""
+    """Validate that embedder returns correct 5-tuple format."""
     try:
         from core.embedding import Embedder
 
@@ -39,20 +39,21 @@ def validate_embedder_format():
         result = results[0]
 
         # Validate tuple length
-        if len(result) != 4:
-            print(f"ERROR: Expected 4-tuple, got {len(result)}-tuple")
+        if len(result) != 5:
+            print(f"ERROR: Expected 5-tuple, got {len(result)}-tuple")
             print(f"   Actual result: {result}")
             print(f"   See docs/EMBEDDER_API_SPECIFICATION.md for required format")
             return False
 
         # Validate tuple contents
-        chunk_text, file_path, chunk_id, score = result
+        chunk_text, file_path, chunk_id, doc_chunk_id, score = result
 
         # Type validation
         type_checks = [
             (chunk_text, (str, type(None)), "chunk_text"),
             (file_path, (str, type(None)), "file_path"),
             (chunk_id, int, "chunk_id"),
+            (doc_chunk_id, int, "doc_chunk_id"),  # Add this line
             (score, (int, float), "score"),
         ]
 
@@ -65,7 +66,7 @@ def validate_embedder_format():
 
         print("SUCCESS: Format validation passed")
         print(
-            f"   Format: ({type(chunk_text).__name__}, {type(file_path).__name__}, {type(chunk_id).__name__}, {type(score).__name__})"
+            f"   Format: ({type(chunk_text).__name__}, {type(file_path).__name__}, {type(chunk_id).__name__}, {type(doc_chunk_id).__name__}, {type(score).__name__})"
         )
         print(f"   Sample result: {result}")
 

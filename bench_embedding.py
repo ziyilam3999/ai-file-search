@@ -28,7 +28,7 @@ idx = Embedder()
 idx.build_index(extracts_path)
 start = time.time()
 results = idx.query("Who Alice found in wonderland?")
-for i, (chunk_text, file_path, chunk_id, score) in enumerate(results):
+for i, (chunk_text, file_path, chunk_id, doc_chunk_id, score) in enumerate(results):
     print(f"Result {i+1}:")
     print(f"File: {file_path}")
     print(f"Score: {score:.3f}")

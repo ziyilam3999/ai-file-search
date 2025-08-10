@@ -6,11 +6,11 @@ Outputs : index.faiss  +  meta.sqlite
 
 from pathlib import Path
 
-# TODO(copilot): import sentence_transformers, faiss, numpy
+from .config import EMBEDDING_CONFIG
 
-# Update the constants to create fewer chunks
-CHUNK_SIZE = 400  # Increased back up (fewer total chunks)
-CHUNK_OVERLAP = 25  # Much smaller overlap (fewer overlapping chunks)
+# Get chunk settings from config (single source of truth)
+CHUNK_SIZE = EMBEDDING_CONFIG["chunk_size"]
+CHUNK_OVERLAP = EMBEDDING_CONFIG["chunk_overlap"]
 
 
 class Embedder:
@@ -72,9 +72,11 @@ class Embedder:
         index = faiss.IndexFlatL2(384)
         conn = sqlite3.connect("meta.sqlite")
         cursor = conn.cursor()
+        # Drop and recreate table to ensure correct schema
+        cursor.execute("DROP TABLE IF EXISTS meta")
         cursor.execute(
-            "CREATE TABLE IF NOT EXISTS meta "
-            "(id INTEGER PRIMARY KEY, file TEXT, chunk TEXT)"
+            "CREATE TABLE meta "
+            "(id INTEGER PRIMARY KEY, file TEXT, chunk TEXT, doc_chunk_id INTEGER)"
         )
         cursor.execute("DELETE FROM meta")
         db_setup_time = time.time() - db_start_time
@@ -94,14 +96,19 @@ class Embedder:
             chunks = self._chunk_text(text)
             file_count += 1
 
+            # Track chunk position within THIS document
+            doc_chunk_index = 1
             for chunk in chunks:
                 if len(chunk.strip()) < 20:
                     continue
                 all_chunks.append(chunk if chunk.strip() else "empty")
-                # Store relative path instead of just filename
                 relative_path = file.relative_to(extracts_path)
-                chunk_metadata.append((chunk_id, str(relative_path), chunk))
+                # Store both global chunk_id AND document-relative chunk index
+                chunk_metadata.append(
+                    (chunk_id, str(relative_path), chunk, doc_chunk_index)
+                )
                 chunk_id += 1
+                doc_chunk_index += 1
 
         chunk_processing_time = time.time() - chunk_start_time
         logger.success(
@@ -169,7 +176,7 @@ class Embedder:
         db_insert_start_time = time.time()
         logger.info("INSERTING: metadata to database...")
         cursor.executemany(
-            "INSERT INTO meta (id, file, chunk) VALUES (?, ?, ?)",
+            "INSERT INTO meta (id, file, chunk, doc_chunk_id) VALUES (?, ?, ?, ?)",
             chunk_metadata,
         )
         conn.commit()
@@ -228,7 +235,7 @@ class Embedder:
     def query(self, query: str, k: int = 5):
         """Optimized query with cached model and batch database access.
 
-        CRITICAL: This method MUST return 4-tuple format (chunk_text, file_path, chunk_id, score)
+        CRITICAL: This method MUST return 5-tuple format (chunk_text, file_path, chunk_id, doc_chunk_id, score)
         for UI compatibility and test suite validation. See docs/EMBEDDER_API_SPECIFICATION.md
         for complete format requirements and troubleshooting guide.
         """
@@ -247,22 +254,24 @@ class Embedder:
         # Batch database query for better performance
         target_ids = [int(i + 1) for i in indices[0]]
         placeholders = ",".join("?" for _ in target_ids)
-        sql_query = f"SELECT id, file, chunk FROM meta WHERE id IN " f"({placeholders})"
+        sql_query = f"SELECT id, file, chunk, doc_chunk_id FROM meta WHERE id IN ({placeholders})"
         cursor.execute(sql_query, target_ids)
         rows = cursor.fetchall()
 
-        # Create id->row mapping for fast lookup
-        id_to_row = {row[0]: (row[1], row[2]) for row in rows}
+        # Create id->row mapping with document chunk info
+        id_to_row = {
+            row[0]: (row[1], row[2], row[3]) for row in rows
+        }  # file, chunk, doc_chunk_id
 
-        # Return results in 4-tuple format: (chunk_text, file_path, chunk_id, score)
+        # Return results in 5-tuple format: (chunk_text, file_path, chunk_id, doc_chunk_id, score)
         results = []
         for i, target_id in enumerate(target_ids):
             if target_id in id_to_row:
-                file_path, chunk_text = id_to_row[target_id]
-                score = float(distances[0][i])  # Get the distance/score from FAISS
-                results.append((chunk_text, file_path, target_id, score))
+                file_path, chunk_text, doc_chunk_id = id_to_row[target_id]
+                score = float(distances[0][i])
+                results.append((chunk_text, file_path, target_id, doc_chunk_id, score))
             else:
-                results.append((None, None, target_id, float("inf")))
+                results.append((None, None, target_id, 1, float("inf")))
 
         return results
 

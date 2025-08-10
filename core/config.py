@@ -187,3 +187,70 @@ def set_citation_mode(minimal: bool = True) -> None:
             }
         )
         print("SUCCESS: Citation mode set to DETAILED (slower)")
+
+
+# Embedding & Chunking Settings - SINGLE SOURCE OF TRUTH
+EMBEDDING_CONFIG = {
+    "chunk_size": 400,  # Words per chunk
+    "chunk_overlap": 25,  # Overlapping words between chunks
+    "words_per_page": 300,  # Estimated words per page for citation calculation
+}
+
+
+def calculate_document_page(doc_chunk_id: int) -> int:
+    """
+    Calculate estimated page number based on document content analysis.
+
+    This estimates total pages from document chunks and words, calibrated to
+    produce realistic page counts for typical books.
+
+    Args:
+        doc_chunk_id: The chunk position within the document (1-based)
+
+    Returns:
+        Estimated page number within the document
+    """
+    import sqlite3
+
+    # Get document info for this chunk
+    conn = sqlite3.connect("meta.sqlite")
+    cursor = conn.cursor()
+
+    # Find which document this chunk belongs to and get total chunks
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM meta
+        WHERE file = (SELECT file FROM meta WHERE doc_chunk_id = ? LIMIT 1)
+    """,
+        (doc_chunk_id,),
+    )
+
+    result = cursor.fetchone()
+    conn.close()
+
+    if not result or not result[0]:
+        return 1
+
+    total_chunks = result[0]
+
+    # Get chunking parameters from config
+    chunk_size = EMBEDDING_CONFIG["chunk_size"]
+    chunk_overlap = EMBEDDING_CONFIG["chunk_overlap"]
+
+    # Calculate effective words per chunk (excluding overlap)
+    effective_words_per_chunk = chunk_size - chunk_overlap
+
+    # Estimate total words in the document
+    estimated_total_words = total_chunks * effective_words_per_chunk
+
+    # Use calibrated words-per-page ratio for realistic page estimates
+    # Calibrated based on Peter Pan (115 pages, 135 chunks) = ~440 words/page
+    words_per_page = 440
+    estimated_total_pages = max(10, estimated_total_words / words_per_page)
+
+    # Calculate proportional position within the estimated page range
+    position_percent = doc_chunk_id / total_chunks
+    estimated_page = max(1, int(position_percent * estimated_total_pages))
+
+    return estimated_page

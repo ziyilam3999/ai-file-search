@@ -429,7 +429,17 @@ class ExtractorAdapter:
 
     def extract_text(self, file_path: str) -> str:
         """Extract text from a file."""
-        return self.extractor.run(Path(file_path))
+        if self.extractor is not None:
+            return self.extractor.run(Path(file_path))
+        else:
+            raise RuntimeError("Extractor not initialized")
+
+    def _extract_document(self, file_path: Path) -> str:
+        """Extract text from a document using the extractor."""
+        if self.extractor is not None:
+            return self.extractor.run(file_path)
+        else:
+            raise RuntimeError("Extractor not initialized")
 
 
 class FileChangeQueue:
@@ -614,9 +624,47 @@ class FileWatcher:
                 return self._default_config()
 
             with open(config_path, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f)
+                yaml_config = yaml.safe_load(f)
+
+            # Merge YAML config with defaults
+            config = self._default_config()
+
+            # OPTION 1 ARCHITECTURE: Enforce sample_docs only watching
+            config["watch_directories"] = ["sample_docs"]
+
+            # Extract watch directories from document_categories if present
+            if "document_categories" in yaml_config:
+                watch_dirs = set()
+                for category, category_config in yaml_config[
+                    "document_categories"
+                ].items():
+                    if category_config.get("enabled", True):
+                        for path in category_config.get("paths", []):
+                            # Only watch sample_docs paths (Option 1 architecture)
+                            if path.startswith("sample_docs/"):
+                                watch_dirs.add("sample_docs")
+
+                if watch_dirs:
+                    config["watch_directories"] = list(watch_dirs)
+
+            # Override with any direct YAML settings (but preserve Option 1)
+            if "file_patterns" in yaml_config:
+                config["file_patterns"].update(yaml_config["file_patterns"])
+
+            # NEVER allow extracts in watch_directories (Option 1 enforcement)
+            if "watch_directories" in yaml_config:
+                yaml_dirs = yaml_config["watch_directories"]
+                if isinstance(yaml_dirs, list):
+                    # Filter out extracts directory
+                    filtered_dirs = [d for d in yaml_dirs if d != "extracts"]
+                    if "sample_docs" not in filtered_dirs:
+                        filtered_dirs.append("sample_docs")
+                    config["watch_directories"] = filtered_dirs
 
             logger.info(f"Configuration loaded from {self.config_path}")
+            logger.info(
+                f"Watching directories (Option 1): {config['watch_directories']}"
+            )
             return config
         except Exception as e:
             logger.error(f"Error loading config: {e}")
@@ -625,10 +673,18 @@ class FileWatcher:
     def _default_config(self) -> Dict[str, Any]:
         """Return default configuration."""
         return {
-            "watch_directories": ["sample_docs", "extracts"],
+            "watch_directories": ["sample_docs"],  # Only watch input directory
             "file_patterns": {
                 "include": ["*.txt", "*.pdf", "*.docx", "*.md"],
-                "ignore": ["*.tmp", "*.log", "*.pyc", "__pycache__", ".git"],
+                "ignore": [
+                    "*.tmp",
+                    "*.log",
+                    "*.pyc",
+                    "__pycache__",
+                    ".git",
+                    "*.swp",
+                    "*.bak",
+                ],
             },
             "timing": {
                 "debounce_seconds": 5,
@@ -724,203 +780,190 @@ class FileWatcher:
         logger.info(f"Scheduled nightly reindex at {nightly_time}")
 
     def _process_file_changes(self) -> None:
-        """Worker thread that processes file changes."""
-        debounce_seconds = self.config.get("timing", {}).get("debounce_seconds", 5)
-        max_wait_seconds = self.config.get("timing", {}).get("max_wait_seconds", 30)
-        batch_size = self.config.get("indexing", {}).get("batch_size", 50)
-
+        """Process queued file changes with extraction pipeline."""
         logger.info("File processing worker started")
 
         while not self._shutdown_event.is_set():
             try:
-                # Wait for changes to accumulate
-                time.sleep(debounce_seconds)
-
-                # Get pending changes
-                changes = self.file_queue.get_pending_changes(max_wait_seconds)
+                # Get pending changes (max 30 seconds old)
+                changes = self.file_queue.get_pending_changes(max_age_seconds=30.0)
 
                 if changes:
-                    logger.info(f"Processing {len(changes)} file changes")
-                    self._process_change_batch(changes[:batch_size])
+                    logger.debug(f"Processing {len(changes)} file changes")
 
-                    # If there are more changes, continue processing
-                    if len(changes) > batch_size:
-                        remaining = changes[batch_size:]
-                        for change in remaining:
-                            self.file_queue.add_change(change[0], change[1])
+                    # Group changes by operation type
+                    batch_changes = defaultdict(list)
+                    for file_path, event_type, timestamp in changes:
+                        batch_changes[event_type].append(file_path)
+
+                    # Process additions and modifications (with extraction)
+                    for event_type in ["created", "modified"]:
+                        if event_type in batch_changes:
+                            self._process_added_files(batch_changes[event_type])
+
+                    # Process deletions
+                    if "deleted" in batch_changes:
+                        self._process_deleted_files(batch_changes["deleted"])
+
+                # Clean up old queue entries
+                removed_count = self.file_queue.cleanup_old_entries(
+                    max_age_seconds=300.0
+                )
+                if removed_count > 0:
+                    logger.debug(f"Cleaned up {removed_count} old queue entries")
+
+                # Sleep briefly before next iteration
+                time.sleep(2.0)
 
             except Exception as e:
                 logger.error(f"Error in file processing worker: {e}")
-                logger.error(traceback.format_exc())
-                self._stats["errors"] = (self._stats.get("errors") or 0) + 1
-                time.sleep(1)  # Brief pause before retrying
+                self._stats["errors"] += 1
+                time.sleep(5.0)  # Longer sleep on error
 
         logger.info("File processing worker stopped")
 
-    def _process_change_batch(self, changes: List[Tuple[str, str, float]]) -> None:
-        """Process a batch of file changes."""
-        if not changes:
+    def _process_added_files(self, file_paths: List[str]) -> None:
+        """Process added/modified files with extraction to extracts/."""
+        if not file_paths:
             return
 
-        try:
-            files_to_add = []
-            files_to_update = []
-            files_to_delete = []
+        logger.info(f"Processing {len(file_paths)} added/modified files")
+        batch_start_time = time.time()
 
-            # Categorize changes
-            for file_path, event_type, timestamp in changes:
-                if event_type == "deleted":
-                    files_to_delete.append(file_path)
-                elif event_type in ["created", "modified"]:
-                    if os.path.exists(file_path):
-                        if event_type == "created":
-                            files_to_add.append(file_path)
-                        else:
-                            files_to_update.append(file_path)
-                    else:
-                        # File was created then deleted
-                        files_to_delete.append(file_path)
-
-            # Process changes
-            success_count = 0
-
-            if files_to_delete:
-                success_count += self._delete_from_index(files_to_delete)
-
-            if files_to_add or files_to_update:
-                success_count += self._add_to_index(files_to_add + files_to_update)
-
-            # Update statistics
-            self._stats["files_processed"] = (
-                self._stats.get("files_processed") or 0
-            ) + 1
-            self._stats["files_added"] = (self._stats.get("files_added") or 0) + len(
-                files_to_add
-            )
-            self._stats["files_updated"] = (
-                self._stats.get("files_updated") or 0
-            ) + len(files_to_update)
-            self._stats["files_deleted"] = (
-                self._stats.get("files_deleted") or 0
-            ) + len(files_to_delete)
-
-            logger.info(
-                f"Batch processed: {len(files_to_add)} added, {len(files_to_update)} updated, {len(files_to_delete)} deleted"
-            )
-
-        except Exception as e:
-            logger.error(f"Error processing change batch: {e}")
-            logger.error(traceback.format_exc())
-            self._stats["errors"] = (self._stats.get("errors") or 0) + 1
-
-    def _add_to_index(self, file_paths: List[str]) -> int:
-        """Add or update files in the index."""
-        success_count = 0
-        start_time = time.time()
+        successful_extractions = []
+        failed_extractions = []
 
         for file_path in file_paths:
             try:
-                logger.debug(f"Processing file: {file_path}")
+                # Step 1: Extract text from source file
+                logger.debug(f"Extracting text from: {file_path}")
+                if self.document_extractor is None:
+                    logger.error("Document extractor not initialized")
+                    failed_extractions.append(file_path)
+                    continue
+                text = self.document_extractor.extract_text(file_path)
 
-                # Get file size for stats
-                file_size = (
-                    os.path.getsize(file_path) if os.path.exists(file_path) else 0
+                if not text or len(text.strip()) < 10:
+                    logger.warning(f"No meaningful text extracted from {file_path}")
+                    failed_extractions.append(file_path)
+                    continue
+
+                # Step 2: Determine extract path
+                extract_path = self._get_extract_path(file_path)
+
+                # Step 3: Save extracted text to extracts/
+                extract_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(extract_path, "w", encoding="utf-8") as f:
+                    f.write(text)
+
+                logger.debug(f"Saved extracted text to: {extract_path}")
+
+                # Step 4: Add to search index using extract path
+                if self.embedding_manager is None:
+                    logger.error("Embedding manager not initialized")
+                    failed_extractions.append(file_path)
+                    continue
+                relative_extract_path = str(extract_path.relative_to("extracts"))
+                success = self.embedding_manager.add_document(
+                    relative_extract_path, text
                 )
 
-                # Extract text from file
-                if self.document_extractor is not None:
-                    content = self.document_extractor.extract_text(file_path)
+                if success:
+                    successful_extractions.append(file_path)
+                    self._stats["files_processed"] += 1
+
+                    # Update stats
+                    file_size = (
+                        Path(file_path).stat().st_size
+                        if Path(file_path).exists()
+                        else 0
+                    )
+                    self._stats["total_size_bytes"] += file_size
+
+                    logger.info(f"Successfully processed: {file_path} → {extract_path}")
                 else:
-                    logger.error("Extractor not initialized")
-                    return 0
-
-                # Add to embedding index
-                if self.embedding_manager is not None:
-                    # Compute relative path for citation
-                    for base_dir in self.config.get("watch_directories", []):
-                        if file_path.startswith(base_dir):
-                            rel_path = os.path.relpath(file_path, base_dir)
-                            break
-                    else:
-                        rel_path = file_path  # fallback, should not happen
-
-                    self.embedding_manager.add_document(rel_path, content)
-                else:
-                    logger.error("Embedding manager not initialized")
-                    return 0
-
-                success_count += 1
-
-                # Update stats
-                self._stats["total_size_bytes"] = (
-                    self._stats.get("total_size_bytes") or 0
-                ) + file_size
-
-                logger.debug(f"Successfully processed: {file_path}")
+                    failed_extractions.append(file_path)
+                    logger.error(f"Failed to add to index: {file_path}")
 
             except Exception as e:
                 logger.error(f"Error processing file {file_path}: {e}")
-                self._stats["errors"] = (self._stats.get("errors") or 0) + 1
+                failed_extractions.append(file_path)
+                self._stats["errors"] += 1
 
-        # Save the updated index
-        if success_count > 0 and self.embedding_manager is not None:
-            try:
+        # Batch completion
+        processing_time = time.time() - batch_start_time
+        self._stats["processing_time_seconds"] += processing_time
+
+        if successful_extractions:
+            # Save index after successful batch
+            if self.embedding_manager is not None:
                 self.embedding_manager.save_index()
-                logger.info(f"Index updated with {success_count} files")
-            except Exception as e:
-                logger.error(f"Error saving index: {e}")
-                self._stats["errors"] = (self._stats.get("errors") or 0) + 1
+            logger.info(
+                f"Batch processed: {len(successful_extractions)} added, 0 updated, 0 deleted"
+            )
 
-        # Update processing time
-        processing_time = time.time() - start_time
-        self._stats["processing_time_seconds"] = (
-            self._stats.get("processing_time_seconds") or 0
-        ) + processing_time
+        if failed_extractions:
+            logger.warning(
+                f"Failed to process {len(failed_extractions)} files: {failed_extractions[:3]}"
+            )
 
-        return success_count
+    def _get_extract_path(self, source_path: str) -> Path:
+        """Convert source file path to corresponding extract path."""
+        source = Path(source_path)
 
-    def _delete_from_index(self, file_paths: List[str]) -> int:
-        """Remove files from the index."""
-        success_count = 0
-        start_time = time.time()
+        # Convert sample_docs/category/file.pdf → extracts/category/file.txt
+        if len(source.parts) >= 2 and source.parts[0] == "sample_docs":
+            # Preserve the category structure
+            relative_parts = source.parts[1:]  # Skip 'sample_docs'
+
+            # Change extension to .txt
+            name_with_txt_ext = source.stem + ".txt"
+            extract_parts = ("extracts",) + relative_parts[:-1] + (name_with_txt_ext,)
+
+            extract_path = Path(*extract_parts)
+            logger.debug(f"Extract path: {source} → {extract_path}")
+            return extract_path
+        else:
+            # Fallback for other paths - this should rarely be used
+            fallback_path = Path("extracts") / (source.stem + ".txt")
+            logger.warning(f"Using fallback extract path: {source} → {fallback_path}")
+            return fallback_path
+
+    def _process_deleted_files(self, file_paths: List[str]) -> None:
+        """Process deleted files by removing from index."""
+        if not file_paths:
+            return
+
+        logger.info(f"Processing {len(file_paths)} deleted files")
 
         for file_path in file_paths:
             try:
-                # Remove from embedding index
-                if self.embedding_manager is not None and hasattr(
-                    self.embedding_manager, "remove_document"
-                ):
-                    self.embedding_manager.remove_document(file_path)
-                    success_count += 1
-                    logger.debug(f"Removed from index: {file_path}")
-                else:
-                    logger.warning(
-                        "Embedding manager does not support document removal"
-                    )
+                # Convert to extract path for index removal
+                extract_path = self._get_extract_path(file_path)
+                relative_extract_path = str(extract_path.relative_to("extracts"))
+
+                # Remove from index
+                if self.embedding_manager is None:
+                    logger.error("Embedding manager not initialized")
+                    continue
+                success = self.embedding_manager.remove_document(relative_extract_path)
+
+                if success:
+                    self._stats["files_deleted"] += 1
+                    logger.info(f"Removed from index: {file_path}")
+
+                # Also remove the extract file if it exists
+                if extract_path.exists():
+                    extract_path.unlink()
+                    logger.debug(f"Deleted extract file: {extract_path}")
 
             except Exception as e:
-                logger.error(f"Error removing file {file_path} from index: {e}")
-                self._stats["errors"] = (self._stats.get("errors") or 0) + 1
+                logger.error(f"Error processing deleted file {file_path}: {e}")
+                self._stats["errors"] += 1
 
-        # Save the updated index
-        if success_count > 0 and self.embedding_manager is not None:
-            try:
-                self.embedding_manager.save_index()
-                logger.info(f"Index updated, {success_count} files removed")
-            except Exception as e:
-                logger.error(f"Error saving index after removal: {e}")
-                self._stats["errors"] = (self._stats.get("errors") or 0) + 1
-
-        # Update processing time and file count
-        processing_time = time.time() - start_time
-        self._stats["files_processed"] = (
-            self._stats.get("files_processed") or 0
-        ) + success_count
-        self._stats["processing_time_seconds"] = (
-            self._stats.get("processing_time_seconds") or 0
-        ) + processing_time
-
-        return success_count
+        # Save index after deletions
+        if self.embedding_manager is not None:
+            self.embedding_manager.save_index()
 
     def _nightly_reindex(self) -> None:
         """Perform a full reindex of all files."""
@@ -1094,9 +1137,6 @@ class FileWatcher:
             if self.observer.is_alive():
                 self.observer.stop()
                 self.observer.join(timeout=5)
-
-            if self.scheduler.running:
-                self.scheduler.shutdown(wait=True)
 
             # Wait for worker thread
             if self._worker_thread and self._worker_thread.is_alive():

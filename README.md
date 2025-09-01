@@ -57,3 +57,22 @@ Run comprehensive system tests: `python tests/test_complete_system.py`
 ---
 
 **Status**: Production ready with 100% test coverage and cross-platform compatibility.
+
+## 🧪 Testing & Validation
+
+### **Comprehensive Test Suite**
+```bash
+# Quick smoke testing (5 tests, ~3 minutes)
+python [test_quick.py](http://_vscodecontentref_/8)
+
+# Full regression testing (6 categories, ~7 minutes)
+python [test_regression.py](http://_vscodecontentref_/9) --verbose
+
+# Performance benchmarking
+python [test_regression.py](http://_vscodecontentref_/10) --performance-only
+```
+
+🎉 ALL TESTS PASSED! (6/6)
+⏱️  Total execution time: 411.8 seconds
+📊 Citation accuracy: 6/6 queries with authentic citations
+🔍 Relevance filtering: 11/11 queries correctly classified

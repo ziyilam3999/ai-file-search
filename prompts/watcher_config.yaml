@@ -1,39 +1,36 @@
 document_categories:
+  business_rules:
+    enabled: true
+    paths:
+    - sample_docs/business_rules
   classic_literature:
     enabled: true
     paths:
     - sample_docs/classic_literature
-    - extracts/classic_literature
   meeting_notes:
     enabled: true
     paths:
     - sample_docs/meeting_notes
-    - extracts/meeting_notes
   personal_notes:
     enabled: true
     paths:
     - sample_docs/personal_notes
-    - extracts/personal_notes
   research_papers:
     enabled: true
     paths:
     - sample_docs/research_papers
-    - extracts/research_papers
   software_dev:
     enabled: true
     paths:
     - sample_docs/software_dev
-    - extracts/software_dev
   technical_docs:
     enabled: true
     paths:
     - sample_docs/technical_docs
-    - extracts/technical_docs
   user_manuals:
     enabled: true
     paths:
     - sample_docs/user_manuals
-    - extracts/user_manuals
 file_patterns:
   ignore:
   - '*.tmp'
@@ -48,26 +45,5 @@ file_patterns:
   - '*.pdf'
   - '*.docx'
   - '*.md'
-indexing:
-  backup_before_update: true
-  batch_size: 50
-  incremental_updates: true
-logging:
-  console_output: true
-  file: logs/watcher.log
-  level: INFO
-  retention: 1 week
-  rotation: 1 day
-monitoring:
-  health_check_interval: 300
-  stats_interval: 3600
-performance:
-  max_memory_mb: 1024
-  worker_threads: 2
-timing:
-  debounce_seconds: 5
-  max_wait_seconds: 30
-  nightly_reindex_time: 02:00
 watch_directories:
-- extracts
 - sample_docs

@@ -49,7 +49,25 @@ def answer_question(
 
     logger.info(f"FOUND: {len(results)} relevant chunks")
 
-    # 2. Load prompt template
+    # 2. Check relevance threshold - if all results have poor scores, return no answer
+    RELEVANCE_THRESHOLD = 1.2  # Cosine distance threshold (lower = more similar)
+    relevant_results = []
+    for result in results:
+        chunk_text, file_path, chunk_id, doc_chunk_id, score = result
+        if chunk_text and file_path and score < RELEVANCE_THRESHOLD:
+            relevant_results.append(result)
+
+    if not relevant_results:
+        no_relevant_answer = "I couldn't find relevant information in the provided documents to answer this question."
+        if streaming:
+            return (iter([no_relevant_answer]), [])
+        return (no_relevant_answer, [])
+
+    # Use only relevant results for further processing
+    results = relevant_results
+    logger.info(f"RELEVANT: {len(results)} chunks passed relevance threshold")
+
+    # 3. Load prompt template
     prompt_path = Path(__file__).parent.parent / "prompts" / "retrieval_prompt.md"
     try:
         with open(prompt_path, "r", encoding="utf-8") as f:
@@ -64,7 +82,7 @@ Please provide a comprehensive answer based on the context above. Include specif
 
 Answer:"""
 
-    # 3. Build citations first (needed for both streaming and non-streaming)
+    # 4. Build citations first (needed for both streaming and non-streaming)
     citations = []
     context_parts = []
     for i, result in enumerate(results):
@@ -86,11 +104,11 @@ Answer:"""
             )
             context_parts.append(f"[{i + 1}] {chunk_text}")
 
-    # 4. Create the full prompt
+    # 5. Create the full prompt
     context = "\n\n".join(context_parts)
     full_prompt = prompt_template.format(context=context, question=query)
 
-    # 5. Generate answer with streaming or non-streaming
+    # 6. Generate answer with streaming or non-streaming
     try:
         if streaming:
             # Return streaming generator

@@ -1,0 +1,73 @@
+{
+  "test_cases": [],
+  "summary": {
+    "status": "PASSED",
+    "tests_passed": 6,
+    "total_tests": 6,
+    "execution_time": 379.7151265144348
+  },
+  "performance": {
+    "citation_tests": [
+      {
+        "query": "parking hosting rules",
+        "has_citations": true,
+        "citation_count": 1,
+        "response_time": 56.440560817718506,
+        "answer_length": 430,
+        "no_hallucination": true,
+        "correct_files": true
+      },
+      {
+        "query": "token economy",
+        "has_citations": true,
+        "citation_count": 1,
+        "response_time": 49.59751796722412,
+        "answer_length": 503,
+        "no_hallucination": true,
+        "correct_files": true
+      },
+      {
+        "query": "parking hosting",
+        "has_citations": true,
+        "citation_count": 1,
+        "response_time": 48.90293097496033,
+        "answer_length": 485,
+        "no_hallucination": true,
+        "correct_files": true
+      },
+      {
+        "query": "onboarding process",
+        "has_citations": true,
+        "citation_count": 1,
+        "response_time": 47.65934491157532,
+        "answer_length": 524,
+        "no_hallucination": true,
+        "correct_files": true
+      },
+      {
+        "query": "Alice in Wonderland",
+        "has_citations": true,
+        "citation_count": 1,
+        "response_time": 45.280333518981934,
+        "answer_length": 488,
+        "no_hallucination": true,
+        "correct_files": true
+      },
+      {
+        "query": "Black Beauty",
+        "has_citations": true,
+        "citation_count": 1,
+        "response_time": 52.15659952163696,
+        "answer_length": 500,
+        "no_hallucination": true,
+        "correct_files": true
+      }
+    ],
+    "benchmarks": {
+      "embedding_query_time": 3.3086254596710205,
+      "ai_generation_time": 43.86881971359253,
+      "total_query_time": 47.17744517326355
+    }
+  },
+  "timestamp": "2025-09-01 18:36:28"
+}

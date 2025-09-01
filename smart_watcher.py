@@ -189,27 +189,35 @@ class SmartWatcherController:
         print("  python smart_watcher.py status   # Show this status")
         print()
 
-    def _setup_default_config(self) -> None:
-        """Ensure configuration watches ALL folders by default."""
+    def _setup_default_config(self) -> bool:
+        """Set up default configuration if needed."""
         try:
             from switch_documents import sync_config_with_filesystem, update_config
 
-            # Sync with current filesystem
+            print("Configuration synchronized with filesystem")
             config = sync_config_with_filesystem()
 
-            # Enable ALL categories by default
-            categories = config.get("document_categories", {})
-            all_enabled = True
-            for cat_name in categories:
-                if not categories[cat_name].get("enabled", False):
-                    all_enabled = False
-                    break
+            # Verify Option 1 architecture is enforced
+            if config.get("watch_directories") != ["sample_docs"]:
+                print("⚠️  Enforcing Option 1 Architecture: sample_docs only")
+                config["watch_directories"] = ["sample_docs"]
 
-            if not all_enabled:
-                print("Enabling all document categories for comprehensive search...")
-                update_config("all")
+                # Save corrected config
+                from pathlib import Path
+
+                import yaml
+
+                config_path = Path("prompts/watcher_config.yaml")
+                with open(config_path, "w", encoding="utf-8") as f:
+                    yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+            return True
         except ImportError:
-            print("Warning: Could not import switch_documents - using basic config")
+            print("Warning: switch_documents module not available")
+            return False
+        except Exception as e:
+            print(f"Warning: Error setting up config: {e}")
+            return False
 
     def _get_pid(self) -> Optional[int]:
         """Get the PID of the running watcher."""

@@ -1,0 +1,67 @@
+# AI File Search - Test Configuration
+# ===================================
+# 
+# This file contains test cases and configuration for regression testing.
+# Modify these values to customize tests for your specific use case.
+
+# Relevance threshold for filtering queries
+RELEVANCE_THRESHOLD: 1.2
+
+# Performance thresholds (in seconds)
+PERFORMANCE_THRESHOLDS:
+  embedding_query_max: 15.0
+  ai_generation_max: 120.0
+  total_query_max: 150.0
+
+# Test cases for regression testing
+# Format: [query, expected_behavior, min_score, max_score, expected_category]
+TEST_CASES:
+  # High relevance queries (should get AI answers with citations)
+  relevant_queries:
+    - ["parking hosting rules", "relevant", 0.0, 1.0, "business_rules"]
+    - ["token economy", "relevant", 0.0, 1.0, "business_rules"]
+    - ["parking hosting", "relevant", 0.0, 1.0, "business_rules"]
+    - ["onboarding process", "relevant", 0.0, 1.2, "business_rules"]
+    - ["Alice in Wonderland", "relevant", 0.0, 1.2, "classic_literature"]
+    - ["Black Beauty", "relevant", 0.0, 1.2, "classic_literature"]
+  
+  # Low relevance queries (should be filtered out)
+  filtered_queries:
+    - ["hosting modes", "filtered", 1.2, 2.0, null]
+    - ["marketplace", "filtered", 1.2, 2.0, null]
+    - ["cryptocurrency blockchain", "filtered", 1.2, 2.0, null]
+    - ["machine learning algorithms", "filtered", 1.2, 2.0, null]
+    - ["quantum computing", "filtered", 1.2, 2.0, null]
+
+# Hallucination detection keywords
+HALLUCINATION_INDICATORS:
+  - "Investopedia"
+  - "Wikipedia" 
+  - "Retrieved"
+  - "n.d."
+  - "www."
+  - "http"
+  - ".com"
+  - ".org"
+  - "Source:"
+  - "Reference:"
+
+# Required system files
+REQUIRED_FILES:
+  - "index.faiss"
+  - "meta.sqlite"
+  - "core/ask.py"
+  - "core/embedding.py"
+  - "prompts/retrieval_prompt.md"
+
+# Expected file categories in your document collection
+DOCUMENT_CATEGORIES:
+  - "business_rules"
+  - "classic_literature"
+  - "software_dev"
+  - "technical_docs"
+
+# Test result storage
+SAVE_RESULTS: true
+RESULTS_DIRECTORY: "test_results"
+KEEP_LAST_N_RESULTS: 10

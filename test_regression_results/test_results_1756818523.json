@@ -2,9 +2,9 @@
   "test_cases": [],
   "summary": {
     "status": "PASSED",
-    "tests_passed": 5,
-    "total_tests": 5,
-    "execution_time": 349.2144911289215
+    "tests_passed": 6,
+    "total_tests": 6,
+    "execution_time": 382.42418456077576
   },
   "performance": {
     "citation_tests": [
@@ -12,7 +12,7 @@
         "query": "parking hosting rules",
         "has_citations": true,
         "citation_count": 1,
-        "response_time": 63.36265301704407,
+        "response_time": 56.63181948661804,
         "answer_length": 430,
         "no_hallucination": true,
         "correct_files": true
@@ -21,7 +21,7 @@
         "query": "token economy",
         "has_citations": true,
         "citation_count": 1,
-        "response_time": 52.42915487289429,
+        "response_time": 46.54174780845642,
         "answer_length": 503,
         "no_hallucination": true,
         "correct_files": true
@@ -30,7 +30,7 @@
         "query": "parking hosting",
         "has_citations": true,
         "citation_count": 1,
-        "response_time": 50.902583837509155,
+        "response_time": 49.364551305770874,
         "answer_length": 485,
         "no_hallucination": true,
         "correct_files": true
@@ -39,7 +39,7 @@
         "query": "onboarding process",
         "has_citations": true,
         "citation_count": 1,
-        "response_time": 52.54751229286194,
+        "response_time": 49.49433135986328,
         "answer_length": 524,
         "no_hallucination": true,
         "correct_files": true
@@ -48,7 +48,7 @@
         "query": "Alice in Wonderland",
         "has_citations": true,
         "citation_count": 1,
-        "response_time": 47.20953416824341,
+        "response_time": 45.4762225151062,
         "answer_length": 488,
         "no_hallucination": true,
         "correct_files": true
@@ -57,12 +57,17 @@
         "query": "Black Beauty",
         "has_citations": true,
         "citation_count": 1,
-        "response_time": 48.69300889968872,
+        "response_time": 51.30515384674072,
         "answer_length": 500,
         "no_hallucination": true,
         "correct_files": true
       }
-    ]
+    ],
+    "benchmarks": {
+      "embedding_query_time": 3.763777494430542,
+      "ai_generation_time": 45.95288586616516,
+      "total_query_time": 49.7166633605957
+    }
   },
-  "timestamp": "2025-09-01 18:30:30"
+  "timestamp": "2025-09-02 21:02:21"
 }

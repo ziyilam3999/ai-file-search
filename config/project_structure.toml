@@ -1,0 +1,277 @@
+# AI File Search - Project Configuration for AI Agents
+# This file defines the project structure and rules for automated tools
+
+[project]
+name = "ai-file-search"
+structure_version = "1.1"
+last_updated = "2025-09-02"
+config_location = "config/project_structure.toml"
+
+[file_organization]
+# Core principle: Single-layer organization (max 2 levels: folder/file.py)
+max_nesting_depth = 2
+prefer_flat_structure = true
+clean_root_policy = true  # Keep root minimal and focused
+
+[directory_rules]
+# User-facing commands stay in root (ESSENTIAL ONLY)
+root_files = [
+    "cli.py",
+    "smart_watcher.py", 
+    "run_watcher.py",
+    "complete_setup.py",
+    "setup_auto_discovery.py",
+    "switch_documents.py"
+]
+
+# Essential documentation in root
+root_documentation = [
+    "README.md"  # Only the main project README
+]
+
+# Critical system files that must not be moved
+protected_files = [
+    "index.faiss",
+    "meta.sqlite", 
+    "pyproject.toml",
+    "poetry.toml"
+]
+
+# Standard directory purposes
+[directories]
+core = "Core system functionality and modules"
+daemon = "Background services and watchers"
+ui = "User interface components (Streamlit, etc.)"
+tests = "ALL testing files - single layer only"
+tools = "Development utilities and scripts - single layer only"
+docs = "Project documentation and guides"
+config = "Configuration files and templates"
+sample_docs = "User document categories"
+extracts = "Processed document extracts"
+prompts = "AI prompts and templates"
+logs = "System logs and output"
+ai_models = "AI model files"
+test_regression_results = "Test output files"
+
+# Documentation organization
+[directories.docs_structure]
+user_guides = [
+    "COMPLETE_USER_GUIDE.md",
+    "AUTO_DISCOVERY_GUIDE.md", 
+    "QUICK_START.md"
+]
+development_docs = [
+    "PROJECT_STRUCTURE.md",
+    "AI_AGENT_RULES.md",
+    "CODE_STYLE_GUIDELINES.md",
+    "BUILD_LOG.md"
+]
+specifications = [
+    "EMBEDDER_API_SPECIFICATION.md"
+]
+
+# Configuration organization  
+[directories.config_structure]
+project_configs = [
+    "project_structure.toml"
+]
+template_configs = [
+    "project_structure.toml"
+]
+
+# Deprecated/forbidden directories (reorganization remnants)
+[forbidden_directories]
+src = "Reorganization remnant - do not use"
+data = "Reorganization remnant - do not use"  
+"tests/unit" = "Use flat tests/ structure instead"
+"tests/integration" = "Use flat tests/ structure instead"
+"tests/regression" = "Use flat tests/ structure instead"
+"tools/scripts" = "Use flat tools/ structure instead"
+"tools/utilities" = "Use flat tools/ structure instead"
+
+[file_placement_rules]
+# Decision tree for AI agents
+
+[file_placement_rules.tests]
+pattern = "test_*.py"
+location = "tests/"
+description = "All test files go in tests/ with test_ prefix"
+examples = [
+    "tests/test_ask.py",
+    "tests/test_embedding.py", 
+    "tests/test_complete_system.py"
+]
+
+[file_placement_rules.tools]
+pattern = "*_tool.py, *_script.py, debug_*.py, bench_*.py, analyze_*.py, validate_*.py"
+location = "tools/"
+description = "Development utilities, debugging tools, benchmarks"
+examples = [
+    "tools/debug_db.py",
+    "tools/bench_performance.py",
+    "tools/analyze_coverage.py",
+    "tools/validate_structure.py"
+]
+
+[file_placement_rules.core]
+pattern = "*.py (system functionality)"
+location = "core/"
+description = "Core system modules (ask, embedding, extract, etc.)"
+examples = [
+    "core/ask.py",
+    "core/embedding.py",
+    "core/extract.py"
+]
+
+[file_placement_rules.documentation]
+pattern = "*.md (except README.md)"
+location = "docs/"
+description = "All documentation except main README"
+examples = [
+    "docs/PROJECT_STRUCTURE.md",
+    "docs/AI_AGENT_RULES.md",
+    "docs/COMPLETE_USER_GUIDE.md"
+]
+
+[file_placement_rules.configuration]
+pattern = "*.toml, *.yaml (config files)"
+location = "config/"
+description = "Configuration files and templates"
+examples = [
+    "config/project_structure.toml"
+]
+
+[file_placement_rules.user_commands]
+pattern = "*.py (user-facing)"
+location = "root"
+description = "Commands users run directly (ESSENTIAL ONLY)"
+examples = [
+    "cli.py",
+    "setup_*.py",
+    "switch_*.py"
+]
+
+[ai_agent_instructions]
+# Instructions for AI agents working on this project
+
+[ai_agent_instructions.new_test_file]
+command = "Create new test file"
+location = "tests/"
+naming = "test_<feature_name>.py"
+template = """#!/usr/bin/env python3
+\"\"\"
+Test suite for <feature_name>
+\"\"\"
+
+import unittest
+import sys
+from pathlib import Path
+
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# Your test imports here
+from core.<module> import <function>
+
+class Test<FeatureName>(unittest.TestCase):
+    def test_<specific_feature>(self):
+        # Your test code here
+        pass
+
+if __name__ == "__main__":
+    unittest.main()
+"""
+
+[ai_agent_instructions.new_tool_file]
+command = "Create new tool/script"
+location = "tools/"
+naming = "<purpose>_<action>.py (e.g., debug_database.py)"
+template = """#!/usr/bin/env python3
+\"\"\"
+<Tool Description>
+
+Usage:
+    python tools/<tool_name>.py [args]
+\"\"\"
+
+import sys
+from pathlib import Path
+
+# Add project root to path if needed
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+def main():
+    \"\"\"Main tool functionality.\"\"\"
+    print("🔧 <Tool Name> - <Purpose>")
+    # Your tool code here
+
+if __name__ == "__main__":
+    main()
+"""
+
+[ai_agent_instructions.new_documentation]
+command = "Create new documentation"
+location = "docs/"
+naming = "<PURPOSE>_<TYPE>.md (e.g., API_SPECIFICATION.md)"
+note = "Only README.md stays in root, all other docs go to docs/"
+
+[ai_agent_instructions.root_cleanup_rules]
+# Rules for keeping root clean
+max_root_python_files = 10  # Alert if too many user commands
+max_root_docs = 1  # Only README.md
+require_docs_folder_usage = true
+require_config_folder_usage = true
+
+[ai_agent_instructions.forbidden_actions]
+# Actions AI agents should never take
+never_create = [
+    "tests/unit/",
+    "tests/integration/", 
+    "src/",
+    "data/",
+    "tools/scripts/"
+]
+
+never_move = [
+    "index.faiss",
+    "meta.sqlite",
+    "cli.py",
+    "README.md"
+]
+
+never_put_in_root = [
+    "PROJECT_STRUCTURE.md",
+    "AI_AGENT_RULES.md", 
+    "API_SPECIFICATION.md",
+    "BUILD_LOG.md",
+    "project_structure.toml"
+]
+
+[validation]
+# Validation rules for project structure
+max_root_files = 15  # Alert if root gets too cluttered
+require_flat_tests = true
+require_flat_tools = true
+require_docs_organization = true
+require_config_organization = true
+enforce_naming_conventions = true
+
+[path_patterns]
+# Standard path patterns for code references
+test_files = "tests/*.py"
+tool_files = "tools/*.py"
+core_modules = "core/*.py"
+user_commands = "*.py"  # (in root)
+protected_data = ["index.faiss", "meta.sqlite"]
+documentation = "docs/*.md"
+configuration = "config/*.toml"
+
+[clean_root_strategy]
+# Strategy for maintaining a clean root directory
+essential_only = true
+user_facing_commands_only = true
+single_readme_only = true
+move_docs_to_docs_folder = true
+move_configs_to_config_folder = true

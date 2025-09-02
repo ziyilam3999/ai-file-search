@@ -10,17 +10,23 @@ This script performs comprehensive testing of the AI file search system to ensur
 - Performance benchmarks
 
 Usage:
-    python test_regression.py
-    python test_regression.py --verbose
-    python test_regression.py --quick (skip performance tests)
+    python tests/test_regression.py
+    python tests/test_regression.py --verbose
+    python tests/test_regression.py --quick (skip performance tests)
 """
 
 import argparse
 import json
+import os
 import sqlite3
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
+# Add the project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 import faiss
 from loguru import logger
@@ -94,7 +100,7 @@ class RegressionTester:
 
         missing_files = []
         for file_path in required_files:
-            if not Path(file_path).exists():
+            if not (project_root / file_path).exists():
                 missing_files.append(file_path)
 
         if missing_files:
@@ -103,14 +109,14 @@ class RegressionTester:
 
         # Test database integrity
         try:
-            conn = sqlite3.connect("meta.sqlite")
+            conn = sqlite3.connect(project_root / "meta.sqlite")
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM meta")
             db_count = cursor.fetchone()[0]
             conn.close()
 
             # Test FAISS index
-            index = faiss.read_index("index.faiss")
+            index = faiss.read_index(str(project_root / "index.faiss"))
             faiss_count = index.ntotal
 
             if db_count == 0 or faiss_count == 0:
@@ -276,7 +282,10 @@ class RegressionTester:
                 if citations and isinstance(citations, list):
                     for citation in citations:
                         file_path = citation.get("file", "")
-                        if not file_path or not Path(f"extracts/{file_path}").exists():
+                        if (
+                            not file_path
+                            or not (project_root / f"extracts/{file_path}").exists()
+                        ):
                             test_result["correct_files"] = False
                             break
 
@@ -485,8 +494,14 @@ class RegressionTester:
             return False
 
     def save_test_results(self):
-        """Save test results to a JSON file."""
-        results_file = f"test_results_{int(time.time())}.json"
+        """Save test results to a JSON file in the test_regression_results folder."""
+        # Create the results directory if it doesn't exist
+        results_dir = project_root / "test_regression_results"
+        results_dir.mkdir(exist_ok=True)
+
+        # Create the filename with timestamp
+        results_file = results_dir / f"test_results_{int(time.time())}.json"
+
         try:
             with open(results_file, "w") as f:
                 json.dump(self.results, f, indent=2)

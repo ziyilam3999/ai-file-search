@@ -187,25 +187,13 @@ class EmbeddingAdapter:
             # Get current index
             index = self.embedder._get_index()
 
-            # Save to disk with backup
-            backup_path = f"index_backup_{int(time.time())}.faiss"
-            if os.path.exists("index.faiss"):
-                import shutil
-
-                shutil.copy2("index.faiss", backup_path)
-                logger.debug(f"Created backup: {backup_path}")
-
+            # Save to disk (backup is handled separately by _backup_index)
             faiss.write_index(index, "index.faiss")
             logger.info("Index successfully saved to disk")
 
-            # Clean up old backups (keep only last 3)
-            self._cleanup_old_backups()
-
             return True
-
         except Exception as e:
             logger.error(f"Error saving index: {e}")
-            self._stats["operations_failed"] += 1
             return False
 
     def clear_index(self) -> bool:

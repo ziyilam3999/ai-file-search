@@ -5,7 +5,11 @@ This implements Option 1: Watch only sample_docs, index only extracts
 """
 
 import shutil
+import sys
 from pathlib import Path
+
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.extract import Extractor
 
@@ -103,7 +107,7 @@ def extract_all_files():
         print(f"\n🚀 NEXT STEPS TO REACH 100% COVERAGE:")
         print(f"   1. Restart watcher: python smart_watcher.py restart")
         print(f"   2. Wait 10-30 seconds for processing")
-        print(f"   3. Check coverage: python monitor_file_processing.py")
+        print(f"   3. Check coverage: python tools/monitor_file_processing.py")
         print(f"   4. Expected result: ~100% coverage (was 73.7%)")
         print(f"   5. No more duplicates!")
         print(
@@ -199,4 +203,4 @@ if __name__ == "__main__":
 
     print(f"\n🎉 OPTION 1 READY TO TEST!")
     print(f"   Run: python smart_watcher.py restart")
-    print(f"   Then: python monitor_file_processing.py")
+    print(f"   Then: python tools/monitor_file_processing.py")

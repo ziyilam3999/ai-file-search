@@ -99,27 +99,28 @@ class Embedder:
                     with open(file, "r", encoding="utf-8") as f:
                         text = f.read()
 
-                    if len(text.strip()) < 10:  # Skip very short files
-                        logger.debug(f"Skipping short file: {file}")
+                    if not text.strip():
                         continue
 
+                    # Get relative path from extracts
+                    rel_path = str(file.relative_to(extracts_path)).replace("\\", "/")
+
+                    # Map back to original file in sample_docs for citation
+                    original_file_path = self._map_to_original_file(rel_path)
+
+                    # Split into chunks
                     chunks = self._chunk_text(text)
                     file_count += 1
 
-                    # Track chunk position within THIS document
-                    doc_chunk_index = 1
-
-                    relative_path = file.relative_to(extracts_path)
-
-                    for chunk in chunks:
+                    # Track progress
+                    for doc_chunk_id, chunk in enumerate(chunks, 1):
                         all_chunks.append(chunk)
+                        # Store original file path for citations
                         chunk_metadata.append(
-                            (chunk_id, str(relative_path), chunk, doc_chunk_index)
+                            (chunk_id, original_file_path, chunk, doc_chunk_id)
                         )
                         chunk_id += 1
-                        doc_chunk_index += 1
 
-                    # Progress logging every 5 files
                     if file_count % 5 == 0:
                         logger.info(
                             f"PROGRESS: {file_count} files processed, {len(all_chunks)} chunks created"
@@ -255,3 +256,43 @@ class Embedder:
             chunks.append(chunk)
             start += CHUNK_SIZE - CHUNK_OVERLAP
         return chunks
+
+    def _map_to_original_file(self, extracts_rel_path: str) -> str:
+        """Map extracted file path back to original file in sample_docs.
+
+        Args:
+            extracts_rel_path: Relative path from extracts/ (e.g., 'business_rules/file.txt')
+
+        Returns:
+            Original file path in sample_docs (e.g., 'sample_docs/business_rules/file.pdf')
+        """
+        from pathlib import Path
+
+        # Parse the extracts path
+        path_parts = extracts_rel_path.split("/")
+        if len(path_parts) < 2:
+            # Root level file, return as-is with sample_docs prefix
+            return f"sample_docs/{extracts_rel_path}"
+
+        category = path_parts[0]  # e.g., 'business_rules'
+        filename_txt = path_parts[-1]  # e.g., 'file.txt'
+
+        # Remove .txt extension to get base name
+        if filename_txt.endswith(".txt"):
+            base_name = filename_txt[:-4]
+        elif filename_txt.endswith(".md"):
+            base_name = filename_txt[:-3]
+        else:
+            base_name = filename_txt
+
+        # Check what original file exists in sample_docs
+        sample_docs_category = Path(f"sample_docs/{category}")
+        if sample_docs_category.exists():
+            # Look for PDF first, then DOCX, then TXT, then MD
+            for ext in [".pdf", ".docx", ".txt", ".md"]:
+                original_file = sample_docs_category / f"{base_name}{ext}"
+                if original_file.exists():
+                    return str(original_file).replace("\\", "/")
+
+        # Fallback: return the extracts path with sample_docs prefix
+        return f"sample_docs/{extracts_rel_path}"

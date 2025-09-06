@@ -5,6 +5,7 @@ Outputs : index.faiss  +  meta.sqlite
 """
 
 from pathlib import Path
+from typing import Optional
 
 from .config import EMBEDDING_CONFIG
 
@@ -107,6 +108,10 @@ class Embedder:
 
                     # Map back to original file in sample_docs for citation
                     original_file_path = self._map_to_original_file(rel_path)
+
+                    # Skip files that don't have original counterparts
+                    if original_file_path is None:
+                        continue
 
                     # Split into chunks
                     chunks = self._chunk_text(text)
@@ -257,7 +262,7 @@ class Embedder:
             start += CHUNK_SIZE - CHUNK_OVERLAP
         return chunks
 
-    def _map_to_original_file(self, extracts_rel_path: str) -> str:
+    def _map_to_original_file(self, extracts_rel_path: str) -> Optional[str]:
         """Map extracted file path back to original file in sample_docs.
 
         Args:
@@ -265,14 +270,20 @@ class Embedder:
 
         Returns:
             Original file path in sample_docs (e.g., 'sample_docs/business_rules/file.pdf')
+            Returns None if no original file exists.
         """
         from pathlib import Path
 
         # Parse the extracts path
         path_parts = extracts_rel_path.split("/")
         if len(path_parts) < 2:
-            # Root level file, return as-is with sample_docs prefix
-            return f"sample_docs/{extracts_rel_path}"
+            # Root level file - check if original exists before mapping
+            potential_original = f"sample_docs/{extracts_rel_path}"
+            if Path(potential_original).exists():
+                return potential_original
+            else:
+                # Skip files that don't have originals (like extracted README.txt)
+                return None
 
         category = path_parts[0]  # e.g., 'business_rules'
         filename_txt = path_parts[-1]  # e.g., 'file.txt'
@@ -294,5 +305,5 @@ class Embedder:
                 if original_file.exists():
                     return str(original_file).replace("\\", "/")
 
-        # Fallback: return the extracts path with sample_docs prefix
-        return f"sample_docs/{extracts_rel_path}"
+        # No original file found - return None to skip indexing this file
+        return None

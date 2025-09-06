@@ -100,7 +100,7 @@ def test_core_functionality():
 
         # Check citation files exist
         for citation in citations:
-            file_path = f"extracts/{citation.get('file', '')}"
+            file_path = citation.get("file", "")
             if not Path(file_path).exists():
                 print(f"❌ Citation file doesn't exist: {file_path}")
                 return False

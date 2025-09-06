@@ -377,6 +377,7 @@ def _map_to_original_file(self, extracts_rel_path: str) -> str:
     # Logic to find PDF/DOCX originals for TXT extracts
     # Returns: sample_docs/category/filename.pdf
 ```
+
 🔧 Index Rebuild Process
 Steps Executed:
 

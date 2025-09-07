@@ -88,13 +88,13 @@ class Embedder:
 
                 chunks = self._chunk_text(content)
                 if chunks:
-                    # CRITICAL FIX: Map back to original file in ai-docs for citation
+                    # CRITICAL FIX: Map back to original file in ai_search_docs for citation
                     original_file_path = self._map_to_original_file(rel_path)
 
                     # ONLY index if we have a valid original file mapping
                     if original_file_path is None:
                         logger.warning(
-                            f"SKIPPING: {rel_path} - no original file found in ai-docs"
+                            f"SKIPPING: {rel_path} - no original file found in ai_search_docs"
                         )
                         continue
 
@@ -251,16 +251,16 @@ class Embedder:
         return chunks
 
     def _map_to_original_file(self, extracts_rel_path: str) -> Optional[str]:
-        """Map extracted file path back to original file in ai-docs with robust Unicode handling.
+        """Map extracted file path back to original file in ai_search_docs with robust Unicode handling.
 
-        CRITICAL: This function MUST return ai-docs/ paths for correct citations.
+        CRITICAL: This function MUST return ai_search_docs/ paths for correct citations.
         NEVER return extracts/ paths in citations.
 
         Args:
             extracts_rel_path: Relative path from extracts/ (e.g., 'business_rules/file.txt')
 
         Returns:
-            Original file path in ai-docs (e.g., 'ai-docs/business_rules/file.pdf')
+            Original file path in ai_search_docs (e.g., 'ai_search_docs/business_rules/file.pdf')
             Returns None if no original file exists - this will SKIP indexing the file.
         """
 
@@ -320,7 +320,7 @@ class Embedder:
         path_parts = extracts_rel_path.split("/")
         if len(path_parts) < 2:
             # Single file at root level
-            potential_original = f"ai-docs/{extracts_rel_path}"
+            potential_original = f"ai_search_docs/{extracts_rel_path}"
             return potential_original if Path(potential_original).exists() else None
 
         category = path_parts[0]  # e.g., 'business_rules'
@@ -334,10 +334,12 @@ class Embedder:
         logger.info(f"  Original filename: '{filename_txt}'")
         logger.info(f"  Normalized base: '{base_name}'")
 
-        # Check what original file exists in ai-docs
-        ai_docs_category = Path(f"ai-docs/{category}")
+        # Check what original file exists in ai_search_docs
+        ai_docs_category = Path(f"ai_search_docs/{category}")
         if not ai_docs_category.exists():
-            logger.warning(f"CATEGORY MISSING: ai-docs/{category} does not exist")
+            logger.warning(
+                f"CATEGORY MISSING: ai_search_docs/{category} does not exist"
+            )
             return None
 
         # PHASE 1: Try exact matching with normalized names

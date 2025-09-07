@@ -7,7 +7,7 @@ logs/
 test_regression_results/
 
 # Test documents and sample files
-ai-docs/
+ai_search_docs/
 
 # Generated index and database files
 index.faiss

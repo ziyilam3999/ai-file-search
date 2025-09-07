@@ -7,14 +7,16 @@ Zero-configuration smart document search system with automatic discovery and rea
 1. **Complete Setup**: `python complete_setup.py`
 2. **Start Watcher**: `python smart_watcher.py start`
 3. **Launch UI**: `python -m streamlit run ui/app.py`
+4. **Search Documents**: `python cli.py "your search query"`
 
 ## Key Features
 
 - **Zero Configuration**: Auto-discovers document categories
 - **Smart Watcher**: Real-time file monitoring and indexing
-- **Cross-Platform**: Emoji-free codebase for reliable operation
-- **Comprehensive Testing**: 100% test coverage validation
-- **Modern UI**: Streamlit-based search interface
+- **Citation References**: Citations point to user-accessible files in `sample_docs/`
+- **Multi-Format Support**: PDF, DOCX, TXT, and Markdown files
+- **Modern UI**: Streamlit-based search interface with AI-powered answers
+- **Background Processing**: File watcher runs as background service
 
 ## Project Structure
 
@@ -38,86 +40,137 @@ Zero-configuration smart document search system with automatic discovery and rea
 
 ## System Requirements
 
-- Python 3.8+
+- Python 3.12+
 - 4GB+ RAM (for embedding processing)
 - 2GB+ storage (for models and indexes)
 
 ## Installation & Setup
 
-### Option 1: Complete Zero-Config Setup (Recommended)
+### Poetry Installation (Recommended)
 ```bash
+# Install dependencies
+poetry install
+
+# Activate virtual environment
+poetry shell
+
+# Run complete setup
 python complete_setup.py
 ```
-Option 2: Manual Setup
-# Install dependencies
-pip install -r requirements.txt
+Manual Installation
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Download AI model
-python tools/download_model.py
+# Install dependencies from pyproject.toml
+pip install -e .
 
-# Setup auto-discovery
-python setup_auto_discovery.py
+# Run complete setup
+python complete_setup.py
 
-# Start smart watcher
-python smart_watcher.py start
 Usage
-Basic Search
-# Command line search
-python cli.py "your search query"
+File Watcher Control
+python smart_watcher.py start      # Start background file monitoring
+python smart_watcher.py stop       # Stop file monitoring
+python smart_watcher.py status     # Check watcher status
+python smart_watcher.py restart    # Restart watcher
 
-# Web interface
+Document Search
+# Command line search
+python cli.py "machine learning algorithms"
+
+# Interactive web interface
 python -m streamlit run ui/app.py
+
 Document Management
-# See available categories
+# Auto-discover new categories
 python switch_documents.py discover
 
-# Switch to specific category
-python switch_documents.py research_papers
+# View category status
+python switch_documents.py status
 
-# Enable all categories
-python switch_documents.py all
+# Enable specific category
+python switch_documents.py enable research_papers
 
-🧪 Testing & Validation
-Comprehensive Test Suite
-# Quick smoke testing (5 tests, ~3 minutes)
+Index Management
+# Rebuild search index
+python -c "from core.embedding import Embedder; Embedder().build_index()"
+
+# Quick system test
 python tests/test_quick.py
 
-# Full regression testing (6 categories, ~7 minutes)
+Document Organization
+The system automatically organizes documents in this structure:
+sample_docs/               # Your documents (user-maintainable)
+├── business_rules/
+├── meeting_notes/
+├── research_papers/
+├── technical_docs/
+└── user_manuals/
+
+extracts/                  # Processed text (auto-generated)
+├── business_rules/
+└── ...
+
+index.faiss               # Search index
+meta.sqlite              # Document metadata
+
+Testing & Validation
+Quick Testing
+# Comprehensive smoke test (5 tests, ~3 minutes)
+python tests/test_quick.py
+
+# Test specific components
+python tests/test_embedding.py
+python tests/test_extract.py
+python tests/test_ask.py
+
+Performance Testing
+# Full regression testing
 python tests/test_regression.py --verbose
 
 # Performance benchmarking
-python tests/test_regression.py --performance-only
+python tests/bench_phi3_performance.py
 
-🎉 ALL TESTS PASSED! (6/6) ⏱️ Total execution time: 411.8 seconds 📊 Citation accuracy: 6/6 queries with authentic citations 🔍 Relevance filtering: 11/11 queries correctly classified
+# Monitor live performance
+python tools/live_monitor.py
 
 Development Tools
 # Validate project structure
 python tools/validate_structure.py --scan
 
-# Debug database
+# Debug database contents
 python tools/debug_db.py
 
-# Monitor performance
-python tools/live_monitor.py
+# Check embedding format compliance
+python tools/validate_embedder_format.py
+
+# Monitor file processing
+python tools/monitor_file_processing.py
+
+Architecture
+Core Processing: core - Embedding, extraction, and LLM modules
+File Watching: watch.py - Real-time file monitoring
+User Interface: ui - Streamlit-based web interface
+CLI Interface: cli.py - Command-line search tool
+Configuration: prompts - System prompts and configuration
+Citation System
+The system maintains a clean citation architecture:
+
+User Documents: Store files in sample_docs/category/
+Processing: System extracts text to extracts/category/
+Search: Index built from extracted content
+Citations: Results reference original files in sample_docs
+This ensures users can always access and modify their original documents.
+
+AI Model
+Embedding Model: all-MiniLM-L6-v2 (384-dimensional vectors)
+Language Model: Phi-3-mini-4k-instruct (4K context, quantized)
+Search Engine: FAISS with L2 distance indexing
+Database: SQLite for metadata storage
 Contributing
 Read PROJECT_STRUCTURE.md for file organization
 Follow CODE_STYLE_GUIDELINES.md for development
 Use AI_AGENT_RULES.md for AI-assisted development
-Validate structure: python [validate_structure.py](http://_vscodecontentref_/29) --guidance
-
-These are all the files that need updates. Each file now:
-
-1. **Enforces clean root directory** - only essential files in root
-2. **Uses proper organized paths** - docs/, config/, tests/, tools/
-3. **Provides clear guidance** for AI agents
-4. **Maintains consistency** across all documentation
-5. **Includes validation tools** to enforce the structure
-
-The structure now clearly separates:
-- **Root**: Essential user commands + main README + critical data
-- **docs/**: All documentation 
-- **config/**: All configuration files
-- **tests/**: All test files
-- **tools/**: All development utilities
-
-This creates a much cleaner and more professional project structure! 🎉
+Validate structure: python [validate_structure.py](http://_vscodecontentref_/12) --guidance
+Run tests: python tests/test_quick.py before committing

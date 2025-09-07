@@ -1,124 +1,106 @@
-"""CORE: core/embedding.py
-Purpose : Chunk plain text, convert to embeddings, save to FAISS.
-Inputs  : extracts/<file>.txt
-Outputs : index.faiss  +  meta.sqlite
+"""CORE: embedding.py
+Purpose : Generate and search embeddings for document chunks using FAISS.
+Inputs  : text chunks from extracted documents
+Outputs : FAISS index, SQLite metadata, search results
+Uses    : sentence-transformers/all-MiniLM-L6-v2, FAISS, SQLite
 """
 
+import sqlite3
+import time
+import unicodedata
+from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Tuple
 
-from .config import EMBEDDING_CONFIG
+import faiss
+import numpy as np
+from loguru import logger
+from sentence_transformers import SentenceTransformer
 
-# Get chunk settings from config (single source of truth)
-CHUNK_SIZE = EMBEDDING_CONFIG["chunk_size"]
-CHUNK_OVERLAP = EMBEDDING_CONFIG["chunk_overlap"]
+# Configuration
+CHUNK_SIZE = 200  # words per chunk
+CHUNK_OVERLAP = 50  # word overlap between chunks
 
 
 class Embedder:
-    """Optimized embedder with cached model and connection."""
+    """Handles document embedding and similarity search using FAISS."""
 
     def __init__(self):
-        self._model = None
-        self._index = None
-        self._conn = None
+        self.model_name = "all-MiniLM-L6-v2"
+        self.index_path = "index.faiss"
+        self.db_path = "meta.sqlite"
 
-    def _get_model(self):
-        """Lazy load and cache the model."""
-        if self._model is None:
-            from sentence_transformers import SentenceTransformer
+    def build_index(self, extracts_dir: str = "extracts") -> None:
+        """
+        Build FAISS index from all extracted text files.
 
-            self._model = SentenceTransformer("all-MiniLM-L6-v2")
-        return self._model
+        Args:
+            extracts_dir: Directory containing extracted text files
 
-    def _get_index(self):
-        """Lazy load and cache the FAISS index."""
-        if self._index is None:
-            import faiss
+        Side Effects:
+            - Creates index.faiss file
+            - Creates meta.sqlite database with file metadata
+        """
+        logger.info("BUILDING: document embeddings index...")
+        start_time = time.time()
 
-            self._index = faiss.read_index("index.faiss")
-        return self._index
+        # Initialize model
+        logger.info("LOADING: sentence transformer model...")
+        model = SentenceTransformer(self.model_name)
+        logger.success("SUCCESS: model loaded")
 
-    def _get_connection(self):
-        """Lazy load and cache the database connection."""
-        if self._conn is None:
-            import sqlite3
+        # Initialize FAISS index
+        index = faiss.IndexFlatL2(384)  # all-MiniLM-L6-v2 has 384 dimensions
 
-            self._conn = sqlite3.connect("meta.sqlite")
-        return self._conn
-
-    def build_index(self, extracts_path=Path("extracts")):
-        """Build FAISS index with maximum performance optimizations."""
-        import sqlite3
-        import time
-
-        import faiss
-        import numpy as np
-        from loguru import logger
-        from sentence_transformers import SentenceTransformer
-
-        # Start timing the entire process
-        total_start_time = time.time()
-        logger.info("STARTING: FAISS index build process...")
-
-        # Model loading phase
-        model_start_time = time.time()
-        logger.info("LOADING: lightweight model...")
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-        model.max_seq_length = 96
-        model_load_time = time.time() - model_start_time
-        logger.success(f"SUCCESS: Model loaded in {model_load_time:.2f} seconds")
-
-        # Database setup phase
-        db_start_time = time.time()
-        index = faiss.IndexFlatL2(384)
-        conn = sqlite3.connect("meta.sqlite")
+        # Initialize database
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        # Drop and recreate table to ensure correct schema
-        cursor.execute("DROP TABLE IF EXISTS meta")
         cursor.execute(
-            "CREATE TABLE meta "
-            "(id INTEGER PRIMARY KEY, file TEXT, chunk TEXT, doc_chunk_id INTEGER)"
+            """
+            CREATE TABLE IF NOT EXISTS meta (
+                id INTEGER PRIMARY KEY,
+                file TEXT,
+                chunk TEXT,
+                doc_chunk_id INTEGER
+            )
+        """
         )
-        cursor.execute("DELETE FROM meta")
-        db_setup_time = time.time() - db_start_time
-        logger.info(f"DATABASE: setup completed in {db_setup_time:.3f}s")
 
-        # Text processing phase
-        chunk_start_time = time.time()
+        # Process all text files
         all_chunks = []
         chunk_metadata = []
-        chunk_id = 1
-        file_count = 0
+        chunk_id = 0
 
-        logger.info("PROCESSING: files and creating chunks...")
+        extracts_path = Path(extracts_dir)
+        if not extracts_path.exists():
+            logger.error(f"ERROR: {extracts_dir} directory not found")
+            return
 
-        # Process all text files in extracts directory (PDF/DOCX already converted to TXT)
-        supported_extensions = ["*.txt", "*.md"]
-        for extension in supported_extensions:
-            for file in extracts_path.glob(f"**/{extension}"):
-                try:
-                    with open(file, "r", encoding="utf-8") as f:
-                        text = f.read()
+        # Walk through all text files in extracts directory
+        for file_path in extracts_path.rglob("*.txt"):
+            logger.info(f"PROCESSING: {file_path}")
+            # CRITICAL FIX: Ensure forward slashes for cross-platform compatibility
+            rel_path = str(file_path.relative_to(extracts_path)).replace("\\", "/")
 
-                    if not text.strip():
-                        continue
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
 
-                    # Get relative path from extracts
-                    rel_path = str(file.relative_to(extracts_path)).replace("\\", "/")
-
-                    # Map back to original file in sample_docs for citation
+                chunks = self._chunk_text(content)
+                if chunks:
+                    # CRITICAL FIX: Map back to original file in sample_docs for citation
                     original_file_path = self._map_to_original_file(rel_path)
 
-                    # Skip files that don't have original counterparts
+                    # ONLY index if we have a valid original file mapping
                     if original_file_path is None:
+                        logger.warning(
+                            f"SKIPPING: {rel_path} - no original file found in sample_docs"
+                        )
                         continue
 
-                    # Split into chunks
-                    chunks = self._chunk_text(text)
-                    file_count += 1
+                    logger.success(f"MAPPING: {rel_path} → {original_file_path}")
 
-                    # Track progress
-                    for doc_chunk_id, chunk in enumerate(chunks, 1):
+                    for doc_chunk_id, chunk in enumerate(chunks):
                         all_chunks.append(chunk)
                         # Store original file path for citations
                         chunk_metadata.append(
@@ -126,27 +108,20 @@ class Embedder:
                         )
                         chunk_id += 1
 
-                    if file_count % 5 == 0:
-                        logger.info(
-                            f"PROGRESS: {file_count} files processed, {len(all_chunks)} chunks created"
-                        )
+                    logger.info(f"ADDED: {len(chunks)} chunks from {rel_path}")
 
-                except Exception as e:
-                    logger.error(f"Error processing file {file}: {e}")
-                    continue
-
-        chunk_time = time.time() - chunk_start_time
-        logger.success(
-            f"SUCCESS: {len(all_chunks)} chunks from {file_count} files in {chunk_time:.2f}s"
-        )
+            except Exception as e:
+                logger.error(f"ERROR: processing {file_path}: {e}")
 
         if not all_chunks:
-            logger.error("ERROR: No chunks created - no files to index")
+            logger.error("ERROR: No chunks found to index")
             return
 
-        # Embedding generation phase
-        embed_start_time = time.time()
+        logger.info(f"TOTAL: {len(all_chunks)} chunks to embed")
+
+        # Generate embeddings in batches
         logger.info("GENERATING: embeddings...")
+        embed_start_time = time.time()
 
         # Process in batches for better memory management
         batch_size = 100
@@ -198,81 +173,149 @@ class Embedder:
         logger.success(f"SUCCESS: Index saved in {save_time:.3f}s")
 
         # Final statistics
-        total_time = time.time() - total_start_time
-        logger.success(f"INDEX BUILD COMPLETE: {total_time:.2f}s total")
-        logger.info(
-            f"STATS: {file_count} files, {len(all_chunks)} chunks, {len(embeddings)} embeddings"
+        total_time = time.time() - start_time
+        logger.success(
+            f"COMPLETE: Index built in {total_time:.2f}s total ({len(all_chunks)} chunks)"
         )
 
-        # Store the built index
-        self._index = index
+    def query(self, query_text: str, k: int = 5) -> List[Tuple]:
+        """
+        Search for similar chunks using the FAISS index.
 
-    def query(self, query: str, k: int = 5):
-        """Optimized query with cached model and batch database access.
+        Args:
+            query_text: Search query
+            k: Number of top results to return
+
+        Returns:
+            List of tuples: (chunk_text, file_path, chunk_id, doc_chunk_id, similarity_score)
 
         CRITICAL: This method MUST return 5-tuple format (chunk_text, file_path, chunk_id, doc_chunk_id, score)
-        for UI compatibility and test suite validation. See docs/EMBEDDER_API_SPECIFICATION.md
-        for complete format requirements and troubleshooting guide.
+        for compatibility with ask.py citation generation.
         """
-        import numpy as np
+        if not Path(self.index_path).exists() or not Path(self.db_path).exists():
+            logger.error("ERROR: Index or database not found. Run build_index() first.")
+            return []
 
-        # Use cached model and index (no reloading!)
-        model = self._get_model()
-        index = self._get_index()
-        conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            # Load model and index
+            model = SentenceTransformer(self.model_name)
+            index = faiss.read_index(self.index_path)
 
-        # Encode query (fast with cached model)
-        embedding = model.encode(query, convert_to_numpy=True)
-        distances, indices = index.search(np.array([embedding], dtype=np.float32), k)
+            # Generate query embedding
+            query_embedding = model.encode(
+                [query_text], convert_to_numpy=True, normalize_embeddings=True
+            )
 
-        # Batch database query for better performance
-        target_ids = [int(i + 1) for i in indices[0]]
-        placeholders = ",".join("?" for _ in target_ids)
-        sql_query = f"SELECT id, file, chunk, doc_chunk_id FROM meta WHERE id IN ({placeholders})"
-        cursor.execute(sql_query, target_ids)
-        rows = cursor.fetchall()
+            # Search
+            scores, indices = index.search(query_embedding.astype(np.float32), k)
 
-        # Create id->row mapping with document chunk info
-        id_to_row = {
-            row[0]: (row[1], row[2], row[3]) for row in rows
-        }  # file, chunk, doc_chunk_id
+            # Get metadata from database
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, file, chunk, doc_chunk_id FROM meta")
+            metadata = cursor.fetchall()
+            conn.close()
 
-        # Return results in 5-tuple format: (chunk_text, file_path, chunk_id, doc_chunk_id, score)
-        results = []
-        for i, target_id in enumerate(target_ids):
-            if target_id in id_to_row:
-                file_path, chunk_text, doc_chunk_id = id_to_row[target_id]
-                score = float(distances[0][i])
-                results.append((chunk_text, file_path, target_id, doc_chunk_id, score))
-            else:
-                results.append((None, None, target_id, 1, float("inf")))
+            # Create lookup dictionary
+            id_to_row = {row[0]: (row[1], row[2], row[3]) for row in metadata}
 
-        return results
+            results = []
+            # Return results in 5-tuple format: (chunk_text, file_path, chunk_id, doc_chunk_id, score)
+            for score, idx in zip(scores[0], indices[0]):
+                if idx < len(metadata):
+                    target_id = idx
+                    file_path, chunk_text, doc_chunk_id = id_to_row[target_id]
+                    # 5-tuple format required by ask.py
+                    results.append(
+                        (chunk_text, file_path, target_id, doc_chunk_id, score)
+                    )
 
-    def _chunk_text(self, text):
-        """Split text into overlapping chunks of CHUNK_SIZE tokens."""
+            return results
+
+        except Exception as e:
+            logger.error(f"ERROR: Query failed: {e}")
+            return []
+
+    def _chunk_text(self, text: str) -> List[str]:
+        """Split text into overlapping chunks by word count."""
         words = text.split()
+        if len(words) <= CHUNK_SIZE:
+            return [text] if text.strip() else []
+
         chunks = []
         start = 0
         while start < len(words):
-            end = start + CHUNK_SIZE
+            end = min(start + CHUNK_SIZE, len(words))
             chunk = " ".join(words[start:end])
             chunks.append(chunk)
             start += CHUNK_SIZE - CHUNK_OVERLAP
         return chunks
 
     def _map_to_original_file(self, extracts_rel_path: str) -> Optional[str]:
-        """Map extracted file path back to original file in sample_docs.
+        """Map extracted file path back to original file in sample_docs with robust Unicode handling.
+
+        CRITICAL: This function MUST return sample_docs/ paths for correct citations.
+        NEVER return extracts/ paths in citations.
 
         Args:
             extracts_rel_path: Relative path from extracts/ (e.g., 'business_rules/file.txt')
 
         Returns:
             Original file path in sample_docs (e.g., 'sample_docs/business_rules/file.pdf')
-            Returns None if no original file exists.
+            Returns None if no original file exists - this will SKIP indexing the file.
         """
-        from pathlib import Path
+
+        def normalize_filename(name: str) -> str:
+            """Normalize filename for robust comparison by handling Unicode and extensions."""
+            # Remove common extensions
+            if name.endswith((".txt", ".pdf", ".docx", ".md")):
+                name = name.rsplit(".", 1)[0]
+
+            # Normalize Unicode characters (NFKC handles compatibility characters)
+            normalized = unicodedata.normalize("NFKC", name)
+
+            # Strip whitespace and normalize internal spaces
+            return " ".join(normalized.split())
+
+        def fuzzy_match_file(
+            base_name: str, directory: Path, threshold: float = 0.85
+        ) -> Optional[Path]:
+            """Find best matching file using fuzzy string matching."""
+            if not directory.exists():
+                return None
+
+            best_match = None
+            best_score = threshold
+            normalized_base = normalize_filename(base_name)
+
+            logger.info(f"FUZZY SEARCH: Looking for '{normalized_base}' in {directory}")
+
+            for file_path in directory.iterdir():
+                if file_path.is_file():
+                    normalized_file = normalize_filename(file_path.stem)
+
+                    # Calculate similarity ratio
+                    similarity = SequenceMatcher(
+                        None, normalized_base, normalized_file
+                    ).ratio()
+
+                    logger.debug(
+                        f"COMPARE: '{normalized_base}' vs '{normalized_file}' = {similarity:.3f}"
+                    )
+
+                    if similarity > best_score:
+                        best_match = file_path
+                        best_score = similarity
+                        logger.info(
+                            f"NEW BEST: {file_path.name} (score: {similarity:.3f})"
+                        )
+
+            if best_match:
+                logger.success(
+                    f"FUZZY MATCH: '{base_name}' → '{best_match.name}' (score: {best_score:.3f})"
+                )
+
+            return best_match
 
         # Parse the extracts path
         path_parts = extracts_rel_path.split("/")
@@ -288,22 +331,68 @@ class Embedder:
         category = path_parts[0]  # e.g., 'business_rules'
         filename_txt = path_parts[-1]  # e.g., 'file.txt'
 
-        # Remove .txt extension to get base name
-        if filename_txt.endswith(".txt"):
-            base_name = filename_txt[:-4]
-        elif filename_txt.endswith(".md"):
-            base_name = filename_txt[:-3]
-        else:
-            base_name = filename_txt
+        # Normalize the filename for robust matching
+        base_name = normalize_filename(filename_txt)
+
+        logger.info(f"MAPPING: {extracts_rel_path}")
+        logger.info(f"  Category: {category}")
+        logger.info(f"  Original filename: '{filename_txt}'")
+        logger.info(f"  Normalized base: '{base_name}'")
 
         # Check what original file exists in sample_docs
         sample_docs_category = Path(f"sample_docs/{category}")
-        if sample_docs_category.exists():
-            # Look for PDF first, then DOCX, then TXT, then MD
-            for ext in [".pdf", ".docx", ".txt", ".md"]:
-                original_file = sample_docs_category / f"{base_name}{ext}"
-                if original_file.exists():
-                    return str(original_file).replace("\\", "/")
+        if not sample_docs_category.exists():
+            logger.warning(f"CATEGORY MISSING: sample_docs/{category} does not exist")
+            return None
+
+        # PHASE 1: Try exact matching with normalized names
+        logger.info("PHASE 1: Exact matching with extensions")
+        for ext in [".pdf", ".docx", ".txt", ".md"]:
+            # Try with normalized base name
+            test_filename = f"{base_name}{ext}"
+            original_file = sample_docs_category / test_filename
+
+            logger.debug(f"  Testing exact: {test_filename}")
+
+            if original_file.exists():
+                result_path = str(original_file).replace("\\", "/")
+                logger.success(f"EXACT MATCH: {extracts_rel_path} → {result_path}")
+                return result_path
+
+        # PHASE 2: Try fuzzy matching as fallback
+        logger.info("PHASE 2: Fuzzy matching fallback")
+        matched_file = fuzzy_match_file(base_name, sample_docs_category)
+
+        if matched_file:
+            result_path = str(matched_file).replace("\\", "/")
+            logger.success(f"FUZZY SUCCESS: {extracts_rel_path} → {result_path}")
+            return result_path
+
+        # PHASE 3: Last resort - try original filename without normalization
+        logger.info("PHASE 3: Last resort with original filename")
+        original_base = (
+            filename_txt[:-4]
+            if filename_txt.endswith(".txt")
+            else filename_txt[:-3] if filename_txt.endswith(".md") else filename_txt
+        )
+
+        for ext in [".pdf", ".docx", ".txt", ".md"]:
+            test_filename = f"{original_base}{ext}"
+            original_file = sample_docs_category / test_filename
+
+            if original_file.exists():
+                result_path = str(original_file).replace("\\", "/")
+                logger.success(f"ORIGINAL MATCH: {extracts_rel_path} → {result_path}")
+                return result_path
 
         # No original file found - return None to skip indexing this file
+        logger.error(
+            f"NO MATCH FOUND: {extracts_rel_path} - will be SKIPPED from indexing"
+        )
+        logger.info(f"  Available files in {sample_docs_category}:")
+        if sample_docs_category.exists():
+            for file in sample_docs_category.iterdir():
+                if file.is_file():
+                    logger.info(f"    - {file.name}")
+
         return None

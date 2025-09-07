@@ -6,6 +6,9 @@ ai_models/
 logs/
 test_regression_results/
 
+# Test documents and sample files
+sample_docs/
+
 # Generated index and database files
 index.faiss
 meta.sqlite

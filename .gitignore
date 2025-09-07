@@ -7,9 +7,14 @@ logs/
 test_regression_results/
 
 # Test documents and sample files
-sample_docs/
+ai_docs/
 
 # Generated index and database files
 index.faiss
 meta.sqlite
+
+# Backups
+backups/
 index_backup_*.faiss
+
+

@@ -88,13 +88,13 @@ class Embedder:
 
                 chunks = self._chunk_text(content)
                 if chunks:
-                    # CRITICAL FIX: Map back to original file in sample_docs for citation
+                    # CRITICAL FIX: Map back to original file in ai-docs for citation
                     original_file_path = self._map_to_original_file(rel_path)
 
                     # ONLY index if we have a valid original file mapping
                     if original_file_path is None:
                         logger.warning(
-                            f"SKIPPING: {rel_path} - no original file found in sample_docs"
+                            f"SKIPPING: {rel_path} - no original file found in ai-docs"
                         )
                         continue
 
@@ -126,7 +126,6 @@ class Embedder:
         # Process in batches for better memory management
         batch_size = 100
         embeddings = []
-
         for i in range(0, len(all_chunks), batch_size):
             batch_chunks = all_chunks[i : i + batch_size]
             batch_embeddings = model.encode(
@@ -252,16 +251,16 @@ class Embedder:
         return chunks
 
     def _map_to_original_file(self, extracts_rel_path: str) -> Optional[str]:
-        """Map extracted file path back to original file in sample_docs with robust Unicode handling.
+        """Map extracted file path back to original file in ai-docs with robust Unicode handling.
 
-        CRITICAL: This function MUST return sample_docs/ paths for correct citations.
+        CRITICAL: This function MUST return ai-docs/ paths for correct citations.
         NEVER return extracts/ paths in citations.
 
         Args:
             extracts_rel_path: Relative path from extracts/ (e.g., 'business_rules/file.txt')
 
         Returns:
-            Original file path in sample_docs (e.g., 'sample_docs/business_rules/file.pdf')
+            Original file path in ai-docs (e.g., 'ai-docs/business_rules/file.pdf')
             Returns None if no original file exists - this will SKIP indexing the file.
         """
 
@@ -320,13 +319,9 @@ class Embedder:
         # Parse the extracts path
         path_parts = extracts_rel_path.split("/")
         if len(path_parts) < 2:
-            # Root level file - check if original exists before mapping
-            potential_original = f"sample_docs/{extracts_rel_path}"
-            if Path(potential_original).exists():
-                return potential_original
-            else:
-                # Skip files that don't have originals (like extracted README.txt)
-                return None
+            # Single file at root level
+            potential_original = f"ai-docs/{extracts_rel_path}"
+            return potential_original if Path(potential_original).exists() else None
 
         category = path_parts[0]  # e.g., 'business_rules'
         filename_txt = path_parts[-1]  # e.g., 'file.txt'
@@ -339,10 +334,10 @@ class Embedder:
         logger.info(f"  Original filename: '{filename_txt}'")
         logger.info(f"  Normalized base: '{base_name}'")
 
-        # Check what original file exists in sample_docs
-        sample_docs_category = Path(f"sample_docs/{category}")
-        if not sample_docs_category.exists():
-            logger.warning(f"CATEGORY MISSING: sample_docs/{category} does not exist")
+        # Check what original file exists in ai-docs
+        ai_docs_category = Path(f"ai-docs/{category}")
+        if not ai_docs_category.exists():
+            logger.warning(f"CATEGORY MISSING: ai-docs/{category} does not exist")
             return None
 
         # PHASE 1: Try exact matching with normalized names
@@ -350,7 +345,7 @@ class Embedder:
         for ext in [".pdf", ".docx", ".txt", ".md"]:
             # Try with normalized base name
             test_filename = f"{base_name}{ext}"
-            original_file = sample_docs_category / test_filename
+            original_file = ai_docs_category / test_filename
 
             logger.debug(f"  Testing exact: {test_filename}")
 
@@ -361,7 +356,7 @@ class Embedder:
 
         # PHASE 2: Try fuzzy matching as fallback
         logger.info("PHASE 2: Fuzzy matching fallback")
-        matched_file = fuzzy_match_file(base_name, sample_docs_category)
+        matched_file = fuzzy_match_file(base_name, ai_docs_category)
 
         if matched_file:
             result_path = str(matched_file).replace("\\", "/")
@@ -378,7 +373,7 @@ class Embedder:
 
         for ext in [".pdf", ".docx", ".txt", ".md"]:
             test_filename = f"{original_base}{ext}"
-            original_file = sample_docs_category / test_filename
+            original_file = ai_docs_category / test_filename
 
             if original_file.exists():
                 result_path = str(original_file).replace("\\", "/")
@@ -389,9 +384,9 @@ class Embedder:
         logger.error(
             f"NO MATCH FOUND: {extracts_rel_path} - will be SKIPPED from indexing"
         )
-        logger.info(f"  Available files in {sample_docs_category}:")
-        if sample_docs_category.exists():
-            for file in sample_docs_category.iterdir():
+        logger.info(f"  Available files in {ai_docs_category}:")
+        if ai_docs_category.exists():
+            for file in ai_docs_category.iterdir():
                 if file.is_file():
                     logger.info(f"    - {file.name}")
 

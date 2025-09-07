@@ -3,6 +3,8 @@ __pycache__/
 extracts/
 .venv/
 ai_models/
+logs/
+test_regression_results/
 
 # Generated index and database files
 index.faiss

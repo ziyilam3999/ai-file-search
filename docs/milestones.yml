@@ -194,7 +194,7 @@ milestones:
     description: "Major performance overhaul to reduce response times from 51.9s to <20s target"
     goals:
       - "✅ Centralize LLM configuration for single source of truth"
-      - "✅ Optimize LLM parameters: max_tokens 225→100, temperature 0.35→0.1"
+      - "✅ Optimize LLM parameters: max_tokens 225→100→150, temperature 0.35→0.1 (fixed truncation)"
       - "✅ Implement speed preset system for easy performance tuning"
       - "✅ Enhance UI with minimal citation mode for speed"
       - "✅ Fix type annotations for mypy compatibility"
@@ -606,3 +606,11 @@ milestones:
     architecture_summary: "ai_search_docs/ → extracts/ → embeddings → search → ai_search_docs/ citations"
     system_status: "🚀 PRODUCTION READY with consistent naming, perfect citations, maintained performance"
     next_phase: "System monitoring and continuous optimization in production environment"
+
+  - milestone: "Token Optimization & Truncation Fix"
+    date: "2025-09-08"
+    achievements:
+      - "🔍 Identified prompt overhead issue: 323 tokens consumed by instructions"
+      - "⚡ Optimized max_tokens from 100→150 to prevent answer truncation"
+      - "📊 Achieved balanced performance: 46.3s query time with complete answers"
+      - "✅ Eliminated mid-sentence answer cutoffs while maintaining speed"

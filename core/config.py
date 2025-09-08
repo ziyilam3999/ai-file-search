@@ -4,7 +4,7 @@ Single source of truth for all LLM and performance settings
 
 # LLM Generation Settings - OPTIMIZED FOR SPEED (51.9s → <20s target)
 LLM_CONFIG = {
-    "max_tokens": 100,  # Tokens for answer generation (optimized for speed)
+    "max_tokens": 150,  # Tokens for answer generation (optimized for balanced speed + completeness)
     "temperature": 0.1,  # Temperature for deterministic responses (optimized for speed)
     "n_ctx": 1536,  # Context window size (reduced for speed)
     "n_threads": 8,  # CPU threads for inference
@@ -15,7 +15,7 @@ LLM_CONFIG = {
 SPEED_PRESETS = {
     "ultra_fast": {"max_tokens": 50, "temperature": 0.0},  # ~35-40 words, deterministic
     "fast": {
-        "max_tokens": 100,
+        "max_tokens": 150,
         "temperature": 0.1,
     },  # ~75-80 words, mostly deterministic
     "balanced": {

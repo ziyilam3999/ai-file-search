@@ -3,7 +3,7 @@
 Document Category Management for AI File Search
 
 This module manages document categories and configuration for the AI file search system.
-It supports Option 1 Architecture: sample_docs → extracts → index
+It supports Option 1 Architecture: ai_search_docs → extracts → index
 """
 
 import os
@@ -14,13 +14,13 @@ import yaml
 
 
 def get_existing_categories() -> Set[str]:
-    """Get existing category directories from sample_docs."""
-    sample_docs_path = Path("sample_docs")
-    if not sample_docs_path.exists():
+    """Get existing category directories from ai_search_docs."""
+    ai_search_docs_path = Path("ai_search_docs")
+    if not ai_search_docs_path.exists():
         return set()
 
     categories = set()
-    for item in sample_docs_path.iterdir():
+    for item in ai_search_docs_path.iterdir():
         if item.is_dir() and not item.name.startswith("."):
             categories.add(item.name)
 
@@ -28,10 +28,12 @@ def get_existing_categories() -> Set[str]:
 
 
 def create_default_category_config(category_name: str) -> Dict:
-    """Create default configuration for a category (Option 1: sample_docs only)."""
+    """Create default configuration for a category (Option 1: ai_search_docs only)."""
     return {
         "enabled": True,
-        "paths": [f"sample_docs/{category_name}"],  # Only watch sample_docs (Option 1)
+        "paths": [
+            f"ai_search_docs/{category_name}"
+        ],  # Only watch ai_search_docs (Option 1)
     }
 
 
@@ -86,8 +88,8 @@ def sync_config_with_filesystem() -> Dict:
             ],
         }
 
-    # OPTION 1 ARCHITECTURE: Only watch sample_docs
-    config["watch_directories"] = ["sample_docs"]
+    # OPTION 1 ARCHITECTURE: Only watch ai_search_docs
+    config["watch_directories"] = ["ai_search_docs"]
 
     # Save updated configuration
     config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -113,7 +115,7 @@ def get_default_config() -> Dict:
                 "*.bak",
             ],
         },
-        "watch_directories": ["sample_docs"],  # Option 1: Only watch sample_docs
+        "watch_directories": ["ai_search_docs"],  # Option 1: Only watch ai_search_docs
     }
 
 
@@ -121,7 +123,7 @@ def create_category(category_name: str) -> bool:
     """Create a new document category."""
     try:
         # Create directory structure
-        sample_dir = Path("sample_docs") / category_name
+        sample_dir = Path("ai_search_docs") / category_name
         extract_dir = Path("extracts") / category_name
 
         sample_dir.mkdir(parents=True, exist_ok=True)
@@ -131,7 +133,7 @@ def create_category(category_name: str) -> bool:
         sync_config_with_filesystem()
 
         print(f"✅ Category '{category_name}' created successfully")
-        print(f"📁 Add files to: sample_docs/{category_name}/")
+        print(f"📁 Add files to: ai_search_docs/{category_name}/")
         print(f"📁 Extracts will go to: extracts/{category_name}/")
 
         return True

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Debug filename mapping between extracts/ and sample_docs/
+Debug filename mapping between extracts/ and ai_search_docs/
 Helps identify why some files aren't being indexed correctly.
 """
 
@@ -80,12 +80,12 @@ def debug_filename_mapping():
     normalized = normalize_filename(filename_txt)
     print(f"\n✨ Normalized: '{normalized}'")
 
-    # Check what exists in sample_docs
-    sample_docs_dir = Path("sample_docs/business_rules")
-    print(f"\n📁 Files in {sample_docs_dir}:")
+    # Check what exists in ai_search_docs
+    ai_search_docs_dir = Path("ai_search_docs/business_rules")
+    print(f"\n📁 Files in {ai_search_docs_dir}:")
 
-    if sample_docs_dir.exists():
-        for file_path in sample_docs_dir.iterdir():
+    if ai_search_docs_dir.exists():
+        for file_path in ai_search_docs_dir.iterdir():
             if file_path.is_file():
                 normalized_existing = normalize_filename(file_path.stem)
                 print(f"  📄 {file_path.name}")
@@ -97,7 +97,7 @@ def debug_filename_mapping():
 
     # Test fuzzy matching
     print(f"\n🎯 Fuzzy Match Result:")
-    result = fuzzy_match_file(filename_txt, sample_docs_dir)
+    result = fuzzy_match_file(filename_txt, ai_search_docs_dir)
     print(f"  {result}")
 
 
@@ -111,9 +111,9 @@ def test_all_business_rules():
         print("❌ extracts/business_rules directory not found")
         return
 
-    sample_docs_dir = Path("sample_docs/business_rules")
-    if not sample_docs_dir.exists():
-        print("❌ sample_docs/business_rules directory not found")
+    ai_search_docs_dir = Path("ai_search_docs/business_rules")
+    if not ai_search_docs_dir.exists():
+        print("❌ ai_search_docs/business_rules directory not found")
         return
 
     # Test each extract file
@@ -128,7 +128,7 @@ def test_all_business_rules():
         best_match = None
         best_score = 0
 
-        for sample_file in sample_docs_dir.iterdir():
+        for sample_file in ai_search_docs_dir.iterdir():
             if sample_file.is_file():
                 sample_normalized = normalize_filename(sample_file.stem)
                 score = SequenceMatcher(None, normalized, sample_normalized).ratio()
@@ -200,7 +200,7 @@ if __name__ == "__main__":
         # Parse the extracts path
         path_parts = extracts_rel_path.split("/")
         if len(path_parts) < 2:
-            potential_original = f"sample_docs/{extracts_rel_path}"
+            potential_original = f"ai_search_docs/{extracts_rel_path}"
             return (
                 potential_original
                 if Path(potential_original).exists()
@@ -223,14 +223,14 @@ if __name__ == "__main__":
 
         print(f'  Base name: "{base_name}"')
 
-        # Check what original file exists in sample_docs
-        sample_docs_category = Path(f"sample_docs/{category}")
-        print(f"  Checking: {sample_docs_category}")
+        # Check what original file exists in ai_search_docs
+        ai_search_docs_category = Path(f"ai_search_docs/{category}")
+        print(f"  Checking: {ai_search_docs_category}")
 
-        if sample_docs_category.exists():
+        if ai_search_docs_category.exists():
             # Look for PDF first, then DOCX, then TXT, then MD
             for ext in [".pdf", ".docx", ".txt", ".md"]:
-                original_file = sample_docs_category / f"{base_name}{ext}"
+                original_file = ai_search_docs_category / f"{base_name}{ext}"
                 print(
                     f"    Testing: {original_file} | Exists: {original_file.exists()}"
                 )

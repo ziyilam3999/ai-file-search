@@ -19,9 +19,9 @@ def get_file_counts():
     """Get current file counts from filesystem and database"""
     base_path = Path(__file__).parent
 
-    # Count files in sample_docs
-    sample_docs_path = base_path / "sample_docs"
-    sample_count = len([f for f in sample_docs_path.rglob("*") if f.is_file()])
+    # Count files in ai_search_docs
+    ai_search_docs_path = base_path / "ai_search_docs"
+    sample_count = len([f for f in ai_search_docs_path.rglob("*") if f.is_file()])
 
     # Count files in extracts
     extracts_path = base_path / "extracts"
@@ -44,10 +44,10 @@ def get_latest_files():
     """Get the most recently added files"""
     base_path = Path(__file__).parent
 
-    # Latest in sample_docs
-    sample_docs_path = base_path / "sample_docs"
+    # Latest in ai_search_docs
+    ai_search_docs_path = base_path / "ai_search_docs"
     sample_files = [
-        (f, f.stat().st_mtime) for f in sample_docs_path.rglob("*") if f.is_file()
+        (f, f.stat().st_mtime) for f in ai_search_docs_path.rglob("*") if f.is_file()
     ]
     latest_sample = max(sample_files, key=lambda x: x[1]) if sample_files else None
 
@@ -89,7 +89,7 @@ def check_for_misplaced_files():
 def main():
     print("🔍 AI File Search - Live Monitor")
     print("=" * 50)
-    print("💡 Add a PDF to sample_docs/ and watch the magic happen!")
+    print("💡 Add a PDF to ai_search_docs/ and watch the magic happen!")
     print("📋 Press Ctrl+C to stop monitoring\n")
 
     prev_counts = None
@@ -112,7 +112,7 @@ def main():
             print()
 
             print("📊 File Counts:")
-            print(f"   📁 sample_docs: {sample_count} files")
+            print(f"   📁 ai_search_docs: {sample_count} files")
             print(f"   📁 extracts:    {extracts_count} files")
             print(f"   📄 indexed:     {indexed_count} files")
 
@@ -121,7 +121,7 @@ def main():
                 prev_sample, prev_extracts, prev_indexed = prev_counts
                 if sample_count > prev_sample:
                     print(
-                        f"   🆕 NEW FILE DETECTED in sample_docs! (+{sample_count - prev_sample})"
+                        f"   🆕 NEW FILE DETECTED in ai_search_docs! (+{sample_count - prev_sample})"
                     )
                 if extracts_count > prev_extracts:
                     print(f"   ✅ EXTRACTED! (+{extracts_count - prev_extracts})")
@@ -145,7 +145,7 @@ def main():
                     "%H:%M:%S"
                 )
                 rel_path = latest_sample[0].relative_to(Path(__file__).parent)
-                print(f"   📁 sample_docs: {rel_path} ({sample_time})")
+                print(f"   📁 ai_search_docs: {rel_path} ({sample_time})")
 
             if latest_extract:
                 extract_time = datetime.fromtimestamp(latest_extract[1]).strftime(
@@ -156,7 +156,7 @@ def main():
 
             print()
             print("💡 Expected Flow (Option 1):")
-            print("   1. Add PDF to sample_docs/folder/")
+            print("   1. Add PDF to ai_search_docs/folder/")
             print("   2. Watcher detects file (within 5 seconds)")
             print("   3. PDF extracted to extracts/folder/file.txt")
             print("   4. TXT file indexed (within 30 seconds)")

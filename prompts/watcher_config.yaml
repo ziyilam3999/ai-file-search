@@ -2,35 +2,35 @@ document_categories:
   business_rules:
     enabled: true
     paths:
-    - sample_docs/business_rules
+    - ai_search_docs/business_rules
   classic_literature:
     enabled: true
     paths:
-    - sample_docs/classic_literature
+    - ai_search_docs/classic_literature
   meeting_notes:
     enabled: true
     paths:
-    - sample_docs/meeting_notes
+    - ai_search_docs/meeting_notes
   personal_notes:
     enabled: true
     paths:
-    - sample_docs/personal_notes
+    - ai_search_docs/personal_notes
   research_papers:
     enabled: true
     paths:
-    - sample_docs/research_papers
+    - ai_search_docs/research_papers
   software_dev:
     enabled: true
     paths:
-    - sample_docs/software_dev
+    - ai_search_docs/software_dev
   technical_docs:
     enabled: true
     paths:
-    - sample_docs/technical_docs
+    - ai_search_docs/technical_docs
   user_manuals:
     enabled: true
     paths:
-    - sample_docs/user_manuals
+    - ai_search_docs/user_manuals
 file_patterns:
   ignore:
   - '*.tmp'
@@ -46,4 +46,4 @@ file_patterns:
   - '*.docx'
   - '*.md'
 watch_directories:
-- sample_docs
+- ai_search_docs

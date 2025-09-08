@@ -26,14 +26,14 @@ def main():
     # File counts
     base_path = Path(__file__).parent
     sample_count = len(
-        [f for f in (base_path / "sample_docs").rglob("*") if f.is_file()]
+        [f for f in (base_path / "ai_search_docs").rglob("*") if f.is_file()]
     )
     extracts_count = len(
         [f for f in (base_path / "extracts").rglob("*") if f.is_file()]
     )
 
     print(f"\n📊 Current File Counts:")
-    print(f"   📁 sample_docs: {sample_count} files")
+    print(f"   📁 ai_search_docs: {sample_count} files")
     print(f"   📁 extracts:    {extracts_count} files")
 
     # Database stats
@@ -51,9 +51,9 @@ def main():
     except Exception as e:
         print(f"   ❌ Database: Error - {e}")
 
-    # Check PDF files in sample_docs
-    pdf_files = list((base_path / "sample_docs").rglob("*.pdf"))
-    docx_files = list((base_path / "sample_docs").rglob("*.docx"))
+    # Check PDF files in ai_search_docs
+    pdf_files = list((base_path / "ai_search_docs").rglob("*.pdf"))
+    docx_files = list((base_path / "ai_search_docs").rglob("*.docx"))
 
     print(f"\n📄 Source Files to be Extracted:")
     print(f"   🔴 PDF files:  {len(pdf_files)}")
@@ -67,7 +67,7 @@ def main():
             print(f"   {i}. {rel_path}")
 
     print(f"\n✅ System Ready for Testing!")
-    print(f"💡 Now add a PDF to any sample_docs/ subfolder")
+    print(f"💡 Now add a PDF to any ai_search_docs/ subfolder")
     print(f"🔍 Run: python live_monitor.py (to watch live)")
     print(f"📊 Or run: python monitor_file_processing.py (for summary)")
 

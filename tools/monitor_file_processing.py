@@ -38,21 +38,21 @@ def get_watcher_status() -> Dict[str, Any]:
 
 
 def get_file_counts() -> Dict[str, int]:
-    """Count files in sample_docs and extracts directories."""
+    """Count files in ai_search_docs and extracts directories."""
     counts = {
-        "sample_docs": 0,
+        "ai_search_docs": 0,
         "extracts": 0,
         "total": 0,
     }
 
-    # Count files in sample_docs
-    sample_docs = Path("sample_docs")
-    if sample_docs.exists():
+    # Count files in ai_search_docs
+    ai_search_docs = Path("ai_search_docs")
+    if ai_search_docs.exists():
         try:
             for pattern in ["*.txt", "*.pdf", "*.docx", "*.md"]:
-                counts["sample_docs"] += len(list(sample_docs.rglob(pattern)))
+                counts["ai_search_docs"] += len(list(ai_search_docs.rglob(pattern)))
         except sqlite3.Error:
-            logger.warning("Could not access sample_docs directory")
+            logger.warning("Could not access ai_search_docs directory")
 
     # Count files in extracts
     extracts = Path("extracts")
@@ -60,7 +60,7 @@ def get_file_counts() -> Dict[str, int]:
         for pattern in ["*.txt", "*.md"]:
             counts["extracts"] += len(list(extracts.rglob(pattern)))
 
-    counts["total"] = counts["sample_docs"] + counts["extracts"]
+    counts["total"] = counts["ai_search_docs"] + counts["extracts"]
     return counts
 
 
@@ -135,7 +135,7 @@ def monitor_system() -> None:
     # File counts
     file_counts = get_file_counts()
     print(f"\n📁 File Counts:")
-    print(f"   Sample docs: {file_counts['sample_docs']}")
+    print(f"   Sample docs: {file_counts['ai_search_docs']}")
     print(f"   Extracts: {file_counts['extracts']}")
     print(f"   Total: {file_counts['total']}")
 
@@ -176,7 +176,7 @@ def monitor_system() -> None:
 
         # Also count unique files that should be in extracts (including PDF/DOCX converted to TXT)
         sample_files = set()
-        for watch_dir in ["sample_docs"]:
+        for watch_dir in ["ai_search_docs"]:
             if Path(watch_dir).exists():
                 for pattern in ["*.txt", "*.pdf", "*.docx", "*.md"]:
                     for file_path in Path(watch_dir).rglob(pattern):
@@ -199,7 +199,7 @@ def monitor_system() -> None:
             print(
                 f"\n{coverage_emoji} Index Coverage (Option 1): {real_coverage:.1f}% ({actually_indexed}/{total_expected} files)"
             )
-            print(f"   📁 Architecture: sample_docs → extracts → index")
+            print(f"   📁 Architecture: ai_search_docs → extracts → index")
             if real_coverage < 100:
                 missing = sample_files - indexed_basenames
                 print(f"   ⚠️  Missing: {len(missing)} files need extraction/indexing")

@@ -44,7 +44,7 @@ def analyze_coverage():
     filesystem_basenames = set()
     file_types = Counter()
 
-    for watch_dir in ["sample_docs", "extracts"]:
+    for watch_dir in ["ai_search_docs", "extracts"]:
         if Path(watch_dir).exists():
             print(f"\n   Scanning {watch_dir}/:")
             dir_files = []

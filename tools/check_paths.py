@@ -14,9 +14,9 @@ conn.close()
 for i, file in enumerate(indexed_files[:10], 1):
     print(f'{i:2d}. "{file}"')
 
-print("\n=== FILESYSTEM PATHS (sample_docs, first 10) ===")
+print("\n=== FILESYSTEM PATHS (ai_search_docs, first 10) ===")
 filesystem_files = []
-for file_path in Path("sample_docs").rglob("*.txt"):
+for file_path in Path("ai_search_docs").rglob("*.txt"):
     filesystem_files.append(str(file_path))
 
 for i, file in enumerate(sorted(filesystem_files)[:10], 1):
@@ -43,7 +43,7 @@ if filesystem_files:
 print("\n=== THE 58.2% COVERAGE ISSUE ===")
 print("The issue is likely a PATH MISMATCH:")
 print("- Database stores paths like: 'classic_literature\\file.txt'")
-print("- File system has paths like: 'sample_docs\\classic_literature\\file.txt'")
+print("- File system has paths like: 'ai_search_docs\\classic_literature\\file.txt'")
 print("- The watcher might be indexing from a different base directory")
 print("\nTo fix this, you need to:")
 print("1. Check watcher configuration for correct base paths")

@@ -3,9 +3,9 @@
 Fix Citation Mapping
 
 Script to fix incorrect citations in the database that point to extracted .txt files
-instead of original PDF files in sample_docs.
+instead of original PDF files in ai_search_docs.
 
-This tool ensures ALL citations point to sample_docs/ files, never to extracts/.
+This tool ensures ALL citations point to ai_search_docs/ files, never to extracts/.
 """
 import sqlite3
 import sys
@@ -20,13 +20,15 @@ def fix_citation_mappings():
     print("🔧 FIXING CITATION MAPPINGS")
     print("=" * 60)
 
-    # Get all problematic files (those NOT starting with sample_docs/)
-    cursor.execute('SELECT DISTINCT file FROM meta WHERE file NOT LIKE "sample_docs/%"')
+    # Get all problematic files (those NOT starting with ai_search_docs/)
+    cursor.execute(
+        'SELECT DISTINCT file FROM meta WHERE file NOT LIKE "ai_search_docs/%"'
+    )
     problematic_files = cursor.fetchall()
 
     if not problematic_files:
         print(
-            "✅ No problematic files found! All citations already point to sample_docs/"
+            "✅ No problematic files found! All citations already point to ai_search_docs/"
         )
         conn.close()
         return
@@ -45,7 +47,7 @@ def fix_citation_mappings():
         if "\\" in old_file:
             # Format: business_rules\filename.txt
             parts = old_file.split("\\")
-        elif "/" in old_file and not old_file.startswith("sample_docs/"):
+        elif "/" in old_file and not old_file.startswith("ai_search_docs/"):
             # Format: business_rules/filename.txt
             parts = old_file.split("/")
         else:
@@ -63,19 +65,19 @@ def fix_citation_mappings():
             elif filename.endswith(".md"):
                 base_name = filename[:-3]
 
-            # Look for original file in sample_docs
-            sample_docs_category = Path(f"sample_docs/{category}")
-            if sample_docs_category.exists():
+            # Look for original file in ai_search_docs
+            ai_search_docs_category = Path(f"ai_search_docs/{category}")
+            if ai_search_docs_category.exists():
                 # Priority order: PDF > DOCX > TXT > MD
                 for ext in [".pdf", ".docx", ".txt", ".md"]:
-                    original_file = sample_docs_category / f"{base_name}{ext}"
+                    original_file = ai_search_docs_category / f"{base_name}{ext}"
                     if original_file.exists():
                         new_file = str(original_file).replace("\\", "/")
                         break
 
         elif len(parts) == 1:
-            # Root level file - check if it exists in sample_docs root
-            root_file = Path(f"sample_docs/{parts[0]}")
+            # Root level file - check if it exists in ai_search_docs root
+            root_file = Path(f"ai_search_docs/{parts[0]}")
             if root_file.exists():
                 new_file = str(root_file).replace("\\", "/")
 
@@ -116,12 +118,14 @@ def preview_fixes():
     print("=" * 60)
 
     # Get all problematic files
-    cursor.execute('SELECT DISTINCT file FROM meta WHERE file NOT LIKE "sample_docs/%"')
+    cursor.execute(
+        'SELECT DISTINCT file FROM meta WHERE file NOT LIKE "ai_search_docs/%"'
+    )
     problematic_files = cursor.fetchall()
 
     if not problematic_files:
         print(
-            "✅ No problematic files found! All citations already point to sample_docs/"
+            "✅ No problematic files found! All citations already point to ai_search_docs/"
         )
         conn.close()
         return
@@ -139,7 +143,7 @@ def preview_fixes():
         # Handle different path formats
         if "\\" in old_file:
             parts = old_file.split("\\")
-        elif "/" in old_file and not old_file.startswith("sample_docs/"):
+        elif "/" in old_file and not old_file.startswith("ai_search_docs/"):
             parts = old_file.split("/")
         else:
             parts = [old_file]
@@ -156,16 +160,16 @@ def preview_fixes():
                 base_name = filename[:-3]
 
             # Look for original file
-            sample_docs_category = Path(f"sample_docs/{category}")
-            if sample_docs_category.exists():
+            ai_search_docs_category = Path(f"ai_search_docs/{category}")
+            if ai_search_docs_category.exists():
                 for ext in [".pdf", ".docx", ".txt", ".md"]:
-                    original_file = sample_docs_category / f"{base_name}{ext}"
+                    original_file = ai_search_docs_category / f"{base_name}{ext}"
                     if original_file.exists():
                         new_file = str(original_file).replace("\\", "/")
                         break
 
         elif len(parts) == 1:
-            root_file = Path(f"sample_docs/{parts[0]}")
+            root_file = Path(f"ai_search_docs/{parts[0]}")
             if root_file.exists():
                 new_file = str(root_file).replace("\\", "/")
 
@@ -192,15 +196,17 @@ def verify_fixes():
     print("=" * 60)
 
     # Check for remaining problematic files
-    cursor.execute('SELECT DISTINCT file FROM meta WHERE file NOT LIKE "sample_docs/%"')
+    cursor.execute(
+        'SELECT DISTINCT file FROM meta WHERE file NOT LIKE "ai_search_docs/%"'
+    )
     remaining_problems = cursor.fetchall()
 
     if remaining_problems:
-        print(f"⚠️  Still have {len(remaining_problems)} non-sample_docs files:")
+        print(f"⚠️  Still have {len(remaining_problems)} non-ai_search_docs files:")
         for (file,) in remaining_problems:
             print(f"  - {file}")
     else:
-        print("🎉 All citations now point to sample_docs/ files!")
+        print("🎉 All citations now point to ai_search_docs/ files!")
 
     # Show business rules files specifically
     cursor.execute(
@@ -209,12 +215,12 @@ def verify_fixes():
     business_files = cursor.fetchall()
 
     print(f"\n📊 CURRENT BUSINESS RULES FILES IN DATABASE:")
-    sample_docs_count = 0
+    ai_search_docs_count = 0
     other_count = 0
 
     for (file,) in business_files:
-        if file.startswith("sample_docs/"):
-            sample_docs_count += 1
+        if file.startswith("ai_search_docs/"):
+            ai_search_docs_count += 1
             print(f"  ✅ {file}")
         else:
             other_count += 1
@@ -225,19 +231,19 @@ def verify_fixes():
     total_files = cursor.fetchone()[0]
 
     cursor.execute(
-        'SELECT COUNT(DISTINCT file) FROM meta WHERE file LIKE "sample_docs/%"'
+        'SELECT COUNT(DISTINCT file) FROM meta WHERE file LIKE "ai_search_docs/%"'
     )
-    sample_docs_files = cursor.fetchone()[0]
+    ai_search_docs_files = cursor.fetchone()[0]
 
-    other_files = total_files - sample_docs_files
+    other_files = total_files - ai_search_docs_files
 
     print(f"\n📈 OVERALL DATABASE SUMMARY:")
     print(f"  📁 Total unique files: {total_files}")
-    print(f"  ✅ Correct citations (sample_docs/): {sample_docs_files}")
+    print(f"  ✅ Correct citations (ai_search_docs/): {ai_search_docs_files}")
     print(f"  ⚠️  Other citations: {other_files}")
 
     if other_files == 0:
-        print(f"\n🎉 PERFECT! All citations point to sample_docs/ files!")
+        print(f"\n🎉 PERFECT! All citations point to ai_search_docs/ files!")
     else:
         print(f"\n⚠️  {other_files} files still need fixing")
 
@@ -257,9 +263,9 @@ def show_citation_stats():
         """
         SELECT
             CASE
-                WHEN file LIKE 'sample_docs/%' THEN 'sample_docs (correct)'
+                WHEN file LIKE 'ai_search_docs/%' THEN 'ai_search_docs (correct)'
                 WHEN file LIKE '%\\%' THEN 'backslash_paths'
-                WHEN file LIKE '%/%' AND file NOT LIKE 'sample_docs/%' THEN 'forward_slash_paths'
+                WHEN file LIKE '%/%' AND file NOT LIKE 'ai_search_docs/%' THEN 'forward_slash_paths'
                 ELSE 'other'
             END as category,
             COUNT(DISTINCT file) as files,
@@ -314,7 +320,7 @@ def print_usage():
 🔧 Fix Citation Mapping Tool
 
 DESCRIPTION:
-    Ensures ALL citations point to sample_docs/ files, never to extracts/.
+    Ensures ALL citations point to ai_search_docs/ files, never to extracts/.
     Fixes database records that incorrectly point to extracted .txt files.
 
 USAGE:

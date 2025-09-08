@@ -13,6 +13,7 @@ for changes and automatically updates the search index. Features include:
 import fnmatch
 import os
 import signal
+import sqlite3
 import sys
 import threading
 import time
@@ -22,10 +23,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+import faiss
+import numpy as np
 import yaml  # type: ignore
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from loguru import logger
+from sentence_transformers import SentenceTransformer
 from watchdog.events import (
     FileCreatedEvent,
     FileDeletedEvent,
@@ -101,7 +105,7 @@ class EmbeddingAdapter:
         """Pre-warm the embedding model to avoid delays on first use."""
         try:
             logger.debug("Pre-warming embedding model...")
-            model = self.embedder._get_model()
+            model = SentenceTransformer(self.embedder.model_name)
             # Generate a dummy embedding to initialize everything
             model.encode(["initialization"], show_progress_bar=False)
             logger.debug("Model pre-warming completed")
@@ -182,16 +186,15 @@ class EmbeddingAdapter:
     def save_index(self) -> bool:
         """Save the current index state to disk."""
         try:
-            import faiss
-
-            # Get current index
-            index = self.embedder._get_index()
-
-            # Save to disk (backup is handled separately by _backup_index)
-            faiss.write_index(index, "index.faiss")
-            logger.info("Index successfully saved to disk")
-
-            return True
+            # Load current index from disk to save it (no direct access to private methods)
+            if os.path.exists(self.embedder.index_path):
+                index = faiss.read_index(self.embedder.index_path)
+                faiss.write_index(index, self.embedder.index_path)
+                logger.info("Index successfully saved to disk")
+                return True
+            else:
+                logger.warning("No index file found to save")
+                return False
         except Exception as e:
             logger.error(f"Error saving index: {e}")
             return False
@@ -199,15 +202,8 @@ class EmbeddingAdapter:
     def clear_index(self) -> bool:
         """Clear the entire index (used for full reindex)."""
         try:
-            import sqlite3
-
-            import faiss
-
             with self._operation_lock:
                 logger.info("Clearing entire index")
-
-                # Create new empty index
-                new_index = faiss.IndexFlatL2(384)  # Same dimension as model
 
                 # Clear database
                 conn = sqlite3.connect("meta.sqlite")
@@ -215,8 +211,9 @@ class EmbeddingAdapter:
                 conn.commit()
                 conn.close()
 
-                # Replace the index
-                self.embedder._index = new_index
+                # Remove index files to clear
+                if os.path.exists(self.embedder.index_path):
+                    os.remove(self.embedder.index_path)
 
                 # Reset stats
                 self._stats["index_size"] = 0
@@ -232,7 +229,7 @@ class EmbeddingAdapter:
 
     def build_index(self, extracts_path: Path) -> None:
         """Delegate to the underlying Embedder's build_index method."""
-        self.embedder.build_index(extracts_path=extracts_path)
+        self.embedder.build_index(extracts_dir=str(extracts_path))
 
     def get_adapter_stats(self) -> Dict[str, Any]:
         """Get detailed statistics about adapter operations."""
@@ -254,7 +251,7 @@ class EmbeddingAdapter:
     def _generate_embeddings(self, chunks: List[str]) -> Optional[List]:
         """Generate embeddings for a list of chunks."""
         try:
-            model = self.embedder._get_model()
+            model = SentenceTransformer(self.embedder.model_name)
 
             # Truncate chunks to model's max length
             processed_chunks = [chunk[:256] for chunk in chunks]
@@ -277,14 +274,9 @@ class EmbeddingAdapter:
     ) -> bool:
         """Add chunks and embeddings to FAISS index and metadata database."""
         try:
-            import sqlite3
-
-            import faiss
-            import numpy as np
-
             # Get current index and database
-            index = self.embedder._get_index()
-            conn = self.embedder._get_connection()
+            index = faiss.read_index(self.embedder.index_path)
+            conn = sqlite3.connect(self.embedder.db_path)
 
             # Get next available ID
             cursor = conn.cursor()
@@ -318,10 +310,8 @@ class EmbeddingAdapter:
     def _remove_existing_document(self, file_path: str) -> bool:
         """Remove existing document chunks from index (for updates)."""
         try:
-            import sqlite3
-
             # Use the full relative path for matching, not just the basename
-            conn = self.embedder._get_connection()  # <-- Use the helper!
+            conn = sqlite3.connect(self.embedder.db_path)
             cursor = conn.cursor()
 
             cursor.execute("SELECT id FROM meta WHERE file = ?", (file_path,))
@@ -348,7 +338,8 @@ class EmbeddingAdapter:
     def _get_current_index_size(self) -> int:
         """Get the current number of vectors in the index."""
         try:
-            index = self.embedder._get_index()
+            if os.path.exists(self.embedder.index_path):
+                index = faiss.read_index(self.embedder.index_path)
             return index.ntotal
         except Exception:
             return 0
@@ -617,8 +608,8 @@ class FileWatcher:
             # Merge YAML config with defaults
             config = self._default_config()
 
-            # OPTION 1 ARCHITECTURE: Enforce sample_docs only watching
-            config["watch_directories"] = ["sample_docs"]
+            # OPTION 1 ARCHITECTURE: Enforce ai_search_docs only watching
+            config["watch_directories"] = ["ai_search_docs"]
 
             # Extract watch directories from document_categories if present
             if "document_categories" in yaml_config:
@@ -628,9 +619,9 @@ class FileWatcher:
                 ].items():
                     if category_config.get("enabled", True):
                         for path in category_config.get("paths", []):
-                            # Only watch sample_docs paths (Option 1 architecture)
-                            if path.startswith("sample_docs/"):
-                                watch_dirs.add("sample_docs")
+                            # Only watch ai_search_docs paths (Option 1 architecture)
+                            if path.startswith("ai_search_docs/"):
+                                watch_dirs.add("ai_search_docs")
 
                 if watch_dirs:
                     config["watch_directories"] = list(watch_dirs)
@@ -645,8 +636,8 @@ class FileWatcher:
                 if isinstance(yaml_dirs, list):
                     # Filter out extracts directory
                     filtered_dirs = [d for d in yaml_dirs if d != "extracts"]
-                    if "sample_docs" not in filtered_dirs:
-                        filtered_dirs.append("sample_docs")
+                    if "ai_search_docs" not in filtered_dirs:
+                        filtered_dirs.append("ai_search_docs")
                     config["watch_directories"] = filtered_dirs
 
             logger.info(f"Configuration loaded from {self.config_path}")
@@ -661,7 +652,7 @@ class FileWatcher:
     def _default_config(self) -> Dict[str, Any]:
         """Return default configuration."""
         return {
-            "watch_directories": ["sample_docs"],  # Only watch input directory
+            "watch_directories": ["ai_search_docs"],  # Only watch input directory
             "file_patterns": {
                 "include": ["*.txt", "*.pdf", "*.docx", "*.md"],
                 "ignore": [
@@ -899,10 +890,10 @@ class FileWatcher:
         """Convert source file path to corresponding extract path."""
         source = Path(source_path)
 
-        # Convert sample_docs/category/file.pdf → extracts/category/file.txt
-        if len(source.parts) >= 2 and source.parts[0] == "sample_docs":
+        # Convert ai_search_docs/category/file.pdf → extracts/category/file.txt
+        if len(source.parts) >= 2 and source.parts[0] == "ai_search_docs":
             # Preserve the category structure
-            relative_parts = source.parts[1:]  # Skip 'sample_docs'
+            relative_parts = source.parts[1:]  # Skip 'ai_search_docs'
 
             # Change extension to .txt
             name_with_txt_ext = source.stem + ".txt"

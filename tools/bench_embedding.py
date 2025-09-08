@@ -11,10 +11,10 @@ from core.extract import Extractor  # Import your Extractor
 extracts_path = Path("extracts")
 if not any(extracts_path.glob("**/*.txt")):
     print("No .txt files found in extracts/. Running extractor...")
-    # Example: process all files in sample_docs/ and save to extracts/
-    sample_docs = Path("sample_docs")
+    # Example: process all files in ai_search_docs/ and save to extracts/
+    ai_search_docs = Path("ai_search_docs")
     extracts_path.mkdir(exist_ok=True)
-    for file in sample_docs.glob("*"):
+    for file in ai_search_docs.glob("*"):
         text = Extractor().run(file)
         if text:
             out_path = extracts_path / (file.stem + ".txt")
@@ -25,7 +25,7 @@ if not any(extracts_path.glob("**/*.txt")):
         sys.exit(1)
 
 idx = Embedder()
-idx.build_index(extracts_path)
+idx.build_index(str(extracts_path))
 start = time.time()
 results = idx.query("Who Alice found in wonderland?")
 for i, (chunk_text, file_path, chunk_id, doc_chunk_id, score) in enumerate(results):

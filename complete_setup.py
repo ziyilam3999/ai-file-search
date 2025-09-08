@@ -41,7 +41,7 @@ def setup_folders():
     """Ensure all required folders exist."""
     print("Setting up folder structure...")
 
-    folders = ["sample_docs", "extracts", "logs", "prompts"]
+    folders = ["ai_search_docs", "extracts", "logs", "prompts"]
 
     for folder in folders:
         Path(folder).mkdir(exist_ok=True)
@@ -59,8 +59,8 @@ Quick Start (30 seconds)
 1. Start the smart watcher (watches ALL folders automatically):
 python smart_watcher.py start
 
-2. Add your documents to any folder in sample_docs/:
-sample_docs/
+2. Add your documents to any folder in ai_search_docs/:
+ai_search_docs/
 ├── my_research/      # Create any folder name
 ├── work_docs/        # Add your files here
 └── personal/         # System auto-discovers everything!
@@ -72,7 +72,7 @@ Open: http://localhost:8501
 
 Key Features
 - Zero Configuration
-- Add any folder to sample_docs/ - it's automatically discovered
+- Add any folder to ai_search_docs/ - it's automatically discovered
 - All folders watched by default - no manual setup needed
 - Real-time indexing - changes appear in search within seconds
 
@@ -90,7 +90,7 @@ python switch_documents.py all       # Search everything (default)
 
 Folder Structure
 Your project should look like this:
-sample_docs/
+ai_search_docs/
 ├── my_research/      # Create any folder name
 ├── work_docs/        # Add your files here
 └── personal/         # System auto-discovers everything!
@@ -99,7 +99,7 @@ logs/                 # Logs for smart watcher and AI
 prompts/              # Custom prompts for AI search
 
 How It Works
-1. Drop files anywhere in sample_docs/subfolders/
+1. Drop files anywhere in ai_search_docs/subfolders/
 2. Watcher detects changes automatically
 3. AI extracts and indexes content
 4. Search with citations works immediately
@@ -160,7 +160,7 @@ def run_initial_setup():
                 print(f"   - {name}")
         else:
             print(
-                "[INFO] No categories found yet - add folders to sample_docs/ to get started"
+                "[INFO] No categories found yet - add folders to ai_search_docs/ to get started"
             )
 
         return True
@@ -198,7 +198,7 @@ def main():
     print("1. Start the smart watcher:")
     print("   python smart_watcher.py start")
     print()
-    print("2. Add your documents to sample_docs/ subfolders")
+    print("2. Add your documents to ai_search_docs/ subfolders")
     print()
     print("3. Start searching with the web interface:")
     print("   python -m streamlit run ui/app.py")

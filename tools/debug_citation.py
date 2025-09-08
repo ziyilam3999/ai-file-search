@@ -3,7 +3,7 @@
 Citation Debug Tool
 
 Debug tool to investigate citation mapping issues between database files
-and original source files in sample_docs.
+and original source files in ai_search_docs.
 """
 import sqlite3
 import sys
@@ -29,7 +29,7 @@ def debug_backend_citation():
         print(f"  - {file}")
 
     # Check what files exist in the filesystem
-    business_rules_path = Path("sample_docs/business_rules")
+    business_rules_path = Path("ai_search_docs/business_rules")
     if business_rules_path.exists():
         files = list(business_rules_path.glob("*Backend*"))
         print(f'\n📁 FILES IN FILESYSTEM matching "Backend":')
@@ -66,20 +66,22 @@ def debug_all_citation_mappings():
     print(f"\n📊 TOTAL FILES IN DATABASE: {len(db_files)}")
 
     # Categorize files
-    sample_docs_files = []
+    ai_search_docs_files = []
     extract_files = []
     other_files = []
 
     for (file,) in db_files:
-        if file.startswith("sample_docs/"):
-            sample_docs_files.append(file)
-        elif "\\" in file or not file.startswith("sample_docs/"):
+        if file.startswith("ai_search_docs/"):
+            ai_search_docs_files.append(file)
+        elif "\\" in file or not file.startswith("ai_search_docs/"):
             extract_files.append(file)
         else:
             other_files.append(file)
 
     print(f"\n📂 CITATION CATEGORIES:")
-    print(f"  ✅ sample_docs/ files (correct citations): {len(sample_docs_files)}")
+    print(
+        f"  ✅ ai_search_docs/ files (correct citations): {len(ai_search_docs_files)}"
+    )
     print(f"  ⚠️  extract files (incorrect citations): {len(extract_files)}")
     print(f"  ❓ other files: {len(other_files)}")
 
@@ -99,25 +101,25 @@ def debug_all_citation_mappings():
                         base_name = filename[:-4]
 
                         # Look for PDF version
-                        pdf_path = Path(f"sample_docs/{category}/{base_name}.pdf")
-                        docx_path = Path(f"sample_docs/{category}/{base_name}.docx")
+                        pdf_path = Path(f"ai_search_docs/{category}/{base_name}.pdf")
+                        docx_path = Path(f"ai_search_docs/{category}/{base_name}.docx")
 
                         if pdf_path.exists():
                             print(
-                                f"      🔍 Should cite: sample_docs/{category}/{base_name}.pdf"
+                                f"      🔍 Should cite: ai_search_docs/{category}/{base_name}.pdf"
                             )
                         elif docx_path.exists():
                             print(
-                                f"      🔍 Should cite: sample_docs/{category}/{base_name}.docx"
+                                f"      🔍 Should cite: ai_search_docs/{category}/{base_name}.docx"
                             )
                         else:
                             print(
-                                f"      ❌ No original found in sample_docs/{category}/"
+                                f"      ❌ No original found in ai_search_docs/{category}/"
                             )
 
-    if sample_docs_files:
-        print(f"\n✅ CORRECT CITATIONS (pointing to sample_docs):")
-        for i, file in enumerate(sample_docs_files, 1):
+    if ai_search_docs_files:
+        print(f"\n✅ CORRECT CITATIONS (pointing to ai_search_docs):")
+        for i, file in enumerate(ai_search_docs_files, 1):
             print(f"  {i:2d}. {file}")
 
     conn.close()

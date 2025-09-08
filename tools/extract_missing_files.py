@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 One-time extraction script to convert PDF/DOCX files to TXT in extracts/
-This implements Option 1: Watch only sample_docs, index only extracts
+This implements Option 1: Watch only ai_search_docs, index only extracts
 """
 
 import shutil
@@ -15,21 +15,21 @@ from core.extract import Extractor
 
 
 def extract_all_files():
-    """Extract all PDF and DOCX files from sample_docs to extracts."""
+    """Extract all PDF and DOCX files from ai_search_docs to extracts."""
 
     extractor = Extractor()
     extracted_count = 0
     failed_count = 0
 
-    print("🚀 IMPLEMENTING OPTION 1: Watch sample_docs → Process to extracts")
+    print("🚀 IMPLEMENTING OPTION 1: Watch ai_search_docs → Process to extracts")
     print("=" * 70)
     print("🔄 Starting bulk extraction of PDF/DOCX files...")
     print("This will fix your 73.7% coverage issue and eliminate duplicates!")
 
-    # Find all PDF and DOCX files in sample_docs
+    # Find all PDF and DOCX files in ai_search_docs
     source_files = []
     for pattern in ["**/*.pdf", "**/*.docx"]:
-        source_files.extend(Path("sample_docs").glob(pattern))
+        source_files.extend(Path("ai_search_docs").glob(pattern))
 
     print(f"\n📊 Found {len(source_files)} files to extract:")
     for i, file in enumerate(source_files, 1):
@@ -52,8 +52,8 @@ def extract_all_files():
                 continue
 
             # Create corresponding extract path
-            # sample_docs/classic_literature/book.pdf → extracts/classic_literature/book.txt
-            relative_path = source_file.relative_to("sample_docs")
+            # ai_search_docs/classic_literature/book.pdf → extracts/classic_literature/book.txt
+            relative_path = source_file.relative_to("ai_search_docs")
             extract_path = (
                 Path("extracts") / relative_path.parent / (source_file.stem + ".txt")
             )
@@ -120,14 +120,14 @@ def extract_all_files():
 
 
 def cleanup_duplicate_extracts():
-    """Optional: Remove any exact duplicates between sample_docs and extracts."""
+    """Optional: Remove any exact duplicates between ai_search_docs and extracts."""
     print(f"\n🧹 OPTIONAL: Checking for exact duplicates to clean up...")
 
     duplicates_found = 0
 
-    # Find TXT files that exist in both sample_docs and extracts
-    for sample_txt in Path("sample_docs").rglob("*.txt"):
-        relative_path = sample_txt.relative_to("sample_docs")
+    # Find TXT files that exist in both ai_search_docs and extracts
+    for sample_txt in Path("ai_search_docs").rglob("*.txt"):
+        relative_path = sample_txt.relative_to("ai_search_docs")
         extract_equivalent = Path("extracts") / relative_path
 
         if extract_equivalent.exists():
@@ -145,7 +145,7 @@ def cleanup_duplicate_extracts():
     if duplicates_found > 0:
         print(f"\n📊 Found {duplicates_found} potential duplicates")
         print(
-            f"💡 After Option 1 is working, consider removing TXT files from sample_docs"
+            f"💡 After Option 1 is working, consider removing TXT files from ai_search_docs"
         )
         print(f"   to eliminate duplicates completely.")
     else:
@@ -180,7 +180,7 @@ def check_extraction_libraries():
 
 
 if __name__ == "__main__":
-    print("🎯 OPTION 1 IMPLEMENTATION: Watch sample_docs → Index extracts")
+    print("🎯 OPTION 1 IMPLEMENTATION: Watch ai_search_docs → Index extracts")
     print("=" * 70)
     print("Purpose: Convert PDF/DOCX files to TXT for clean indexing")
     print("Problem: 73.7% coverage + 24 duplicate file sets")

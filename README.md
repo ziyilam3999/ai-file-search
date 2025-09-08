@@ -13,7 +13,7 @@ Zero-configuration smart document search system with automatic discovery and rea
 
 - **Zero Configuration**: Auto-discovers document categories
 - **Smart Watcher**: Real-time file monitoring and indexing
-- **Citation References**: Citations point to user-accessible files in `sample_docs/`
+- **Citation References**: Citations point to user-accessible files in `ai_search_docs/`
 - **Multi-Format Support**: PDF, DOCX, TXT, and Markdown files
 - **Modern UI**: Streamlit-based search interface with AI-powered answers
 - **Background Processing**: File watcher runs as background service
@@ -101,7 +101,7 @@ python tests/test_quick.py
 
 Document Organization
 The system automatically organizes documents in this structure:
-sample_docs/               # Your documents (user-maintainable)
+ai_search_docs/               # Your documents (user-maintainable)
 ├── business_rules/
 ├── meeting_notes/
 ├── research_papers/
@@ -157,10 +157,10 @@ Configuration: prompts - System prompts and configuration
 Citation System
 The system maintains a clean citation architecture:
 
-User Documents: Store files in sample_docs/category/
+User Documents: Store files in ai_search_docs/category/
 Processing: System extracts text to extracts/category/
 Search: Index built from extracted content
-Citations: Results reference original files in sample_docs
+Citations: Results reference original files in ai_search_docs
 This ensures users can always access and modify their original documents.
 
 AI Model

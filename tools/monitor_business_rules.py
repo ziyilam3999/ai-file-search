@@ -45,7 +45,7 @@ def get_business_rules_status():
         conn.close()
 
         # Filesystem check
-        folder_path = Path("sample_docs/business_rules")
+        folder_path = Path("ai_search_docs/business_rules")
         if not folder_path.exists():
             print(f"⚠️ Warning: {folder_path} does not exist")
             return [], []

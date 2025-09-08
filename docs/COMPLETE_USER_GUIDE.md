@@ -5,8 +5,8 @@ Quick Start (30 seconds)
 1. Start the smart watcher (watches ALL folders automatically):
 python smart_watcher.py start
 
-2. Add your documents to any folder in sample_docs/:
-sample_docs/
+2. Add your documents to any folder in ai_search_docs/:
+ai_search_docs/
 ├── my_research/      # Create any folder name
 ├── work_docs/        # Add your files here
 └── personal/         # System auto-discovers everything!
@@ -18,7 +18,7 @@ Open: http://localhost:8501
 
 Key Features
 - Zero Configuration
-- Add any folder to sample_docs/ - it's automatically discovered
+- Add any folder to ai_search_docs/ - it's automatically discovered
 - All folders watched by default - no manual setup needed
 - Real-time indexing - changes appear in search within seconds
 
@@ -36,7 +36,7 @@ python switch_documents.py all       # Search everything (default)
 
 Folder Structure
 Your project should look like this:
-sample_docs/
+ai_search_docs/
 ├── my_research/      # Create any folder name
 ├── work_docs/        # Add your files here
 └── personal/         # System auto-discovers everything!
@@ -45,7 +45,7 @@ logs/                 # Logs for smart watcher and AI
 prompts/              # Custom prompts for AI search
 
 How It Works
-1. Drop files anywhere in sample_docs/subfolders/
+1. Drop files anywhere in ai_search_docs/subfolders/
 2. Watcher detects changes automatically
 3. AI extracts and indexes content
 4. Search with citations works immediately

@@ -17,18 +17,18 @@ def debug_filename_issues():
 
     # Check if directories exist
     extracts_dir = Path("extracts/business_rules")
-    sample_docs_dir = Path("sample_docs/business_rules")
+    ai_search_docs_dir = Path("ai_search_docs/business_rules")
 
     print(f"📂 Extracts directory exists: {extracts_dir.exists()}")
-    print(f"📂 Sample docs directory exists: {sample_docs_dir.exists()}")
+    print(f"📂 Sample docs directory exists: {ai_search_docs_dir.exists()}")
 
-    if not extracts_dir.exists() or not sample_docs_dir.exists():
+    if not extracts_dir.exists() or not ai_search_docs_dir.exists():
         print("❌ Required directories missing!")
         return
 
     # Get all files
     extract_files = list(extracts_dir.glob("*.txt"))
-    sample_files = list(sample_docs_dir.glob("*.pdf"))
+    sample_files = list(ai_search_docs_dir.glob("*.pdf"))
 
     print(
         f"\n📊 Found {len(extract_files)} extract files, {len(sample_files)} sample files"
@@ -80,7 +80,7 @@ def debug_filename_issues():
                 print(f"      Sample bytes: {sample_cleaned.encode('utf-8')}")
 
                 # Test if the PDF file actually exists
-                test_pdf = sample_docs_dir / f"{cleaned}.pdf"
+                test_pdf = ai_search_docs_dir / f"{cleaned}.pdf"
                 print(f"      Test path exists: {test_pdf.exists()}")
 
 
@@ -89,7 +89,7 @@ def test_direct_path_checks():
     print(f"\n🧪 DIRECT PATH EXISTENCE TESTS")
     print("=" * 50)
 
-    sample_docs_dir = Path("sample_docs/business_rules")
+    ai_search_docs_dir = Path("ai_search_docs/business_rules")
 
     # Test variations of the problematic filename
     test_names = [
@@ -99,7 +99,7 @@ def test_direct_path_checks():
     ]
 
     for name in test_names:
-        test_path = sample_docs_dir / name
+        test_path = ai_search_docs_dir / name
         print(f"Testing: '{name}' → Exists: {test_path.exists()}")
 
         if test_path.exists():

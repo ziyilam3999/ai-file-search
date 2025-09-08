@@ -280,7 +280,7 @@ class ComprehensiveSystemTest:
             )
 
             # Test 2: Required directories exist
-            required_dirs = ["sample_docs", "extracts", "logs", "prompts"]
+            required_dirs = ["ai_search_docs", "extracts", "logs", "prompts"]
             missing_dirs = [
                 d for d in required_dirs if not (self.base_dir / d).exists()
             ]

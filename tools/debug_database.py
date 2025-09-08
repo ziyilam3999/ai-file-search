@@ -87,7 +87,7 @@ def check_filesystem_vs_database():
     print(f"{'='*60}")
 
     # Check filesystem
-    folder_path = Path("sample_docs/business_rules")
+    folder_path = Path("ai_search_docs/business_rules")
     if not folder_path.exists():
         print("❌ business_rules folder does not exist!")
         return

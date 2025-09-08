@@ -25,7 +25,7 @@ def setup_sample_structure():
     ]
 
     for category in sample_categories:
-        sample_path = Path(f"sample_docs/{category}")
+        sample_path = Path(f"ai_search_docs/{category}")
         extracts_path = Path(f"extracts/{category}")
 
         sample_path.mkdir(parents=True, exist_ok=True)
@@ -59,14 +59,14 @@ def migrate_existing_docs():
     # Check if we have existing children_stories and software_dev folders
     migrations = []
 
-    if Path("sample_docs/children_stories").exists():
+    if Path("ai_search_docs/children_stories").exists():
         migrations.append(("children_stories", "classic_literature"))
-    if Path("sample_docs/software_dev").exists():
+    if Path("ai_search_docs/software_dev").exists():
         migrations.append(("software_dev", "technical_docs"))
 
     for old_name, new_name in migrations:
-        old_path = Path(f"sample_docs/{old_name}")
-        new_path = Path(f"sample_docs/{new_name}")
+        old_path = Path(f"ai_search_docs/{old_name}")
+        new_path = Path(f"ai_search_docs/{new_name}")
 
         if old_path.exists() and not new_path.exists():
             print(f"MOVE: Moving {old_name} -> {new_name}")
@@ -87,14 +87,14 @@ def create_user_guide():
 
 ## OVERVIEW: How It Works
 
-The AI File Search system now automatically discovers document categories based on your folder structure in `sample_docs/`.
+The AI File Search system now automatically discovers document categories based on your folder structure in `ai_search_docs/`.
 
 ## STRUCTURE: Folder Structure
 
-Your documents should be organized in the `sample_docs/` directory. Each subfolder represents a category of documents. For example:
+Your documents should be organized in the `ai_search_docs/` directory. Each subfolder represents a category of documents. For example:
 
 ```
-sample_docs/
+ai_search_docs/
 ├── research_papers/
 │   ├── paper1.pdf
 │   └── paper2.pdf
@@ -108,7 +108,7 @@ sample_docs/
 
 ## GETTING STARTED: Quick Setup
 
-1. **Add your documents**: Put files in the appropriate `sample_docs/` subfolder
+1. **Add your documents**: Put files in the appropriate `ai_search_docs/` subfolder
 2. **Start the watcher**: `python run_watcher.py`
 3. **Switch categories**: `python switch_documents.py <category_name>`
 
@@ -128,7 +128,7 @@ sample_docs/
 
 ## 📂 Adding New Categories
 
-1. Create a new folder in `sample_docs/` (e.g., `sample_docs/contracts/`)
+1. Create a new folder in `ai_search_docs/` (e.g., `ai_search_docs/contracts/`)
 2. Add your files to the folder
 3. Run `python switch_documents.py discover` to see it appear
 4. Switch to it: `python switch_documents.py contracts`
@@ -161,7 +161,7 @@ def main():
     print("\n🎉 Setup Complete!")
     print("=" * 50)
     print("Next steps:")
-    print("1. Add your documents to sample_docs/ subfolders")
+    print("1. Add your documents to ai_search_docs/ subfolders")
     print("2. Run: python switch_documents.py discover")
     print("3. Start the watcher: python run_watcher.py")
     print("4. Test switching: python switch_documents.py <category_name>")

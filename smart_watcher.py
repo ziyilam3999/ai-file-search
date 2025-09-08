@@ -3,7 +3,7 @@
 Smart Watcher for AI File Search
 
 Zero-configuration file watcher that automatically:
-- Watches ALL folders in sample_docs/
+- Watches ALL folders in ai_search_docs/
 - Detects new folders and starts watching them immediately
 - Provides clear status feedback to users
 - Enables easy start/stop/status operations
@@ -198,9 +198,9 @@ class SmartWatcherController:
             config = sync_config_with_filesystem()
 
             # Verify Option 1 architecture is enforced
-            if config.get("watch_directories") != ["sample_docs"]:
-                print("⚠️  Enforcing Option 1 Architecture: sample_docs only")
-                config["watch_directories"] = ["sample_docs"]
+            if config.get("watch_directories") != ["ai_search_docs"]:
+                print("⚠️  Enforcing Option 1 Architecture: ai_search_docs only")
+                config["watch_directories"] = ["ai_search_docs"]
 
                 # Save corrected config
                 from pathlib import Path
@@ -256,24 +256,26 @@ class SmartWatcherController:
         self._show_watched_folders()
 
         print("\nHelpful tips:")
-        print("  * Add files to any sample_docs/ subfolder")
-        print("  * Create new folders in sample_docs/ - they'll be auto-discovered")
+        print("  * Add files to any ai_search_docs/ subfolder")
+        print("  * Create new folders in ai_search_docs/ - they'll be auto-discovered")
         print("  * Check status anytime: python smart_watcher.py status")
         print("  * View logs: tail -f logs/watcher.log")
         print("  * Test search: python -m streamlit run ui/app.py")
 
     def _show_watched_folders(self) -> None:
         """Show which folders are being watched."""
-        sample_docs = Path("sample_docs")
-        if sample_docs.exists():
+        ai_search_docs = Path("ai_search_docs")
+        if ai_search_docs.exists():
             folders = [
                 d.name
-                for d in sample_docs.iterdir()
+                for d in ai_search_docs.iterdir()
                 if d.is_dir() and not d.name.startswith(".")
             ]
             print(f"Watched folders: {', '.join(folders) if folders else 'None'}")
         else:
-            print("Watched folders: sample_docs/ (create it to start adding documents)")
+            print(
+                "Watched folders: ai_search_docs/ (create it to start adding documents)"
+            )
 
     def _show_recent_activity(self) -> None:
         """Show recent log activity."""

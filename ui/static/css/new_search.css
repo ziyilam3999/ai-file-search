@@ -22,7 +22,7 @@ body {
 /* Left Panel - Chat History */
 .left-panel {
     width: 300px;
-    background-color: #1a1a1a;
+    background-color: #000000;
     border-right: 1px solid #333333;
     display: flex;
     flex-direction: column;
@@ -49,7 +49,8 @@ body {
     padding: 8px 12px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
+    transition: background-color 0.2s;
 }
 
 .new-chat-btn:hover {
@@ -63,12 +64,16 @@ body {
 }
 
 .chat-item {
-    padding: 12px 16px;
-    margin-bottom: 4px;
-    background-color: #222222;
-    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 8px;
+    background-color: #2a2a2a;
+    border-radius: 6px;
     cursor: pointer;
+    transition: background-color 0.2s;
     border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .chat-item:hover {
@@ -76,17 +81,53 @@ body {
 }
 
 .chat-item.active {
-    background-color: #444444;
-    border-color: #666666;
+    background-color: #333333;
+    border-color: #555555;
+}
+
+.chat-content {
+    flex: 1;
+    min-width: 0; /* Allow text to truncate properly */
 }
 
 .chat-title {
-    font-size: 14px;
-    color: #cccccc;
     display: block;
-    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 500;
+    color: #ffffff;
+    margin-bottom: 4px;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-time {
+    display: block;
+    font-size: 12px;
+    color: #888888;
+}
+
+.delete-chat-btn {
+    background: none;
+    border: none;
+    color: #888888;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px;
+    margin-left: 8px;
+    border-radius: 3px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.delete-chat-btn:hover {
+    background-color: #444444;
+    color: #ff6b6b;
+}
+
+.delete-chat-btn:active {
+    background-color: #555555;
 }
 
 /* Main Content Area */
@@ -94,92 +135,84 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100vh;
 }
 
-/* Answer Area - 70% */
+/* Answer Area */
 .answer-area {
-    height: 70%;
-    background-color: #000000;
-    border-bottom: 1px solid #333333;
+    flex: 1; /* Allow answer area to grow and fill available space */
     display: flex;
     flex-direction: column;
+    border-bottom: 1px solid #333333;
 }
 
 .answer-header {
-    padding: 20px 30px 10px 30px;
+    padding: 20px;
     border-bottom: 1px solid #333333;
+    background-color: #1a1a1a;
 }
 
 .answer-header h3 {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
     color: #ffffff;
 }
 
 .answer-content {
     flex: 1;
-    padding: 0;
+    padding: 20px;
     overflow-y: auto;
-    line-height: 1.6;
+    overflow-x: hidden;
+    background-color: #000000;
+    max-height: calc(100vh - 200px); /* Set max-height to enable scrolling */
+    min-height: 200px; /* Minimum height for scrolling */
 }
 
 .placeholder-text {
     color: #666666;
-    font-size: 16px;
     font-style: italic;
     text-align: center;
     margin-top: 100px;
-    padding: 30px;
 }
 
-/* Conversation container for scrollable chat history */
+/* Conversation Messages */
 .conversation-container {
-    padding: 20px 30px;
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
 
-/* Individual message styles */
 .message {
-    margin-bottom: 20px;
+    max-width: 80%;
 }
 
 .question-message {
-    background-color: #1a1a1a;
-    padding: 15px 20px;
-    border-radius: 12px;
-    border-left: 3px solid #666666;
+    align-self: flex-end;
 }
 
 .question-text {
-    color: #cccccc;
-    font-size: 16px;
-    margin: 0;
+    background-color: #1a1a1a;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border-bottom-right-radius: 4px;
+    color: #ffffff;
+    line-height: 1.4;
 }
 
 .answer-message {
-    background-color: #111111;
-    padding: 20px;
-    border-radius: 12px;
-    border-left: 3px solid #ffffff;
+    align-self: flex-start;
 }
 
 .answer-text {
+    background-color: #2a2a2a;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border-bottom-left-radius: 4px;
     color: #ffffff;
-    font-size: 16px;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    margin: 0;
-    line-height: 1.6;
+    line-height: 1.4;
 }
 
-/* Typing animation for streaming effect */
 .typing-cursor::after {
     content: '|';
-    color: #ffffff;
-    font-weight: bold;
     animation: blink 1s infinite;
 }
 
@@ -188,65 +221,95 @@ body {
     51%, 100% { opacity: 0; }
 }
 
-/* Spacing Area - 10% */
-.spacing-area {
-    height: 10%;
-    background-color: #000000;
-}
-
-/* Question Area - 20% */
-.question-area {
-    height: 20%;
-    background-color: #111111;
-    padding: 20px 30px;
-    border-top: 1px solid #333333;
+/* Loading Indicator */
+.loading-indicator {
     display: flex;
     align-items: center;
+    gap: 10px;
+    color: #888888;
+    font-style: italic;
+    padding: 8px 16px;
+    align-self: flex-start;
+}
+
+.loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #333333;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+    font-size: 14px;
+}
+
+/* Question Area */
+.question-area {
+    flex: 0 0 auto; /* Take only needed space */
+    padding: 20px;
+    background-color: #1a1a1a;
+    border-top: 1px solid #333333;
 }
 
 .question-input-container {
-    width: 100%;
     display: flex;
-    gap: 15px;
-    align-items: flex-end;
+    gap: 12px;
+    align-items: flex-start; /* Align items to the top */
+    height: auto; /* Allow container to adjust to content */
 }
 
 .question-input {
     flex: 1;
-    background-color: #222222;
+    padding: 6px 12px; /* Reduced padding */
+    border: 1px solid #333333;
+    border-radius: 8px;
+    background-color: #2a2a2a;
     color: #ffffff;
-    border: 1px solid #444444;
-    border-radius: 6px;
-    padding: 12px 16px;
-    font-size: 16px;
+    font-size: 14px;
+    resize: vertical; /* Allow vertical resizing */
     font-family: inherit;
-    resize: none;
-    outline: none;
+    min-height: 40px; /* Minimum height */
+    max-height: 360px; /* Maximum height tripled */
+    line-height: 1.4;
+    overflow-y: auto; /* Add scroll if content exceeds max-height */
 }
 
 .question-input:focus {
-    border-color: #666666;
-    background-color: #333333;
+    outline: none;
+    border-color: #555555;
 }
 
 .question-input::placeholder {
-    color: #666666;
+    color: #888888;
 }
 
 .search-btn {
-    background-color: #ffffff;
-    color: #000000;
+    padding: 6px 16px; /* Reduced padding */
+    background-color: #333333;
+    color: #ffffff;
     border: none;
-    padding: 12px 24px;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s;
     white-space: nowrap;
+    height: 40px; /* Fixed height to match input min-height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Prevent button from shrinking */
 }
 
-.search-btn:hover {
-    background-color: #cccccc;
+.search-btn:hover:not(:disabled) {
+    background-color: #444444;
 }
 
 .search-btn:disabled {
@@ -255,32 +318,33 @@ body {
     cursor: not-allowed;
 }
 
-/* Loading state */
-.loading {
-    color: #666666;
-    font-style: italic;
-}
-
 /* Scrollbar styling */
 .answer-content::-webkit-scrollbar,
 .chat-list::-webkit-scrollbar {
-    width: 8px;
+    width: 12px;
 }
 
 .answer-content::-webkit-scrollbar-track,
 .chat-list::-webkit-scrollbar-track {
     background: #1a1a1a;
+    border-radius: 6px;
 }
 
 .answer-content::-webkit-scrollbar-thumb,
 .chat-list::-webkit-scrollbar-thumb {
-    background: #444444;
-    border-radius: 4px;
+    background: #555555;
+    border-radius: 6px;
+    border: 2px solid #1a1a1a;
 }
 
 .answer-content::-webkit-scrollbar-thumb:hover,
 .chat-list::-webkit-scrollbar-thumb:hover {
-    background: #666666;
+    background: #777777;
+}
+
+.answer-content::-webkit-scrollbar-thumb:active,
+.chat-list::-webkit-scrollbar-thumb:active {
+    background: #888888;
 }
 
 /* Responsive design */

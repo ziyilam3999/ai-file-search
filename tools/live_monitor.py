@@ -16,33 +16,43 @@ from pathlib import Path
 
 
 def get_file_counts():
-    """Get current file counts from filesystem and database"""
-    base_path = Path(__file__).parent
+    """Get counts for ai_search_docs, extracts, and indexed files"""
+    # Use project root as base path
+    base_path = Path(__file__).parent.parent
 
-    # Count files in ai_search_docs
     ai_search_docs_path = base_path / "ai_search_docs"
-    sample_count = len([f for f in ai_search_docs_path.rglob("*") if f.is_file()])
-
-    # Count files in extracts
     extracts_path = base_path / "extracts"
-    extracts_count = len([f for f in extracts_path.rglob("*") if f.is_file()])
+    meta_db_path = base_path / "meta.sqlite"
 
-    # Count indexed files
-    try:
-        conn = sqlite3.connect("meta.sqlite")
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(DISTINCT file) FROM meta")
-        indexed_count = cursor.fetchone()[0]
-        conn.close()
-    except Exception as e:
-        indexed_count = f"Error: {e}"
+    sample_count = sum(1 for f in ai_search_docs_path.rglob("*") if f.is_file())
+    extracts_count = sum(1 for f in extracts_path.rglob("*") if f.is_file())
+    sample_folder_count = sum(1 for f in ai_search_docs_path.rglob("*") if f.is_dir())
+    extracts_folder_count = sum(1 for f in extracts_path.rglob("*") if f.is_dir())
 
-    return sample_count, extracts_count, indexed_count
+    # Count indexed files in meta.sqlite
+    indexed_count = 0
+    if meta_db_path.exists():
+        try:
+            conn = sqlite3.connect(str(meta_db_path))
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM meta")
+            indexed_count = cur.fetchone()[0]
+            conn.close()
+        except Exception:
+            pass
+
+    return (
+        sample_count,
+        extracts_count,
+        indexed_count,
+        sample_folder_count,
+        extracts_folder_count,
+    )
 
 
 def get_latest_files():
     """Get the most recently added files"""
-    base_path = Path(__file__).parent
+    base_path = Path(__file__).parent.parent
 
     # Latest in ai_search_docs
     ai_search_docs_path = base_path / "ai_search_docs"
@@ -62,27 +72,36 @@ def get_latest_files():
 
 
 def check_watcher_status():
-    """Check if watcher is running"""
+    """Check if watcher is running by checking PID"""
     try:
-        with open("logs/watcher_status.json", "r") as f:
-            import json
+        import psutil
 
-            status = json.load(f)
-            return status.get("status", "unknown")
-    except Exception:
-        print("❌ Watcher Status: UNKNOWN (check logs/watcher_status.json)")
+        base_path = Path(__file__).parent.parent
+        pid_file = base_path / "logs" / "watcher.pid"
+        if pid_file.exists():
+            with open(pid_file, "r") as f:
+                pid = int(f.read().strip())
+            if psutil.pid_exists(pid):
+                return "running"
+            else:
+                return "stopped"
+        else:
+            return "stopped"
+    except Exception as e:
+        print(f"❌ Watcher Status: UNKNOWN ({e})")
+        return "unknown"
 
 
 def check_for_misplaced_files():
     """Check for files in wrong locations"""
-    base_path = Path(__file__).parent
+    base_path = Path(__file__).parent.parent
     extracts_root = base_path / "extracts"
 
     misplaced = []
-    for item in extracts_root.iterdir():
-        if item.is_file() and item.suffix == ".txt":
-            misplaced.append(item.name)
-
+    if extracts_root.exists():
+        for item in extracts_root.iterdir():
+            if item.is_file() and item.suffix == ".txt":
+                misplaced.append(item.name)
     return misplaced
 
 
@@ -97,7 +116,13 @@ def main():
     try:
         while True:
             current_time = datetime.now().strftime("%H:%M:%S")
-            sample_count, extracts_count, indexed_count = get_file_counts()
+            (
+                sample_count,
+                extracts_count,
+                indexed_count,
+                sample_folder_count,
+                extracts_folder_count,
+            ) = get_file_counts()
             latest_sample, latest_extract = get_latest_files()
             watcher_status = check_watcher_status()
             misplaced = check_for_misplaced_files()
@@ -111,14 +136,30 @@ def main():
             print(f"🟢 Watcher: {watcher_status.upper()}")
             print()
 
+            # Alert if watcher is stopped
+            if watcher_status == "stopped":
+                print("🚨 ALERT: Watcher is stopped! New files won't be processed.")
+                print("   Run: python smart_watcher.py start")
+                print()
+
             print("📊 File Counts:")
-            print(f"   📁 ai_search_docs: {sample_count} files")
-            print(f"   📁 extracts:    {extracts_count} files")
+            print(
+                f"   📁 ai_search_docs: {sample_count} files, {sample_folder_count} folders"
+            )
+            print(
+                f"   📁 extracts:    {extracts_count} files, {extracts_folder_count} folders"
+            )
             print(f"   📄 indexed:     {indexed_count} files")
 
             # Show changes
             if prev_counts:
-                prev_sample, prev_extracts, prev_indexed = prev_counts
+                (
+                    prev_sample,
+                    prev_extracts,
+                    prev_indexed,
+                    prev_sample_folders,
+                    prev_extracts_folders,
+                ) = prev_counts
                 if sample_count > prev_sample:
                     print(
                         f"   🆕 NEW FILE DETECTED in ai_search_docs! (+{sample_count - prev_sample})"
@@ -127,6 +168,14 @@ def main():
                     print(f"   ✅ EXTRACTED! (+{extracts_count - prev_extracts})")
                 if indexed_count > prev_indexed:
                     print(f"   🎯 INDEXED! (+{indexed_count - prev_indexed})")
+                if sample_folder_count > prev_sample_folders:
+                    print(
+                        f"   📂 NEW FOLDER in ai_search_docs! (+{sample_folder_count - prev_sample_folders})"
+                    )
+                if extracts_folder_count > prev_extracts_folders:
+                    print(
+                        f"   📂 NEW FOLDER in extracts! (+{extracts_folder_count - prev_extracts_folders})"
+                    )
 
             # Show misplaced files warning
             if misplaced:
@@ -144,14 +193,14 @@ def main():
                 sample_time = datetime.fromtimestamp(latest_sample[1]).strftime(
                     "%H:%M:%S"
                 )
-                rel_path = latest_sample[0].relative_to(Path(__file__).parent)
+                rel_path = latest_sample[0].relative_to(Path(__file__).parent.parent)
                 print(f"   📁 ai_search_docs: {rel_path} ({sample_time})")
 
             if latest_extract:
                 extract_time = datetime.fromtimestamp(latest_extract[1]).strftime(
                     "%H:%M:%S"
                 )
-                rel_path = latest_extract[0].relative_to(Path(__file__).parent)
+                rel_path = latest_extract[0].relative_to(Path(__file__).parent.parent)
                 print(f"   📁 extracts:    {rel_path} ({extract_time})")
 
             print()
@@ -166,7 +215,13 @@ def main():
                 print("⚠️  Fix misplaced files to avoid duplicates")
             print("📋 Press Ctrl+C to stop monitoring")
 
-            prev_counts = (sample_count, extracts_count, indexed_count)
+            prev_counts = (
+                sample_count,
+                extracts_count,
+                indexed_count,
+                sample_folder_count,
+                extracts_folder_count,
+            )
             time.sleep(2)  # Update every 2 seconds
 
     except KeyboardInterrupt:

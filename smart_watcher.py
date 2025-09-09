@@ -111,7 +111,11 @@ class SmartWatcherController:
             if pid:
                 # Try graceful shutdown first
                 if os.name == "nt":  # Windows
-                    os.kill(pid, signal.CTRL_BREAK_EVENT)
+                    import subprocess
+
+                    result = subprocess.call(["taskkill", "/PID", str(pid), "/T", "/F"])
+                    if result != 0:
+                        print(f"Warning: taskkill returned {result}")
                 else:  # Unix/Linux
                     os.kill(pid, signal.SIGTERM)
 
@@ -120,9 +124,16 @@ class SmartWatcherController:
 
                 # Force kill if still running
                 if psutil.pid_exists(pid):
-                    # Use SIGTERM for cross-platform compatibility
-                    os.kill(pid, signal.SIGTERM)
-                    time.sleep(1)
+                    if os.name == "nt":
+                        import subprocess
+
+                        result = subprocess.call(
+                            ["taskkill", "/PID", str(pid), "/T", "/F"]
+                        )
+                        if result != 0:
+                            print(f"Warning: force taskkill returned {result}")
+                    else:
+                        os.kill(pid, signal.SIGTERM)
 
             # Clean up files
             self.pid_file.unlink(missing_ok=True)
@@ -317,7 +328,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Smart Watcher Controller for AI File Search",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog="""\
 Examples:
   python smart_watcher.py start           # Start watching all folders
   python smart_watcher.py start --verbose # Start with detailed logging

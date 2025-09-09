@@ -3,9 +3,11 @@ class AIFileSearchUI {
     constructor() {
         this.currentChatId = 1;
         this.chatHistory = new Map();
+        this.isSearching = false; // Track if there's an active search
         this.initializeElements();
         this.bindEvents();
         this.loadChatHistory();
+        this.adjustTextareaHeight(); // Initialize textarea height
     }
 
     initializeElements() {
@@ -28,11 +30,23 @@ class AIFileSearchUI {
             }
         });
 
+        // Auto-adjust textarea height on input
+        this.questionInput.addEventListener('input', () => this.adjustTextareaHeight());
+
         // New chat button
         this.newChatBtn.addEventListener('click', () => this.createNewChat());
 
-        // Chat item selection
+        // Chat item selection and deletion
         this.chatList.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.delete-chat-btn');
+            if (deleteBtn) {
+                e.stopPropagation();
+                const chatItem = deleteBtn.closest('.chat-item');
+                const chatId = parseInt(chatItem.dataset.chatId);
+                this.deleteChat(chatId);
+                return;
+            }
+            
             const chatItem = e.target.closest('.chat-item');
             if (chatItem) {
                 this.selectChat(parseInt(chatItem.dataset.chatId));
@@ -40,14 +54,25 @@ class AIFileSearchUI {
         });
     }
 
+    adjustTextareaHeight() {
+        this.questionInput.style.height = 'auto';
+        this.questionInput.style.height = Math.min(this.questionInput.scrollHeight, 360) + 'px'; // Respect max-height
+    }
+
     async handleSearch() {
         const question = this.questionInput.value.trim();
         if (!question) return;
 
+        // Clear input immediately
+        this.questionInput.value = '';
+        
+        // Set searching state
+        this.isSearching = true;
+        
         // Disable search button and show loading
         this.setLoadingState(true);
         
-        // Add question to conversation
+        // Add question to conversation with loading indicator
         this.addQuestionToConversation(question);
         
         // Save question to current chat
@@ -72,7 +97,7 @@ class AIFileSearchUI {
 
             const data = await response.json();
             
-            // Show answer with typing animation
+            // Show answer with typing animation (this will remove loading indicator)
             await this.typeAnswer(data.answer || 'No answer found.');
             
             // Save answer to current chat
@@ -86,8 +111,8 @@ class AIFileSearchUI {
             await this.typeAnswer(`Error: ${error.message}`);
             this.addToChat(this.currentChatId, 'error', error.message);
         } finally {
+            this.isSearching = false;
             this.setLoadingState(false);
-            this.questionInput.value = '';
         }
     }
 
@@ -102,6 +127,16 @@ class AIFileSearchUI {
         questionDiv.innerHTML = `<p class="question-text">${this.formatText(question)}</p>`;
         
         conversationContainer.appendChild(questionDiv);
+        
+        // Add loading indicator below the question
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-indicator';
+        loadingDiv.innerHTML = `
+            <div class="loading-spinner"></div>
+            <span class="loading-text">Working...</span>
+        `;
+        conversationContainer.appendChild(loadingDiv);
+        
         this.scrollToBottom();
     }
 
@@ -110,6 +145,12 @@ class AIFileSearchUI {
         this.initializeConversationContainer();
         
         const conversationContainer = this.answerContent.querySelector('.conversation-container');
+        
+        // Remove loading indicator before showing answer
+        const loadingIndicator = conversationContainer.querySelector('.loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
         
         const answerDiv = document.createElement('div');
         answerDiv.className = 'message answer-message';
@@ -126,7 +167,8 @@ class AIFileSearchUI {
         
         for (let i = 0; i < words.length; i++) {
             currentText += (i > 0 ? ' ' : '') + words[i];
-            answerParagraph.textContent = currentText;
+            // Apply formatting during typing
+            answerParagraph.innerHTML = this.formatText(currentText);
             this.scrollToBottom();
             
             // Random delay between 30-80ms for natural typing feel
@@ -148,43 +190,9 @@ class AIFileSearchUI {
         }
     }
 
-    scrollToBottom() {
-        this.answerContent.scrollTop = this.answerContent.scrollHeight;
-    }
-
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    showAnswer(answer) {
-        this.answerContent.innerHTML = `
-            <div class="answer-text">${this.formatAnswer(answer)}</div>
-        `;
-        this.answerContent.scrollTop = 0;
-    }
-
-    formatAnswer(answer) {
-        // Simple formatting - preserve line breaks and escape HTML
-        return answer
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\n/g, '<br>');
-    }
-
-    formatText(text) {
-        // Simple text formatting for questions
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
-
     setLoadingState(loading) {
         this.searchBtn.disabled = loading;
         this.searchBtn.textContent = loading ? 'Searching...' : 'Search';
-        
-        // Don't show loading in answer area anymore since we show conversation
     }
 
     createNewChat() {
@@ -198,62 +206,100 @@ class AIFileSearchUI {
         const chatItem = document.createElement('div');
         chatItem.className = 'chat-item active';
         chatItem.dataset.chatId = newChatId;
-        chatItem.innerHTML = '<span class="chat-title">New Chat</span>';
+        chatItem.innerHTML = `
+            <div class="chat-content">
+                <span class="chat-title">New Chat</span>
+                <span class="chat-time">${new Date().toLocaleTimeString()}</span>
+            </div>
+            <button class="delete-chat-btn" title="Delete chat">×</button>
+        `;
         
-        // Remove active class from other chats
-        document.querySelectorAll('.chat-item').forEach(item => {
+        // Remove active class from other items
+        this.chatList.querySelectorAll('.chat-item').forEach(item => {
             item.classList.remove('active');
         });
         
-        // Add new chat to top of list
+        // Add new item at top
         this.chatList.insertBefore(chatItem, this.chatList.firstChild);
         
-        // Clear answer area and show placeholder
+        // Clear answer area
         this.answerContent.innerHTML = '<div class="placeholder-text">Ask a question to see the AI answer here</div>';
-        this.questionInput.value = '';
+        
+        this.saveChatHistory();
     }
 
     selectChat(chatId) {
+        // Don't switch if currently searching
+        if (this.isSearching) {
+            return;
+        }
+        
         this.currentChatId = chatId;
         
-        // Update active state
-        document.querySelectorAll('.chat-item').forEach(item => {
+        // Update UI
+        this.chatList.querySelectorAll('.chat-item').forEach(item => {
             item.classList.toggle('active', parseInt(item.dataset.chatId) === chatId);
         });
         
         // Load chat content
-        this.loadChatContent(chatId);
+        const chatData = this.chatHistory.get(chatId) || [];
+        this.displayChat(chatData);
     }
 
-    loadChatContent(chatId) {
-        const chat = this.chatHistory.get(chatId) || [];
+    deleteChat(chatId) {
+        // Confirm deletion
+        if (!confirm('Are you sure you want to delete this chat?')) {
+            return;
+        }
         
-        if (chat.length === 0) {
+        // Remove from chat history
+        this.chatHistory.delete(chatId);
+        
+        // Remove from UI
+        const chatItem = this.chatList.querySelector(`[data-chat-id="${chatId}"]`);
+        if (chatItem) {
+            chatItem.remove();
+        }
+        
+        // If deleted chat was current, switch to another chat or create new one
+        if (this.currentChatId === chatId) {
+            if (this.chatHistory.size > 0) {
+                // Switch to the most recent remaining chat
+                const remainingChatIds = Array.from(this.chatHistory.keys());
+                const mostRecentId = remainingChatIds[remainingChatIds.length - 1];
+                this.selectChat(mostRecentId);
+            } else {
+                // No chats left, create a new one
+                this.createNewChat();
+            }
+        }
+        
+        // Save updated chat history
+        this.saveChatHistory();
+    }
+
+    displayChat(chatData) {
+        if (chatData.length === 0) {
             this.answerContent.innerHTML = '<div class="placeholder-text">Ask a question to see the AI answer here</div>';
             return;
         }
         
-        // Rebuild the entire conversation
         this.answerContent.innerHTML = '<div class="conversation-container"></div>';
         const conversationContainer = this.answerContent.querySelector('.conversation-container');
         
-        for (let i = 0; i < chat.length; i += 2) {
-            // Add question
-            if (chat[i] && chat[i].type === 'question') {
+        chatData.forEach(item => {
+            if (item.type === 'question') {
                 const questionDiv = document.createElement('div');
                 questionDiv.className = 'message question-message';
-                questionDiv.innerHTML = `<p class="question-text">${this.formatText(chat[i].content)}</p>`;
+                questionDiv.innerHTML = `<p class="question-text">${this.formatText(item.content)}</p>`;
                 conversationContainer.appendChild(questionDiv);
-            }
-            
-            // Add answer
-            if (chat[i + 1] && chat[i + 1].type === 'answer') {
+            } else if (item.type === 'answer') {
                 const answerDiv = document.createElement('div');
                 answerDiv.className = 'message answer-message';
-                answerDiv.innerHTML = `<p class="answer-text">${this.formatText(chat[i + 1].content)}</p>`;
+                answerDiv.innerHTML = `<p class="answer-text">${this.formatText(item.content)}</p>`;
                 conversationContainer.appendChild(answerDiv);
             }
-        }
+        });
         
         this.scrollToBottom();
     }
@@ -262,29 +308,125 @@ class AIFileSearchUI {
         if (!this.chatHistory.has(chatId)) {
             this.chatHistory.set(chatId, []);
         }
-        
-        this.chatHistory.get(chatId).push({
-            type: type,
-            content: content,
-            timestamp: new Date().toISOString()
-        });
+        this.chatHistory.get(chatId).push({ type, content, timestamp: Date.now() });
+        this.saveChatHistory();
     }
 
     updateChatTitle(chatId, question) {
-        const chatItem = document.querySelector(`.chat-item[data-chat-id="${chatId}"]`);
-        if (chatItem) {
-            const titleSpan = chatItem.querySelector('.chat-title');
-            if (titleSpan && titleSpan.textContent === 'New Chat') {
-                // Use first 30 characters of question as title
-                titleSpan.textContent = question.length > 30 ? 
-                    question.substring(0, 30) + '...' : question;
+        const chatData = this.chatHistory.get(chatId);
+        if (chatData && chatData.length === 2) { // First question-answer pair
+            const chatItem = this.chatList.querySelector(`[data-chat-id="${chatId}"] .chat-title`);
+            if (chatItem) {
+                const shortTitle = question.length > 30 ? question.substring(0, 30) + '...' : question;
+                chatItem.textContent = shortTitle;
             }
         }
     }
 
     loadChatHistory() {
-        // Initialize with current chat
-        this.chatHistory.set(this.currentChatId, []);
+        const saved = localStorage.getItem('aiFileSearch_chatHistory');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                this.chatHistory = new Map(parsed);
+                
+                // Clear existing chat list (including default HTML chat item)
+                this.chatList.innerHTML = '';
+                
+                // Populate chat list
+                this.chatHistory.forEach((chatData, chatId) => {
+                    const chatItem = document.createElement('div');
+                    chatItem.className = 'chat-item';
+                    chatItem.dataset.chatId = chatId;
+                    
+                    const firstQuestion = chatData.find(item => item.type === 'question');
+                    const title = firstQuestion ? 
+                        (firstQuestion.content.length > 30 ? firstQuestion.content.substring(0, 30) + '...' : firstQuestion.content) : 
+                        'New Chat';
+                    
+                    chatItem.innerHTML = `
+                        <div class="chat-content">
+                            <span class="chat-title">${title}</span>
+                            <span class="chat-time">${new Date(chatData[0]?.timestamp || Date.now()).toLocaleTimeString()}</span>
+                        </div>
+                        <button class="delete-chat-btn" title="Delete chat">×</button>
+                    `;
+                    
+                    this.chatList.appendChild(chatItem);
+                });
+                
+                // Load most recent chat if exists
+                if (this.chatHistory.size > 0) {
+                    const mostRecentId = Array.from(this.chatHistory.keys()).pop();
+                    this.selectChat(mostRecentId);
+                } else {
+                    // No saved chats, but we have a default chat ID of 1
+                    this.chatHistory.set(1, []);
+                    this.updateDefaultChatItem();
+                }
+            } catch (error) {
+                console.error('Error loading chat history:', error);
+                // On error, ensure we have the default chat with delete button
+                this.chatHistory.set(1, []);
+                this.updateDefaultChatItem();
+            }
+        } else {
+            // No saved history, ensure default chat exists with delete button
+            this.chatHistory.set(1, []);
+            this.updateDefaultChatItem();
+        }
+    }
+
+    updateDefaultChatItem() {
+        // Update the default HTML chat item to include delete button
+        const defaultChatItem = this.chatList.querySelector('[data-chat-id="1"]');
+        if (defaultChatItem) {
+            defaultChatItem.innerHTML = `
+                <div class="chat-content">
+                    <span class="chat-title">Current Chat</span>
+                    <span class="chat-time">${new Date().toLocaleTimeString()}</span>
+                </div>
+                <button class="delete-chat-btn" title="Delete chat">×</button>
+            `;
+        }
+    }
+
+    saveChatHistory() {
+        const serializable = Array.from(this.chatHistory.entries());
+        localStorage.setItem('aiFileSearch_chatHistory', JSON.stringify(serializable));
+    }
+
+    formatText(text) {
+        // First handle HTML escaping
+        let formattedText = text
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        
+        // Handle citations - put Citations section on a new line, but keep [1], [2] etc. inline
+        if (formattedText.includes('Citations:')) {
+            // Find the position of "Citations:"
+            const citationsIndex = formattedText.indexOf('Citations:');
+            if (citationsIndex > 0) {
+                // Main answer text (everything before Citations)
+                let mainText = formattedText.substring(0, citationsIndex).trim();
+                // Citations section (everything from Citations: onwards)
+                let citationsText = formattedText.substring(citationsIndex);
+                
+                // Ensure main text is one continuous paragraph, citations section on new line
+                formattedText = mainText + '\n' + citationsText;
+            }
+        }
+        
+        // Convert line breaks to HTML
+        return formattedText.replace(/\n/g, '<br>');
+    }
+
+    scrollToBottom() {
+        this.answerContent.scrollTop = this.answerContent.scrollHeight;
+    }
+
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 

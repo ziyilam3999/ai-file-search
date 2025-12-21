@@ -17,6 +17,8 @@ import numpy as np
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
+from .config import DATABASE_PATH, EXTRACTS_DIR, INDEX_PATH
+
 # Configuration
 CHUNK_SIZE = 200  # words per chunk
 CHUNK_OVERLAP = 50  # word overlap between chunks
@@ -27,10 +29,10 @@ class Embedder:
 
     def __init__(self):
         self.model_name = "all-MiniLM-L6-v2"
-        self.index_path = "index.faiss"
-        self.db_path = "meta.sqlite"
+        self.index_path = INDEX_PATH
+        self.db_path = DATABASE_PATH
 
-    def build_index(self, extracts_dir: str = "extracts") -> None:
+    def build_index(self, extracts_dir: str = EXTRACTS_DIR) -> None:
         """
         Build FAISS index from all extracted text files.
 

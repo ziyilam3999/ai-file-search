@@ -10,7 +10,18 @@ Technical debt and cleanup tasks.
 | TD-002 | PRD_v0.4.docx should be converted to Markdown | Low | Low | Not Started |
 | TD-003 | milestones.yml could be merged into progress.md | Low | Low | Completed |
 
-## Planned Refactoring
+## Completed Refactoring
+
+| ID | Description | Completed |
+|----|-------------|-----------|
+| TD-003 | Migrate milestones.yml to progress.md | 2025-12-21 |
+| TD-004 | Centralize LLM configuration in config.py | 2025-08-03 |
+| TD-005 | Standardize folder naming (sample_docs → ai_search_docs) | 2025-09-08 |
+| TD-006 | Fix all mypy type annotations | 2025-08-03 |
+| TD-007 | Remove duplicate backup logic in watch.py | 2025-09-06 |
+| TD-008 | Remove emoji characters from quick_test.py | 2025-12-21 |
+| TD-009 | Centralize path constants (INDEX_PATH, DATABASE_PATH) in config.py | 2025-12-21 |
+| TD-010 | Refactor embedding.py to use config.py path constants | 2025-12-21 |
 
 ### TD-001: Real Incremental Index Updates
 
@@ -35,16 +46,6 @@ Technical debt and cleanup tasks.
 - Reference original Word file for historical purposes
 
 **Effort:** Low (estimated 1 hour)
-
-## Completed Refactoring
-
-| ID | Description | Completed |
-|----|-------------|-----------|
-| TD-003 | Migrate milestones.yml to progress.md | 2025-12-21 |
-| TD-004 | Centralize LLM configuration in config.py | 2025-08-03 |
-| TD-005 | Standardize folder naming (sample_docs → ai_search_docs) | 2025-09-08 |
-| TD-006 | Fix all mypy type annotations | 2025-08-03 |
-| TD-007 | Remove duplicate backup logic in watch.py | 2025-09-06 |
 
 ## Code Quality Metrics
 

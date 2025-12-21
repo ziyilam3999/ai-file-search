@@ -2,6 +2,16 @@
 Single source of truth for all LLM and performance settings
 """
 
+# ============================================================================
+# PATH CONSTANTS - Single source of truth for file paths
+# ============================================================================
+INDEX_PATH = "index.faiss"
+DATABASE_PATH = "meta.sqlite"
+DOCUMENTS_DIR = "ai_search_docs"
+EXTRACTS_DIR = "extracts"
+LOGS_DIR = "logs"
+BACKUPS_DIR = "backups"
+
 # LLM Generation Settings - OPTIMIZED FOR SPEED (51.9s → <20s target)
 LLM_CONFIG = {
     "max_tokens": 150,  # Tokens for answer generation (optimized for balanced speed + completeness)
@@ -213,7 +223,7 @@ def calculate_document_page(doc_chunk_id: int) -> int:
     import sqlite3
 
     # Get document info for this chunk
-    conn = sqlite3.connect("meta.sqlite")
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
 
     # Find which document this chunk belongs to and get total chunks

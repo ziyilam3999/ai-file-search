@@ -7,9 +7,16 @@ All notable changes to this project are documented in this file.
 ### Added
 - Documentation structure migration to standard format
 - `docs/guides/` subfolder for user-facing documentation
+- Path constants `INDEX_PATH`, `DATABASE_PATH`, `DOCUMENTS_DIR`, `EXTRACTS_DIR`, `LOGS_DIR`, `BACKUPS_DIR` in `core/config.py`
 
 ### Changed
 - Moved user guides to `docs/guides/` directory
+- Refactored `core/embedding.py` to use centralized path constants from `config.py`
+- Refactored `core/config.py` to use `DATABASE_PATH` constant in `calculate_document_page()`
+- Replaced emoji characters in `quick_test.py` with text-based indicators per `standards.md`
+
+### Fixed
+- Code style: Removed emoji violations for cross-platform compatibility
 
 ---
 

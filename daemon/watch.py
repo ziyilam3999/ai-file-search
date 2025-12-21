@@ -11,7 +11,9 @@ for changes and automatically updates the search index. Features include:
 """
 
 import fnmatch
+import glob
 import os
+import shutil
 import signal
 import sqlite3
 import sys
@@ -40,6 +42,7 @@ from watchdog.observers import Observer
 
 # Import our core modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.config import DATABASE_PATH, INDEX_PATH
 from core.embedding import Embedder
 from core.extract import Extractor
 
@@ -206,7 +209,7 @@ class EmbeddingAdapter:
                 logger.info("Clearing entire index")
 
                 # Clear database
-                conn = sqlite3.connect("meta.sqlite")
+                conn = sqlite3.connect(DATABASE_PATH)
                 conn.execute("DELETE FROM meta")
                 conn.commit()
                 conn.close()
@@ -347,8 +350,6 @@ class EmbeddingAdapter:
     def _cleanup_old_backups(self) -> None:
         """Clean up old backup files, keeping only the last 3."""
         try:
-            import glob
-
             backup_files = glob.glob("index_backup_*.faiss")
             backup_files.sort(reverse=True)  # Most recent first
 
@@ -360,16 +361,20 @@ class EmbeddingAdapter:
         except Exception as e:
             logger.debug(f"Error cleaning up backups: {e}")
 
-    def search(self, query: str) -> list:
+    def search(self, query: str) -> List[Dict[str, Optional[str]]]:
         """
         Search the index for the given query and return a list of dicts with 'path' and 'chunk' keys.
+
+        Args:
+            query: The search query string
+
+        Returns:
+            List of dictionaries containing 'path' and 'chunk' keys
         """
         try:
             # Use the Embedder's query method to get results with 'id'
             results = self.embedder.query(query)
-            import sqlite3
-
-            conn = sqlite3.connect("meta.sqlite")
+            conn = sqlite3.connect(DATABASE_PATH)
             # cursor = conn.cursor()
             formatted = []
             for r in results:
@@ -1030,21 +1035,18 @@ class FileWatcher:
     def _backup_index(self) -> None:
         """Create a backup of the current index."""
         try:
-            import shutil
-            from datetime import datetime
-
             backup_dir = Path("backups")
             backup_dir.mkdir(exist_ok=True)
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
             # Backup FAISS index
-            if os.path.exists("index.faiss"):
-                shutil.copy2("index.faiss", backup_dir / f"index_{timestamp}.faiss")
+            if os.path.exists(INDEX_PATH):
+                shutil.copy2(INDEX_PATH, backup_dir / f"index_{timestamp}.faiss")
 
             # Backup metadata
-            if os.path.exists("meta.sqlite"):
-                shutil.copy2("meta.sqlite", backup_dir / f"meta_{timestamp}.sqlite")
+            if os.path.exists(DATABASE_PATH):
+                shutil.copy2(DATABASE_PATH, backup_dir / f"meta_{timestamp}.sqlite")
 
             logger.info(f"Index backed up with timestamp {timestamp}")
 

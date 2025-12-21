@@ -11,6 +11,7 @@ All notable changes to this project are documented in this file.
 - Standardized `.gitignore` patterns for OS, IDE, and Python environment files
 
 ### Changed
+- Updated `.github/copilot-instructions.md` with stricter documentation-driven development protocols
 - Moved user guides to `docs/guides/` directory
 - Refactored `core/embedding.py` to use centralized path constants from `config.py`
 - Refactored `core/config.py` to use `DATABASE_PATH` constant in `calculate_document_page()`

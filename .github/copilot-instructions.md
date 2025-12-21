@@ -69,7 +69,7 @@ If you detect an empty workspace or the user asks to start a new project:
 
 4.  **User Documentation (Optional):** If the project has end-user functionality (UI, CLI, app), ask:
     > "Does this project need user guides? (e.g., installation guide, feature tutorials)"
-    
+   
     If YES, create `docs/guides/` with:
     *   `README.md`: Guides index
     *   `user-guide.md`: Getting started and usage instructions
@@ -170,6 +170,54 @@ At the end of every task (Scenario A, B, or C), you must provide a structured re
 2.  **ELI5 (Explain Like I'm 5):** A simple, non-technical explanation of the change.
     *   *Example:* "Imagine your game controller had a secret button that was hard to find. We took that secret button and put a big sticker on the screen so you can see it and press it easily!"
 
+### PROTOCOL 4: EXECUTION TRACKING (Complex Tasks)
+
+For tasks with **3 or more distinct phases** spanning multiple tool calls, you MUST create a temporary status file to track progress.
+
+#### When to Use
+*   Multi-phase migrations or refactoring
+*   Tasks that may span multiple user interactions
+*   Any work where losing track of progress would be costly
+
+#### When NOT to Use
+*   Simple file edits (1-2 steps)
+*   Single-command terminal operations
+*   Research/analysis tasks (Scenario D)
+
+#### Procedure
+1.  **Create Status File:** At task start, create `_TASK_STATUS.md` in the project root with:
+    *   Task title and objective
+    *   Phase breakdown with status indicators
+    *   Notes section for observations
+
+2.  **Update Continuously:** After completing each phase, update the status file immediately before proceeding.
+
+3.  **Delete on Completion:** Once ALL phases are complete and committed, delete `_TASK_STATUS.md` as part of the final commit.
+
+#### Template
+```markdown
+# Task Status: [Title]
+
+## Objective
+[Brief description of what this task accomplishes]
+
+## Phases
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | [Step 1 description] | ✅ Done |
+| 2 | [Step 2 description] | 🔄 In Progress |
+| 3 | [Step 3 description] | ⏳ Pending |
+
+## Notes
+- [Timestamp]: [Observation or decision made]
+```
+
+#### Benefits
+*   **Resumability:** If session is interrupted, next agent can continue
+*   **Transparency:** User sees exactly what's planned and done
+*   **Auditability:** Decisions are documented in real-time
+
 ### GENERAL EXECUTION STEPS (Apply to ALL Scenarios)
 0.  **Check State:** Ensure the git working directory is clean before starting. If not, ask the user to commit or stash changes.
 1.  **Context Gathering:** Read `progress.md` and `requirements.md`.
@@ -259,3 +307,4 @@ Fix bugs (in priority order):
 | **Ambiguous Requirement** | Do NOT proceed. Ask clarifying questions before writing any code. |
 | **Missing Documentation** | Create the missing doc file with a placeholder template before proceeding. |
 | **Context Too Large** | Use the "Context Window Optimization" guide above. Summarize lengthy docs if needed. |
+

@@ -17,8 +17,14 @@ Project roadmap, sprint tasks, and session log.
 | Citation Accuracy | Done | Weekend 9 |
 | Naming Consistency | Done | September 2025 |
 | Production Readiness | Done | September 2025 |
+| Maintenance & Standards | In Progress | December 2025 |
 
 ## Completed Milestones
+
+### December 2025: Maintenance & Standards
+- [x] Update project documentation standards (copilot-instructions.md)
+- [x] Enforce stricter .gitignore rules
+- [x] Migrate milestones.yml to progress.md
 
 ### Weekend 1: Bootstrap & Setup
 - [x] Initialize Poetry project with proper dependencies

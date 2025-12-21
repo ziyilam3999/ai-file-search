@@ -13,6 +13,7 @@ Technical debt and cleanup tasks.
 
 | ID | Description | Completed |
 |----|-------------|-----------|
+| TD-013 | Refactor daemon module for better configuration usage and code cleanup | 2025-12-21 |
 | TD-012 | Centralize AI model paths in config.py and clean up extract.py | 2025-12-21 |
 | TD-011 | Update .gitignore to match copilot-instructions.md standards | 2025-12-21 |
 | TD-003 | Migrate milestones.yml to progress.md | 2025-12-21 |

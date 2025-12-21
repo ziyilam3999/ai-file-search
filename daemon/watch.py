@@ -42,7 +42,13 @@ from watchdog.observers import Observer
 
 # Import our core modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from core.config import DATABASE_PATH, INDEX_PATH
+from core.config import (
+    DATABASE_PATH,
+    DOCUMENTS_DIR,
+    EXTRACTS_DIR,
+    INDEX_PATH,
+    LOGS_DIR,
+)
 from core.embedding import Embedder
 from core.extract import Extractor
 
@@ -613,8 +619,13 @@ class FileWatcher:
             # Merge YAML config with defaults
             config = self._default_config()
 
+            # Merge top-level sections
+            for section in ["timing", "indexing", "logging", "performance"]:
+                if section in yaml_config:
+                    config[section].update(yaml_config[section])
+
             # OPTION 1 ARCHITECTURE: Enforce ai_search_docs only watching
-            config["watch_directories"] = ["ai_search_docs"]
+            config["watch_directories"] = [DOCUMENTS_DIR]
 
             # Extract watch directories from document_categories if present
             if "document_categories" in yaml_config:
@@ -625,8 +636,8 @@ class FileWatcher:
                     if category_config.get("enabled", True):
                         for path in category_config.get("paths", []):
                             # Only watch ai_search_docs paths (Option 1 architecture)
-                            if path.startswith("ai_search_docs/"):
-                                watch_dirs.add("ai_search_docs")
+                            if path.startswith(f"{DOCUMENTS_DIR}/"):
+                                watch_dirs.add(DOCUMENTS_DIR)
 
                 if watch_dirs:
                     config["watch_directories"] = list(watch_dirs)
@@ -640,9 +651,9 @@ class FileWatcher:
                 yaml_dirs = yaml_config["watch_directories"]
                 if isinstance(yaml_dirs, list):
                     # Filter out extracts directory
-                    filtered_dirs = [d for d in yaml_dirs if d != "extracts"]
-                    if "ai_search_docs" not in filtered_dirs:
-                        filtered_dirs.append("ai_search_docs")
+                    filtered_dirs = [d for d in yaml_dirs if d != EXTRACTS_DIR]
+                    if DOCUMENTS_DIR not in filtered_dirs:
+                        filtered_dirs.append(DOCUMENTS_DIR)
                     config["watch_directories"] = filtered_dirs
 
             logger.info(f"Configuration loaded from {self.config_path}")
@@ -657,7 +668,7 @@ class FileWatcher:
     def _default_config(self) -> Dict[str, Any]:
         """Return default configuration."""
         return {
-            "watch_directories": ["ai_search_docs"],  # Only watch input directory
+            "watch_directories": [DOCUMENTS_DIR],  # Only watch input directory
             "file_patterns": {
                 "include": ["*.txt", "*.pdf", "*.docx", "*.md"],
                 "ignore": [
@@ -682,7 +693,7 @@ class FileWatcher:
             },
             "logging": {
                 "level": "INFO",
-                "file": "logs/watcher.log",
+                "file": f"{LOGS_DIR}/watcher.log",
                 "console_output": True,
             },
             "performance": {"max_memory_mb": 1024, "worker_threads": 2},

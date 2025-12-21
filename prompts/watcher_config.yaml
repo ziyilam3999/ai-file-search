@@ -31,6 +31,10 @@ document_categories:
     enabled: true
     paths:
     - ai_search_docs/user_manuals
+  Receipts:
+    enabled: true
+    paths:
+    - ai_search_docs/Receipts
 file_patterns:
   ignore:
   - '*.tmp'

@@ -1,0 +1,172 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+## [Unreleased]
+
+### Added
+- Documentation structure migration to standard format
+- `docs/guides/` subfolder for user-facing documentation
+
+### Changed
+- Moved user guides to `docs/guides/` directory
+
+---
+
+## [0.5.0] - 2025-09-08
+
+### Added
+- Real-time token streaming with visual feedback
+- Blinking cursor animation during generation
+- Dynamic citation highlighting with pulse animations
+- Document-relative page calculations
+- Glass morphism UI design
+
+### Changed
+- Database schema migrated to 4-column format with `doc_chunk_id`
+- Page calculation algorithm using proportional positioning
+- Calibrated words-per-page ratio for realistic page counts
+
+### Fixed
+- Peter Pan correctly shows pages 1-115 instead of impossible numbers
+- Citation accuracy improved to 100%
+
+---
+
+## [0.4.2] - 2025-09-08
+
+### Changed
+- Token optimization: 100→150 tokens to prevent answer truncation
+- Query time: ~46s (balanced speed vs completeness)
+
+### Fixed
+- Mid-sentence answer cutoffs eliminated
+
+---
+
+## [0.4.1] - 2025-09-08
+
+### Changed
+- Folder naming standardized: `sample_docs` → `ai_search_docs`
+- Updated 23+ files, 200+ references across entire codebase
+
+### Fixed
+- Index rebuilt with proper citation mapping (7,670 chunks)
+- Unicode filename matching with NFKC normalization
+
+---
+
+## [0.4.0] - 2025-09-06
+
+### Added
+- Intelligent original file mapping system (`_map_to_original_file()`)
+- Priority-based file type detection (PDF→DOCX→TXT→MD)
+- File existence validation before indexing
+
+### Fixed
+- Critical citation reference problem (extracts/ → ai_search_docs/)
+- Index quality: 100% valid file references (was 92.7%)
+
+---
+
+## [0.3.2] - 2025-09-01
+
+### Added
+- Comprehensive regression test suite (6 test categories)
+- Relevance threshold filtering (1.2 cosine distance)
+- Automated test result logging (test_results_*.json)
+
+### Fixed
+- Citation hallucination issue (fake Investopedia references)
+- FAISS/database synchronization
+
+---
+
+## [0.3.1] - 2025-08-10
+
+### Added
+- Performance configuration presets (ultra_fast, fast, balanced, quality)
+- Minimal citation mode for UI speed
+- Subdirectory support with recursive globbing
+
+### Changed
+- Centralized LLM configuration in `core/config.py`
+- Token reduction: 225→100→150 tokens
+- Temperature optimization: 0.35→0.1
+
+### Fixed
+- All mypy type annotation errors
+- Pre-commit hook compatibility
+
+---
+
+## [0.3.0] - 2025-08-03
+
+### Added
+- APScheduler for nightly reindexing (2:00 AM)
+- Pattern-based file filtering
+- Comprehensive watcher configuration system
+
+### Changed
+- File watcher uses watchdog library
+- Thread-safe event queue with deduplication
+- Debounced batch processing (5-second default)
+
+---
+
+## [0.2.1] - 2025-07-15
+
+### Added
+- Streamlit web UI on localhost:8501
+- Question input with AI-powered answer generation
+- Citation display with file references
+- Performance metrics sidebar
+- Session state management
+
+### Fixed
+- Embedding format mismatch (4-tuple format)
+- UI/core integration issues
+
+---
+
+## [0.2.0] - 2025-07-15
+
+### Added
+- Phi-3-mini-4k-instruct-q4.gguf integration
+- Real AI-generated answers with citations
+- Singleton pattern for model reuse
+- Raw completion mode for RAG
+
+### Fixed
+- Garbled output via ChatML removal
+- Prompt optimization (24 lines → 7 lines)
+
+---
+
+## [0.1.1] - 2025-07-14
+
+### Added
+- FAISS semantic search with all-MiniLM-L6-v2
+- SQLite metadata storage
+- Batch encoding (512 chunks/batch)
+
+### Performance
+- Build time: 40.34s (target: <60s)
+- Query time: 17.4ms (target: <200ms)
+- 3,037 chunks indexed
+
+---
+
+## [0.1.0] - 2024-12-XX
+
+### Added
+- Initial project setup with Poetry
+- PDF extraction using pdfminer.six
+- DOCX extraction using python-docx
+- TXT/MD file processing
+- Pre-commit hooks (black, isort, flake8, mypy)
+- Loguru logging integration
+
+---
+
+*Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)*

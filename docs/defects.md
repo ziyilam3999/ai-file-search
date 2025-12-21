@@ -1,0 +1,57 @@
+# Defects
+
+Known bugs, issues, and their resolution status.
+
+## Active Defects
+
+| ID | Description | Severity | Status | Reported |
+|----|-------------|----------|--------|----------|
+| - | No active defects | - | - | - |
+
+## Resolved Defects
+
+| ID | Description | Severity | Resolution | Resolved |
+|----|-------------|----------|------------|----------|
+| DEF-001 | Citation hallucination (fake Investopedia references) | Critical | Added relevance threshold (1.2), enhanced prompts | 2025-09-01 |
+| DEF-002 | Citations point to extracts/ instead of ai_search_docs/ | Critical | Implemented _map_to_original_file() mapping | 2025-09-06 |
+| DEF-003 | Garbled LLM output ("distits rock nrock head") | Critical | Removed ChatML format, simplified prompts | 2025-07-15 |
+| DEF-004 | Answer truncation mid-sentence | High | Increased max_tokens 100→150 | 2025-09-08 |
+| DEF-005 | Embedding format mismatch (expected 4 values, got 2) | High | Updated query() to return 4-tuple | 2025-07-15 |
+| DEF-006 | Impossible page numbers (Peter Pan showing 500+) | Medium | Fixed page calculation algorithm | 2025-08-10 |
+| DEF-007 | Windows temp file permission in test_watch.py | Low | Skipped on Windows environment | 2025-07-15 |
+| DEF-008 | numpy.int64 → Python int conversion bug | Medium | Added explicit type conversion | 2025-07-14 |
+
+## Defect Template
+
+```markdown
+### DEF-XXX: [Title]
+
+**Severity:** Critical / High / Medium / Low
+**Status:** Open / In Progress / Resolved / Won't Fix
+**Reported:** YYYY-MM-DD
+**Resolved:** YYYY-MM-DD
+
+**Description:**
+[Detailed description of the issue]
+
+**Steps to Reproduce:**
+1. Step 1
+2. Step 2
+3. Step 3
+
+**Expected Behavior:**
+[What should happen]
+
+**Actual Behavior:**
+[What actually happens]
+
+**Root Cause:**
+[Technical explanation]
+
+**Resolution:**
+[How it was fixed]
+```
+
+---
+
+*Last Updated: 2025-12-21*

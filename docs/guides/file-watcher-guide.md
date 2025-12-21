@@ -4,12 +4,12 @@ Complete guide to the AI File Search real-time file monitoring system.
 
 ## Overview
 
-The file watcher system provides automatic, real-time indexing of document changes using Python's `watchdog` library. It monitors the `sample_docs/` directory and all subdirectories for file changes.
+The file watcher system provides automatic, real-time indexing of document changes using Python's `watchdog` library. It monitors the `ai_search_docs/` directory and all subdirectories for file changes.
 
 ## How File Watching Works
 
 ### Architecture
-sample_docs/ # Monitored directory ├── category1/ # Automatically detected │ ├── document.pdf # Watched files │ └── notes.txt └── category2/ └── manual.docx
+ai_search_docs/ # Monitored directory ├── category1/ # Automatically detected │ ├── document.pdf # Watched files │ └── notes.txt └── category2/ └── manual.docx
 
 ↓ File System Events ↓
 
@@ -20,7 +20,7 @@ File Watcher Daemon # Python watchdog.Observer ├── Detects Changes # Creat
 Extract Text # PDF/DOCX → TXT
 Generate Embeddings # sentence-transformers
 Update Index # FAISS + SQLite
-Update Citations # Map back to sample_docs/
+Update Citations # Map back to ai_search_docs/
 
 
 ### Supported File Types
@@ -75,7 +75,7 @@ Watcher Configuration
 Configuration File: watcher_config.yaml
 # Directories to watch
 watch_directories:
-  - sample_docs
+  - ai_search_docs
 
 # File patterns
 file_patterns:
@@ -107,7 +107,7 @@ performance:
   Auto-Discovery
 The system automatically:
 
-Scans sample_docs for new folders
+Scans ai_search_docs for new folders
 Creates configuration for discovered categories
 Starts watching new directories immediately
 Updates index when folders are added/removed
@@ -119,7 +119,7 @@ Queue Processing (background worker thread)
 Text Extraction (if PDF/DOCX)
 Embedding Generation (sentence-transformers)
 Index Update (FAISS + SQLite)
-Citation Mapping (extracts/ → sample_docs/)
+Citation Mapping (extracts/ → ai_search_docs/)
 Real-Time Updates
 Detection Time: < 1 second
 Processing Time: 2-5 seconds per file
@@ -243,10 +243,10 @@ Docker Deployment
 CMD ["python", "smart_watcher.py", "start"]
 
 # Mount watch directories
-VOLUME ["/app/sample_docs", "/app/logs"]
+VOLUME ["/app/ai_search_docs", "/app/logs"]
 
 Security Considerations
-File Permissions: Watcher needs read access to sample_docs/
+File Permissions: Watcher needs read access to ai_search_docs/
 Process Permissions: Runs with user privileges (no root required)
 Network Access: No external network connections required
 Data Privacy: All processing happens locally

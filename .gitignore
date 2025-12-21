@@ -1,9 +1,34 @@
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE Files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment & Secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Logs
+*.log
+logs/
+
+# Python Specific
 __pycache__/
 *.pyc
-extracts/
 .venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Project Specific
+extracts/
 ai_models/
-logs/
 test_regression_results/
 
 # Test documents and sample files
@@ -16,5 +41,3 @@ meta.sqlite
 # Backups
 backups/
 index_backup_*.faiss
-
-

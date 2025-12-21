@@ -14,6 +14,7 @@ Technical debt and cleanup tasks.
 
 | ID | Description | Completed |
 |----|-------------|-----------|
+| TD-011 | Update .gitignore to match copilot-instructions.md standards | 2025-12-21 |
 | TD-003 | Migrate milestones.yml to progress.md | 2025-12-21 |
 | TD-004 | Centralize LLM configuration in config.py | 2025-08-03 |
 | TD-005 | Standardize folder naming (sample_docs → ai_search_docs) | 2025-09-08 |

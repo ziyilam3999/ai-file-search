@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file.
 - Documentation structure migration to standard format
 - `docs/guides/` subfolder for user-facing documentation
 - Path constants `INDEX_PATH`, `DATABASE_PATH`, `DOCUMENTS_DIR`, `EXTRACTS_DIR`, `LOGS_DIR`, `BACKUPS_DIR` in `core/config.py`
+- Standardized `.gitignore` patterns for OS, IDE, and Python environment files
 
 ### Changed
 - Moved user guides to `docs/guides/` directory

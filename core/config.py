@@ -11,6 +11,8 @@ DOCUMENTS_DIR = "ai_search_docs"
 EXTRACTS_DIR = "extracts"
 LOGS_DIR = "logs"
 BACKUPS_DIR = "backups"
+AI_MODELS_DIR = "ai_models"
+DEFAULT_MODEL_NAME = "Phi-3-mini-4k-instruct-q4.gguf"
 
 # LLM Generation Settings - OPTIMIZED FOR SPEED (51.9s → <20s target)
 LLM_CONFIG = {

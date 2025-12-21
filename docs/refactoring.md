@@ -8,12 +8,12 @@ Technical debt and cleanup tasks.
 |----|-------------|----------|--------|--------|
 | TD-001 | EmbeddingAdapter uses mock instead of real incremental updates | Medium | High | Not Started |
 | TD-002 | PRD_v0.4.docx should be converted to Markdown | Low | Low | Not Started |
-| TD-003 | milestones.yml could be merged into progress.md | Low | Low | Completed |
 
 ## Completed Refactoring
 
 | ID | Description | Completed |
 |----|-------------|-----------|
+| TD-012 | Centralize AI model paths in config.py and clean up extract.py | 2025-12-21 |
 | TD-011 | Update .gitignore to match copilot-instructions.md standards | 2025-12-21 |
 | TD-003 | Migrate milestones.yml to progress.md | 2025-12-21 |
 | TD-004 | Centralize LLM configuration in config.py | 2025-08-03 |

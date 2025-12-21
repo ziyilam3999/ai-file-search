@@ -13,7 +13,7 @@ DOCX_EXT = ".docx"
 
 
 class Extractor:
-    """TODO(copilot): implement _extract_pdf, _extract_docx, run."""
+    """Extract text from various file formats."""
 
     def _extract_pdf(self, path: Path) -> str:
         """Extract text from PDF file."""

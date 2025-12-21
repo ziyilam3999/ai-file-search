@@ -14,6 +14,8 @@ All notable changes to this project are documented in this file.
 - Updated `.github/copilot-instructions.md` with stricter documentation-driven development protocols
 - Moved user guides to `docs/guides/` directory
 - Refactored `core/embedding.py` to use centralized path constants from `config.py`
+- Refactored `core/llm.py` to use centralized `AI_MODELS_DIR` and `DEFAULT_MODEL_NAME` from `config.py`
+- Cleaned up `core/extract.py` docstrings and removed TODOs
 - Refactored `core/config.py` to use `DATABASE_PATH` constant in `calculate_document_page()`
 - Replaced emoji characters in `quick_test.py` with text-based indicators per `standards.md`
 

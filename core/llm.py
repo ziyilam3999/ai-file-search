@@ -11,7 +11,7 @@ from typing import Optional
 
 from loguru import logger
 
-from .config import LLM_CONFIG
+from .config import AI_MODELS_DIR, DEFAULT_MODEL_NAME, LLM_CONFIG
 
 
 class Phi3LLM:
@@ -35,9 +35,7 @@ class Phi3LLM:
         if model_path is None:
             # Default path to Phi-3 model
             model_path = str(
-                Path(__file__).parent.parent
-                / "ai_models"
-                / "Phi-3-mini-4k-instruct-q4.gguf"
+                Path(__file__).parent.parent / AI_MODELS_DIR / DEFAULT_MODEL_NAME
             )
 
         self.model_path = Path(model_path)

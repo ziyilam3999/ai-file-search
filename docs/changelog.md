@@ -19,6 +19,7 @@ All notable changes to this project are documented in this file.
 - **Monitoring:** Updated file counting logic to support multiple paths.
 
 ### Added
+- **Settings Button:** Added a dedicated "Settings" button to the main UI sidebar for easier access to watch path configuration.
 - **Protocol Enforcement:** Updated `.github/copilot-instructions.md` with observable Pre-Flight Report, abstract Domain Categories, and Confirmation Gate for complex tasks.
 - **Interactive Citations (Flask):** Ported "Open File" feature to the Desktop App (Flask backend) for feature parity.
 - **Interactive Citations (Streamlit):** Added "Open" button to citations in Streamlit UI to open source files in default system viewer.

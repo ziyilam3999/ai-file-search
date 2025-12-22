@@ -16,6 +16,7 @@ class AIFileSearchUI {
         this.searchBtn = document.getElementById('search-btn');
         this.answerContent = document.getElementById('answer-content');
         this.newChatBtn = document.getElementById('new-chat-btn');
+        this.settingsBtn = document.getElementById('settings-btn');
         this.chatList = document.getElementById('chat-list');
         
         // Status elements
@@ -42,6 +43,13 @@ class AIFileSearchUI {
 
         // New chat button
         this.newChatBtn.addEventListener('click', () => this.createNewChat());
+
+        // Settings button
+        if (this.settingsBtn) {
+            this.settingsBtn.addEventListener('click', () => {
+                window.location.href = '/settings';
+            });
+        }
 
         // Chat item selection and deletion
         this.chatList.addEventListener('click', (e) => {

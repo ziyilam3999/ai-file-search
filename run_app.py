@@ -57,21 +57,21 @@ def start_app():
     # 1. Ensure Watcher is running
     ensure_watcher_running()
 
-    # 2. Pre-load AI model in background to avoid cold start on first query
-    print("Launcher: Pre-loading AI model...")
-    preload_thread = threading.Thread(target=preload_model, daemon=True)
-    preload_thread.start()
-
-    # 3. Start Flask in a separate thread
+    # 2. Start Flask in a separate thread FIRST
     print("Launcher: Starting UI server...")
     server_thread = threading.Thread(target=start_flask, daemon=True)
     server_thread.start()
 
-    # 4. Wait for server to initialize
+    # 3. Wait for server to initialize
     if wait_for_server():
         print("Launcher: Server ready. Opening window...")
 
-        # 4. Create the native window
+        # 4. Pre-load AI model in background AFTER Flask is ready
+        print("Launcher: Pre-loading AI model in background...")
+        preload_thread = threading.Thread(target=preload_model, daemon=True)
+        preload_thread.start()
+
+        # 5. Create the native window
         webview.create_window(
             "AI File Search",
             "http://localhost:5001",

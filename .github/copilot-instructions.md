@@ -21,6 +21,7 @@ Before finalizing ANY response, execute this internal refinement loop:
 1.  **Categorize:** Identify the Scenario (A, B, C, D, or E).
 2.  **Announce First:** Output the scenario announcement BEFORE any tool calls.
 3.  **Verify Order:** Confirm the Pre-Flight Directive steps (1-4) are queued correctly.
+4.  **Uncertainty Default:** If the request is ambiguous between Research (D) and Action (A/B/C/E), **default to Scenario D**. Present analysis/options first, then ask if implementation is desired.
 
 #### Phase 2: Internal Refinement (Silent)
 1.  **Draft:** Generate initial response based on context and scenario.
@@ -218,6 +219,17 @@ If you detect an empty workspace or the user asks to start a new project:
 
 ### PROTOCOL 2: EXECUTION (Existing Projects)
 For every user request, you must first **CATEGORIZE** it into one of the following scenarios and follow its specific path:
+
+#### Scenario Trigger Keywords (Quick Reference)
+| Keyword(s) | Default Scenario | Requires Clarification? |
+|------------|------------------|------------------------|
+| fix, resolve, broken, error, bug | A (Defect) | No |
+| add, implement, create, build | B (Feature) | No |
+| refactor, clean up, optimize | C (Refactor) | No |
+| **suggest, assess, evaluate, compare, analyze, review, recommend, propose** | **D (Research)** | **Yes, if action implied** |
+| audit tests, check coverage | E (Test Audit) | No |
+
+**Rule:** If the user's words match Scenario D keywords, **DO NOT write code**. Present options and ask for confirmation to proceed.
 
 #### SCENARIO A: DEFECT FIXING
 *Trigger:* User reports a bug or error.
@@ -560,6 +572,15 @@ Fix bugs (in priority order):
 *   **Transparency:** When you update a doc, tell the user: *"I have updated progress.md to reflect..."*
 *   **Atomic Actions:** If a user request involves multiple scenarios (e.g., a Fix AND a Feature), ask the user to prioritize one first. Do not attempt to execute multiple scenarios in a single turn to preserve git history cleanliness.
 *   **Proactive Guidance:** If the user's prompt is vague, suggest a specific, structured prompt format (e.g., *"To fix this bug, please reply with: 'Fix bug: [description]'"*) to ensure the best output results.
+*   **Suggest = Research:** When the user says "suggest", "recommend", "propose", or "what do you think", treat this as **Scenario D** by default. Present options and ask:
+    > "I have [N] suggestions for improvement. Would you like me to:
+    > 1. Explain each option (Scenario D - no changes)
+    > 2. Implement a specific option (provide Execution Plan first)
+    > Reply with your choice."
+*   **Multi-Intent Requests:** If a request contains both a **question** (research) and an **action** (fix/feature/refactor):
+    1. Answer the question first (Scenario D output).
+    2. Then ask: "You also requested [action]. Should I proceed with Scenario [X]?"
+    3. Do NOT start implementation until the user confirms.
 
 ### TROUBLESHOOTING
 | Problem | Resolution |

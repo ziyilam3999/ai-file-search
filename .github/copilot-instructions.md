@@ -18,7 +18,7 @@
 Before finalizing ANY response, execute this internal refinement loop:
 
 #### Phase 1: Pre-Flight Check (Before ANY action)
-1.  **Categorize:** Identify the Scenario (A, B, C, or D).
+1.  **Categorize:** Identify the Scenario (A, B, C, D, or E).
 2.  **Announce First:** Output the scenario announcement BEFORE any tool calls.
 3.  **Verify Order:** Confirm the Pre-Flight Directive steps (1-4) are queued correctly.
 
@@ -218,9 +218,9 @@ For every user request, you must first **CATEGORIZE** it into one of the followi
 At the end of every task (Scenario A, B, or C), you must provide a structured response:
 
 1.  **Technical Execution:** A concise bulleted list of exactly what files were changed and why.
-    *   *Example:* "Updated `EatTglGame` to remove `DoubleTapDetector`. Added `DebugButton` to `Hud`."
+    *   *Example:* "Updated `UserService` to use dependency injection. Added `UserRepository` for database access."
 2.  **ELI5 (Explain Like I'm 5):** A simple, non-technical explanation of the change.
-    *   *Example:* "Imagine your game controller had a secret button that was hard to find. We took that secret button and put a big sticker on the screen so you can see it and press it easily!"
+    *   *Example:* "Imagine your toy box was messy and hard to find things in. We organized it into smaller labeled bins so now you can find your favorite toy faster!"
 
 ### PROTOCOL 4: EXECUTION TRACKING (Complex Tasks)
 
@@ -288,9 +288,9 @@ Fix bug: [Brief title]
 - **Affected file(s):** [Optional: File path if known]
 ```
 *Example:*
-> Fix bug: Arrow damage has no feedback
-> - **What happens:** When an arrow hits the player, there is no sound or haptic.
-> - **What should happen:** Player should hear a sound and feel a vibration.
+> Fix bug: API returns 500 on empty input
+> - **What happens:** POST `/api/search` with empty query returns 500 Internal Server Error.
+> - **What should happen:** Should return 400 Bad Request with validation message.
 
 #### Scenario B: New Feature / Requirement Change
 ```
@@ -300,9 +300,9 @@ Add feature: [Feature name]
 - **Affected area:** [Optional: Which part of the app]
 ```
 *Example:*
-> Add feature: Pause button
-> - **Description:** A button in the HUD that pauses the game.
-> - **Acceptance criteria:** Tapping the button freezes all game objects.
+> Add feature: Export to CSV
+> - **Description:** Allow users to export search results as a CSV file.
+> - **Acceptance criteria:** Clicking "Export" downloads a CSV with all visible results.
 
 #### Scenario C: Refactoring
 ```
@@ -311,8 +311,8 @@ Refactor: [File or class name]
 - **Constraint:** No behavior changes. All existing tests must pass.
 ```
 *Example:*
-> Refactor: `snake_line.dart`
-> - **Goal:** Extract collision logic into a separate mixin for reuse.
+> Refactor: `user_service.py`
+> - **Goal:** Extract database queries into a separate repository class.
 > - **Constraint:** No behavior changes.
 
 #### Scenario D: Research / Analysis
@@ -322,8 +322,8 @@ Assess: [Topic or question]
 - **Expected output:** [Assessment / Comparison / Suggestion]
 ```
 *Example:*
-> Assess: Current audio implementation
-> - **Context:** I want to add more sound effects but unsure if the architecture supports it.
+> Assess: Current caching strategy
+> - **Context:** Response times are slow; considering adding Redis.
 > - **Expected output:** Evaluate current design and suggest improvements.
 
 #### Scenario E: Test Coverage Audit

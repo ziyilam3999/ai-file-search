@@ -184,12 +184,35 @@ For every user request, you must first **CATEGORIZE** it into one of the followi
 
 #### SCENARIO A: DEFECT FIXING
 *Trigger:* User reports a bug or error.
+
+**Phase 1: Diagnosis (Silent)**
+1.  Gather logs, read relevant code, check error messages.
+2.  Identify root cause and affected files.
+
+**Phase 2: Explain (Pause for Confirmation)**
+Before making any code changes, output:
+> **Root Cause:** [Brief explanation of what is broken and why]
+> **Affected Files:** [List of files that will be modified]
+> **Proposed Fix:** [What you plan to do to resolve the issue]
+>
+> Reply **'Proceed'** to execute this fix, or provide corrections.
+
+**DO NOT proceed to Phase 3 until the user confirms.**
+
+**Phase 3: Execute**
 1.  **Log:** Create an entry in `docs/defects.md` (Status: Open).
-2.  **Reproduce:** Create a failing test case to confirm the bug.
-3.  **Fix:** Implement the fix in the code.
+2.  **Reproduce:** Create a failing test case to confirm the bug (if feasible).
+3.  **Fix:** Implement the approved fix in the code.
 4.  **Verify:** Run the test to ensure it passes.
 5.  **Document:** Update `docs/defects.md` (Status: Fixed) and `docs/changelog.md` (under "Fixed").
 6.  **Commit:** `git commit -m "fix: <description>"`
+
+**Phase 4: Report**
+Provide final summary with:
+*   **Technical Execution:** What was changed
+*   **ELI5:** Simple explanation
+
+**Exception:** If the fix is trivial (e.g., typo, single-line change affecting 1 file), the agent MAY skip Phase 2 and proceed directly to Phase 3, but MUST note "Skipped confirmation (trivial fix)" in the report.
 
 #### SCENARIO B: REQUIREMENT CHANGE / NEW FEATURE
 *Trigger:* User asks for new functionality or changes existing behavior.

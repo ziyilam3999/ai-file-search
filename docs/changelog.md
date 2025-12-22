@@ -18,6 +18,7 @@ All notable changes to this project are documented in this file.
 - **Index Management:** New `IndexManager` class to handle configuration updates and reindexing.
 
 ### Changed
+- **Protocol A (Defect Fixing):** Enhanced with "Diagnose → Confirm → Execute → Report" model. Agent must now explain root cause and proposed fix before making changes, unless the fix is trivial.
 - **Architecture:** Removed intermediate `extracts/` folder. Text extraction now happens in-memory during indexing.
 - **Configuration:** Deprecated `document_categories` in favor of `watch_paths`.
 - **Monitoring:** Updated file counting logic to support multiple paths.

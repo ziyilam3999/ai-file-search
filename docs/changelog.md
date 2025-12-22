@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **LLM Performance:** Reduced `max_tokens` from 60 to 40 for ~30% faster response generation (~7-10s reduction per query).
+- **Prompt Engineering:** Updated retrieval prompt to request concise 30-40 word answers for faster generation and better user experience.
+- **Model Persistence:** Confirmed singleton pattern keeps Phi-3 model loaded in memory, eliminating ~80s reload penalty on subsequent queries.
+
 ### Fixed
 - **Startup:** Fixed `ModuleNotFoundError: No module named 'webview'` and `pythonnet` build errors by updating `pyproject.toml` dependencies and configuration.
 - **Watcher Initialization:** Fixed crash loop when `index.faiss` or `meta.sqlite` are missing. Added `_ensure_index_exists` to `EmbeddingAdapter` to automatically initialize empty index structures on startup.

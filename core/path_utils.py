@@ -56,7 +56,12 @@ def is_system_path(path: str) -> bool:
 
         # Check blocked system folders
         for blocked in BLOCKED_PATHS_WINDOWS:
-            if norm_path.lower().startswith(blocked.lower()):
+            # Ensure we match the folder exactly or as a parent
+            # e.g. C:\Windows matches, C:\Windows\System32 matches
+            # but C:\WindowsProject does NOT match
+            if norm_path.lower() == blocked.lower():
+                return True
+            if norm_path.lower().startswith(blocked.lower() + "\\"):
                 return True
     else:
         if norm_path == "/":

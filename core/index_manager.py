@@ -22,14 +22,23 @@ class IndexManager:
         self.watcher_controller = SmartWatcherController()
         self.embedder = Embedder()
 
-    def get_watch_paths(self) -> List[str]:
-        """Get current watch paths."""
+    def _load_config(self) -> dict:
+        """Load configuration from file."""
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f)
-                return config.get("watch_paths", [])
+                return yaml.safe_load(f) or {}
         except Exception:
-            return []
+            return {}
+
+    def _save_config(self, config: dict) -> None:
+        """Save configuration to file."""
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            yaml.dump(config, f, default_flow_style=False)
+
+    def get_watch_paths(self) -> List[str]:
+        """Get current watch paths."""
+        config = self._load_config()
+        return config.get("watch_paths", [])
 
     def add_watch_path(self, path: str) -> Tuple[bool, str]:
         """Add a new watch path."""
@@ -40,20 +49,16 @@ class IndexManager:
         norm_path = normalize_path(path)
 
         try:
-            # Load config
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f) or {}
-
+            config = self._load_config()
             paths = config.get("watch_paths", [])
+
             if norm_path in paths:
                 return False, "Path is already being watched"
 
             paths.append(norm_path)
             config["watch_paths"] = paths
 
-            # Save config
-            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                yaml.dump(config, f, default_flow_style=False)
+            self._save_config(config)
 
             # Restart watcher to pick up changes
             self.watcher_controller.restart_watcher()
@@ -68,20 +73,16 @@ class IndexManager:
         norm_path = normalize_path(path)
 
         try:
-            # Load config
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f) or {}
-
+            config = self._load_config()
             paths = config.get("watch_paths", [])
+
             if norm_path not in paths:
                 return False, "Path is not being watched"
 
             paths.remove(norm_path)
             config["watch_paths"] = paths
 
-            # Save config
-            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                yaml.dump(config, f, default_flow_style=False)
+            self._save_config(config)
 
             # Remove from index metadata
             if os.path.exists(DATABASE_PATH):

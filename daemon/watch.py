@@ -255,9 +255,13 @@ class EmbeddingAdapter:
             max_id = cursor.fetchone()[0]
             next_id = (max_id or 0) + 1
 
-            # Add embeddings to FAISS
+            # Prepare IDs for the new chunks
+            num_chunks = len(chunks)
+            ids = np.arange(next_id, next_id + num_chunks, dtype=np.int64)
+
+            # Add embeddings to FAISS with IDs
             embeddings_array = np.array(embeddings, dtype=np.float32)
-            index.add(embeddings_array)
+            index.add_with_ids(embeddings_array, ids)
 
             # Save updated index to disk
             faiss.write_index(index, self.embedder.index_path)
@@ -294,6 +298,16 @@ class EmbeddingAdapter:
             existing_ids = [row[0] for row in cursor.fetchall()]
 
             if existing_ids:
+                # Remove from FAISS index first
+                if os.path.exists(self.embedder.index_path):
+                    try:
+                        index = faiss.read_index(self.embedder.index_path)
+                        ids_to_remove = np.array(existing_ids, dtype=np.int64)
+                        index.remove_ids(ids_to_remove)
+                        faiss.write_index(index, self.embedder.index_path)
+                    except Exception as e:
+                        logger.error(f"Failed to remove IDs from FAISS index: {e}")
+
                 # Remove from database
                 placeholders = ",".join("?" for _ in existing_ids)
                 cursor.execute(

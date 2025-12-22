@@ -1,14 +1,5 @@
-watch_paths:
-  - "ai_search_docs"
-
 allow_external_paths: false
-
 file_patterns:
-  include:
-  - '*.txt'
-  - '*.pdf'
-  - '*.docx'
-  - '*.md'
   ignore:
   - '*.tmp'
   - '*.log'
@@ -17,3 +8,11 @@ file_patterns:
   - .git
   - '*.swp'
   - '*.bak'
+  include:
+  - '*.txt'
+  - '*.pdf'
+  - '*.docx'
+  - '*.md'
+watch_paths:
+- ai_search_docs
+- C:\Users\ziyil\Documents\To Google Drive\Jalil Sutera\Tenancy\2023

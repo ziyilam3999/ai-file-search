@@ -16,6 +16,7 @@ Test plans, coverage reports, and quality assurance documentation.
 | test_ui_components.py | Unit | UI components (rendering, styles) | Passing |
 | test_complete_system.py | Integration | Full system tests | Passing |
 | test_regression.py | Regression | Citation accuracy tests | 6/6 Passing |
+| test_faiss_sync.py | Unit | FAISS/SQLite synchronization | Passing |
 | test_quick.py | Smoke | Fast validation tests | 5/5 Passing |
 
 ## Running Tests

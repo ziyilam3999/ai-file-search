@@ -127,7 +127,8 @@ class Embedder:
         model = self._get_model()
 
         # Initialize FAISS index
-        index = faiss.IndexFlatL2(384)  # all-MiniLM-L6-v2 has 384 dimensions
+        # Use IndexIDMap to support add_with_ids and remove_ids
+        index = faiss.IndexIDMap(faiss.IndexFlatL2(384))
 
         # Initialize database
         conn = sqlite3.connect(self.db_path)

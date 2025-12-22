@@ -3,7 +3,7 @@
 **STOP. Before executing ANY user request, you MUST:**
 
 1.  **READ** this entire file if you have not already this session.
-2.  **CATEGORIZE** the request into Scenario A, B, C, or D (see Protocol 2).
+2.  **CATEGORIZE** the request into Scenario A, B, C, D, or E (see Protocol 2).
 3.  **ANNOUNCE** the scenario to the user:
     > "This is **Scenario [X]** ([Name]). I will now follow the protocol."
 4.  **EXECUTE** the scenario steps **IN ORDER**. Do not skip steps.
@@ -161,6 +161,7 @@ If you detect an empty workspace or the user asks to start a new project:
 *   **Scenario B (Feature):** `requirements.md`, `progress.md`
 *   **Scenario C (Refactor):** `refactoring.md`, `architecture.md`
 *   **Scenario D (Research):** `requirements.md`, `architecture.md`
+*   **Scenario E (Test Audit):** `testing.md`, `architecture.md`
 
 ### PROTOCOL 2: EXECUTION (Existing Projects)
 For every user request, you must first **CATEGORIZE** it into one of the following scenarios and follow its specific path:
@@ -187,8 +188,9 @@ For every user request, you must first **CATEGORIZE** it into one of the followi
 1.  **Log:** Update `docs/refactoring.md` with the task.
 2.  **Refactor:** Modify the code without changing behavior.
 3.  **Test:** Run regression tests to ensure NO functionality is broken.
-4.  **Document:** Update `docs/changelog.md` (under "Changed" or "Refactor").
-5.  **Commit:** `git commit -m "refactor: <description>"`
+4.  **Add Tests:** If refactored functions lack unit test coverage, create new tests.
+5.  **Document:** Update `docs/changelog.md` (under "Changed" or "Refactor").
+6.  **Commit:** `git commit -m "refactor: <description>"`
 
 #### SCENARIO D: RESEARCH & ANALYSIS
 *Trigger:* User asks for assessment, evaluation, comparison, or suggestions without requesting code changes.
@@ -199,6 +201,18 @@ For every user request, you must first **CATEGORIZE** it into one of the followi
     *   **Evaluation:** Pros/Cons or impact analysis.
     *   **Suggestion:** Expert recommendation with rationale.
 4.  **No Commit:** This scenario does NOT result in code changes. If the user approves a suggestion, re-categorize to Scenario A, B, or C.
+
+#### SCENARIO E: TEST COVERAGE AUDIT
+*Trigger:* User asks to review, audit, or complete unit test coverage for the project.
+1.  **Inventory:** List all source modules/files in the project (e.g., `core/`, `lib/`, `src/`).
+2.  **Map Coverage:** For each module, identify existing test files and their coverage.
+3.  **Tabulate:** Present a table with: `| Module | Test File | Status | Gap |`
+4.  **Remove Obsolete:** Delete test files that are irrelevant to the current implementation.
+5.  **Identify Gaps:** List public functions/classes without unit tests.
+6.  **Create Tests:** Write new unit tests to cover the identified gaps.
+7.  **Verify:** Run the full test suite to ensure all tests pass.
+8.  **Document:** Update `docs/testing.md` with the new coverage report.
+9.  **Commit:** `git commit -m "test: complete test coverage audit"`
 
 ### PROTOCOL 3: FINAL REPORTING
 At the end of every task (Scenario A, B, or C), you must provide a structured response:
@@ -311,6 +325,17 @@ Assess: [Topic or question]
 > Assess: Current audio implementation
 > - **Context:** I want to add more sound effects but unsure if the architecture supports it.
 > - **Expected output:** Evaluate current design and suggest improvements.
+
+#### Scenario E: Test Coverage Audit
+```
+Audit tests: [Scope]
+- **Goal:** [Review / Complete / Both]
+- **Modules:** [All / Specific modules to focus on]
+```
+*Example:*
+> Audit tests: Full project
+> - **Goal:** Review existing tests, remove obsolete ones, and complete coverage gaps.
+> - **Modules:** All core modules.
 
 #### Multi-Item Requests
 If you have multiple bugs or tasks, list them with priorities:

@@ -5,6 +5,7 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Scenario E (Test Coverage Audit):** Added new scenario to `.github/copilot-instructions.md` for comprehensive test audits.
 - **Standalone Desktop App:** New `run_app.py` launcher that wraps the UI in a native window using `pywebview`.
 - **Unified Startup:** Launcher automatically starts the file watcher daemon if not running.
 - **Streaming Support:** Added Server-Sent Events (SSE) to Flask backend for real-time answer generation.
@@ -16,6 +17,7 @@ All notable changes to this project are documented in this file.
 - Standardized `.gitignore` patterns for OS, IDE, and Python environment files
 
 ### Changed
+- **Scenario C Enhancement:** Updated refactoring scenario to explicitly require adding unit tests for refactored functions.
 - **Refactoring:** Cleaned up test suite by removing experimental `tests/test_simple_rag.py`.
 - **Testing:** Added new unit tests `tests/test_core_utils.py` and `tests/test_core_config.py` to improve coverage.
 - **Refactoring:** Extracted system monitoring logic from `tools/live_monitor.py` to `core/monitoring.py`.

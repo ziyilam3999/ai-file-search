@@ -33,6 +33,8 @@ Before finalizing ANY response, execute this internal refinement loop:
     *   [ ] Scenario announced BEFORE execution?
     *   [ ] All Scenario steps followed IN ORDER?
     *   [ ] Docs updated (if applicable)?
+    *   [ ] **[Complex Tasks]** `_TASK_STATUS.md` updated after EACH phase?
+    *   [ ] **[Complex Tasks]** `_TASK_STATUS.md` deleted at task end?
 4.  **Refine:** Adjust based on critique. Ensure response is:
     *   **Accurate:** Facts correct, reasoning sound.
     *   **Complete:** Covers what the user actually needs.
@@ -73,6 +75,7 @@ A task is ONLY complete when:
 3.  [ ] **Code Clean:** Code follows `architecture.md` patterns and is free of linter errors.
 4.  [ ] **Committed:** Changes are committed to git with a semantic message.
 5.  [ ] **Reported:** A final summary with a "Technical Breakdown" and "ELI5 Explanation" is provided to the user.
+6.  [ ] **[Complex Tasks]** `_TASK_STATUS.md` has been DELETED from the project root.
 
 ### COMPLIANCE CHECKPOINT
 Before declaring a task "done," mentally execute this checklist:
@@ -81,6 +84,8 @@ Before declaring a task "done," mentally execute this checklist:
 - [ ] Did I update `docs/defects.md` (for bugs) or `docs/changelog.md` (for features)?
 - [ ] Did I commit the changes with a semantic message?
 - [ ] Did I provide the Final Report (Technical + ELI5)?
+- [ ] **[Complex Tasks Only]** Did I update `_TASK_STATUS.md` after EACH phase?
+- [ ] **[Complex Tasks Only]** Did I DELETE `_TASK_STATUS.md` after the final commit?
 
 **If ANY checkbox is unchecked, GO BACK and complete it before responding to the user.**
 
@@ -226,8 +231,16 @@ For every user request, you must first **CATEGORIZE** it into one of the followi
 9.  **Commit:** `git commit -m "test: complete test coverage audit"`
 
 ### PROTOCOL 3: FINAL REPORTING
-At the end of every task (Scenario A, B, or C), you must provide a structured response:
+At the end of every task (Scenario A, B, or C), you must provide a structured response.
 
+#### Pre-Report Commit Gate (MANDATORY)
+**BEFORE writing the final report, you MUST:**
+1.  Run `git status` to see uncommitted changes.
+2.  If changes exist, run `git add -A && git commit -m "<type>: <description>"` where type is `fix`, `feat`, `refactor`, or `test`.
+3.  If commit fails, report the error to the user instead of proceeding.
+4.  **DO NOT write the Technical Execution summary until the commit succeeds.**
+
+#### Report Structure
 1.  **Technical Execution:** A concise bulleted list of exactly what files were changed and why.
     *   *Example:* "Updated `UserService` to use dependency injection. Added `UserRepository` for database access."
 2.  **ELI5 (Explain Like I'm 5):** A simple, non-technical explanation of the change.
@@ -266,9 +279,17 @@ For complex tasks, the **FIRST tool call** in your response MUST be `create_file
     *   Phase breakdown with status indicators
     *   Notes section for observations
 
-2.  **Update Continuously:** After completing each phase, update the status file immediately before proceeding.
+2.  **Phase Transition Hook (MANDATORY):** After completing each phase:
+    a.  **IMMEDIATELY** call `replace_string_in_file` to update `_TASK_STATUS.md`.
+    b.  Change the completed phase status from `🔄 In Progress` to `✅ Done`.
+    c.  Change the next phase status from `⏳ Pending` to `🔄 In Progress`.
+    d.  **DO NOT proceed to the next phase until the file is updated.**
+    *This is the ONLY authoritative progress tracker. The `manage_todo_list` tool is for internal AI state only and does NOT satisfy this requirement.*
 
-3.  **Delete on Completion:** Once ALL phases are complete and committed, delete `_TASK_STATUS.md` as part of the final commit.
+3.  **Delete on Completion:** Once ALL phases are `✅ Done` and committed:
+    a.  Run `rm _TASK_STATUS.md` in the terminal.
+    b.  **Verify deletion** by checking the file no longer exists.
+    c.  This step is part of the DoD. The task is NOT complete if this file exists.
 
 #### Template
 ```markdown
@@ -308,6 +329,7 @@ This gate ensures the user has visibility into the scope before irreversible cha
 1.  **Context Gathering:** Read `progress.md` and `requirements.md`.
 2.  **Execution:** Follow the specific Scenario path above.
 3.  **Finalize:** Update `progress.md` to "Completed".
+4.  **Commit (MANDATORY):** Run `git add -A && git commit -m "<type>: <description>"`. This step is NOT optional. If you skip it, the task is incomplete.
 
 ### SUGGESTED USER PROMPTS
 When the user is unsure how to proceed, recommend these templates to ensure the best results:
@@ -400,6 +422,7 @@ Fix bugs (in priority order):
 |---------|------------|
 | **Test Fails Unexpectedly** | Do NOT commit. Report the failure to the user and ask for guidance: "Test X failed. Should I investigate further or rollback?" |
 | **Commit Fails** | Check `git status`. Resolve conflicts or staging issues. Report to user if unresolvable. |
+| **Changes Not Committed** | Before writing the Final Report, ALWAYS run `git status`. If there are uncommitted changes, run `git add -A && git commit`. The task is NOT complete without a commit. |
 | **Ambiguous Requirement** | Do NOT proceed. Ask clarifying questions before writing any code. |
 | **Missing Documentation** | Create the missing doc file with a placeholder template before proceeding. |
 | **Context Too Large** | Use the "Context Window Optimization" guide above. Summarize lengthy docs if needed. |

@@ -267,18 +267,23 @@ class AIFileSearchUI {
     }
 
     startStatusPolling() {
+        // Check status immediately on page load to catch loading state
+        this.checkStatus();
+        
         // Poll status every 2000ms (reduced to minimize log noise)
-        setInterval(async () => {
-            try {
-                const response = await fetch('/api/status');
-                if (response.ok) {
-                    const status = await response.json();
-                    this.updateStatus(status);
-                }
-            } catch (error) {
-                console.error('Error polling status:', error);
+        setInterval(() => this.checkStatus(), 2000);
+    }
+
+    async checkStatus() {
+        try {
+            const response = await fetch('/api/status');
+            if (response.ok) {
+                const status = await response.json();
+                this.updateStatus(status);
             }
-        }, 2000);
+        } catch (error) {
+            console.error('Error polling status:', error);
+        }
     }
 
     updateStatus(status) {

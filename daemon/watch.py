@@ -69,8 +69,41 @@ class EmbeddingAdapter:
         self._pending_operations: List[Tuple[str, str, Optional[str]]] = []
         self._operation_lock = threading.Lock()
 
+        # Ensure index and DB exist
+        self._ensure_index_exists()
+
         # Pre-warm the model to avoid first-operation delay
         self._pre_warm_model()
+
+    def _ensure_index_exists(self) -> None:
+        """Ensure FAISS index and SQLite DB exist and are initialized."""
+        try:
+            # Check/Create FAISS index
+            if not os.path.exists(self.embedder.index_path):
+                logger.info("Index missing. Initializing empty FAISS index...")
+                # Use IndexIDMap to support add_with_ids and remove_ids
+                index = faiss.IndexIDMap(faiss.IndexFlatL2(384))
+                faiss.write_index(index, self.embedder.index_path)
+
+            # Check/Create SQLite DB
+            # We always connect to ensure table exists even if file exists
+            conn = sqlite3.connect(self.embedder.db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS meta (
+                    id INTEGER PRIMARY KEY,
+                    file TEXT,
+                    chunk TEXT,
+                    doc_chunk_id INTEGER
+                )
+            """
+            )
+            conn.commit()
+            conn.close()
+
+        except Exception as e:
+            logger.error(f"Failed to initialize index/DB: {e}")
 
     def _pre_warm_model(self) -> None:
         """Pre-warm the embedding model to avoid delays on first use."""

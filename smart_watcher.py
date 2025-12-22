@@ -243,26 +243,25 @@ class SmartWatcherController:
         self._show_watched_folders()
 
         print("\nHelpful tips:")
-        print("  * Add files to any ai_search_docs/ subfolder")
-        print("  * Create new folders in ai_search_docs/ - they'll be auto-discovered")
+        print("  * Configure watched folders in the Settings UI")
         print("  * Check status anytime: python smart_watcher.py status")
         print("  * View logs: tail -f logs/watcher.log")
-        print("  * Test search: python -m streamlit run ui/app.py")
+        print("  * Run app: python run_app.py")
 
     def _show_watched_folders(self) -> None:
         """Show which folders are being watched."""
-        ai_search_docs = Path("ai_search_docs")
-        if ai_search_docs.exists():
-            folders = [
-                d.name
-                for d in ai_search_docs.iterdir()
-                if d.is_dir() and not d.name.startswith(".")
-            ]
-            print(f"Watched folders: {', '.join(folders) if folders else 'None'}")
-        else:
-            print(
-                "Watched folders: ai_search_docs/ (create it to start adding documents)"
-            )
+        try:
+            from core.config import load_watch_paths
+
+            paths = load_watch_paths()
+            if paths:
+                print(f"Watched folders ({len(paths)}):")
+                for p in paths:
+                    print(f"  - {p}")
+            else:
+                print("Watched folders: None (Configure via Settings UI)")
+        except Exception as e:
+            print(f"Error loading watch paths: {e}")
 
     def _show_recent_activity(self) -> None:
         """Show recent log activity."""

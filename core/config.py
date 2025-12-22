@@ -35,11 +35,11 @@ def load_watch_paths() -> list[str]:
 
 # LLM Generation Settings - OPTIMIZED FOR SPEED (51.9s → <20s target)
 LLM_CONFIG = {
-    "max_tokens": 100,  # Tokens for answer generation (reduced for faster responses)
-    "temperature": 0.1,  # Temperature for deterministic responses (optimized for speed)
-    "n_ctx": 4096,  # Context window size (increased for Phi-3-mini-4k)
+    "max_tokens": 60,  # Reduced for faster responses
+    "temperature": 0.1,  # Keep deterministic
+    "n_ctx": 2048,  # Smaller context to shrink KV/cache for speed
     "n_threads": 8,  # CPU threads for inference
-    "n_batch": 256,  # Batch size for processing (reduced for speed)
+    "n_batch": 384,  # Larger batch for higher throughput (watch RAM)
 }
 
 # Performance Presets for easy speed vs quality tuning

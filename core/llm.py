@@ -57,6 +57,9 @@ class Phi3LLM:
 
         logger.success("SUCCESS: Phi-3 model loaded successfully")
 
+        # Warm-start: run a tiny completion to prime the model/cache
+        self._warm_start()
+
     def generate_answer(
         self,
         prompt: str,
@@ -163,6 +166,20 @@ class Phi3LLM:
             logger.error(f"ERROR: Streaming generation failed: {e}")
             # Fallback: yield an error message
             yield f"Error generating response: {str(e)}"
+
+    def _warm_start(self) -> None:
+        """Run a tiny completion to prime the model so first user query is faster."""
+        try:
+            self.llm.create_completion(
+                prompt="Warm start",
+                max_tokens=1,
+                temperature=0.0,
+                stream=False,
+                stop=["Warm"],
+            )
+            logger.info("WARM START: Primed model with a 1-token run")
+        except Exception as e:
+            logger.warning(f"WARM START: skipped due to error: {e}")
 
     def is_available(self) -> bool:
         """Check if the model is properly loaded and available."""

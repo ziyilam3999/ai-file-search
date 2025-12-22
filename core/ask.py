@@ -17,7 +17,7 @@ from .llm import get_phi3_llm
 
 
 def answer_question(
-    query: str, top_k: int = 4, streaming: bool = False
+    query: str, top_k: int = 3, streaming: bool = False
 ) -> Union[
     Tuple[str, List[Dict[str, Any]]], Tuple[Iterator[str], List[Dict[str, Any]]]
 ]:
@@ -100,8 +100,8 @@ Answer:"""
                     "file": file_path,
                     "page": estimated_page,  # Real document page estimate
                     "chunk": (
-                        chunk_text[:500] + "..."
-                        if len(chunk_text) > 500
+                        chunk_text[:300] + "..."
+                        if len(chunk_text) > 300
                         else chunk_text
                     ),
                     "score": float(score),

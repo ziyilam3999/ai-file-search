@@ -878,6 +878,54 @@ class FileWatcher:
             stats["uptime_seconds"] = time.time() - (stats["start_time"] or 0)
         return stats
 
+    def _initial_scan(self) -> None:
+        """Scan watched directories for files that are not yet indexed."""
+        logger.info("Performing initial scan for missing files...")
+        try:
+            # Get all currently indexed files
+            indexed_files = set()
+            if os.path.exists(DATABASE_PATH):
+                conn = sqlite3.connect(DATABASE_PATH)
+                cursor = conn.cursor()
+                cursor.execute("SELECT DISTINCT file FROM meta")
+                # Normalize paths for comparison
+                indexed_files = {
+                    str(Path(row[0]).resolve()).replace("\\", "/")
+                    for row in cursor.fetchall()
+                }
+                conn.close()
+
+            logger.info(f"Found {len(indexed_files)} files already in index")
+
+            # Scan watch paths
+            watch_paths = self.config.get("watch_paths", [])
+            files_to_index = []
+
+            for watch_path in watch_paths:
+                if not os.path.exists(watch_path):
+                    continue
+
+                # Get all supported files
+                found_files = get_supported_files(watch_path)
+
+                for file_path in found_files:
+                    # Normalize path
+                    abs_path = str(file_path.resolve()).replace("\\", "/")
+
+                    if abs_path not in indexed_files:
+                        files_to_index.append(str(file_path))
+
+            if files_to_index:
+                logger.info(f"Found {len(files_to_index)} new files to index")
+                # Add to queue as 'created' events
+                for path_str in files_to_index:
+                    self.file_queue.add_change(path_str, "created")
+            else:
+                logger.info("No new files found to index")
+
+        except Exception as e:
+            logger.error(f"Error during initial scan: {e}")
+
     def start(self) -> None:
         """Start the file watcher."""
         if self._running:
@@ -892,6 +940,9 @@ class FileWatcher:
 
             # Set up file watching
             self._setup_file_watching()
+
+            # Perform initial scan for missing files
+            self._initial_scan()
 
             # Set up scheduler
             self._setup_scheduler()

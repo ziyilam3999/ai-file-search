@@ -44,10 +44,18 @@ A zero-configuration smart document search system with automatic discovery and r
 | ID | Requirement | Status |
 |----|-------------|--------|
 | FR-005.1 | Command-line interface for queries | Done |
-| FR-005.2 | Web UI with Streamlit | Done |
+| FR-005.2 | Web UI with Flask | Done |
 | FR-005.3 | Display citations with file references | Done |
 | FR-005.4 | Show performance metrics | Done |
 | FR-005.5 | Standalone Desktop App (PyWebview) | Pending |
+
+### FR-006: Multi-Folder Watching
+| ID | Requirement | Status |
+|----|-------------|--------|
+| FR-006.1 | Watch multiple disjoint folders | Done |
+| FR-006.2 | Configure watch paths via UI | Done |
+| FR-006.3 | Validate paths (security check) | Done |
+| FR-006.4 | Remove intermediate extracts folder | Done |
 | FR-005.6 | Interactive citations (open file) | Pending |
 | FR-005.6 | Unified Launcher (Auto-start watcher) | Pending |
 | FR-005.7 | Embedded System Status Panel | Pending |

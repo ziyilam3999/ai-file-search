@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Multi-Folder Watching:** Support for watching multiple disjoint folders via `watcher_config.yaml`.
+- **Settings UI:** New settings page in Flask UI to manage watch paths.
+- **Path Validation:** Security checks for watch paths to prevent system directory monitoring.
+- **Index Management:** New `IndexManager` class to handle configuration updates and reindexing.
+
+### Changed
+- **Architecture:** Removed intermediate `extracts/` folder. Text extraction now happens in-memory during indexing.
+- **Configuration:** Deprecated `document_categories` in favor of `watch_paths`.
+- **Monitoring:** Updated file counting logic to support multiple paths.
+
+### Added
 - **Protocol Enforcement:** Updated `.github/copilot-instructions.md` with observable Pre-Flight Report, abstract Domain Categories, and Confirmation Gate for complex tasks.
 - **Interactive Citations (Flask):** Ported "Open File" feature to the Desktop App (Flask backend) for feature parity.
 - **Interactive Citations (Streamlit):** Added "Open" button to citations in Streamlit UI to open source files in default system viewer.

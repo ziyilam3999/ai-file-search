@@ -21,6 +21,12 @@ Project roadmap, sprint tasks, and session log.
 
 ## Completed Milestones
 
+### January 2026: Multi-Folder Watching
+- [x] **Flexible Watch Paths**: Support watching multiple disjoint folders
+- [x] **Settings UI**: Manage watch paths via Flask UI
+- [x] **Architecture Update**: Removed intermediate `extracts/` folder
+- [x] **Security**: Path validation to prevent system directory monitoring
+
 ### December 2025: Maintenance & Standards
 - [x] **Deprecate Streamlit**: Removed legacy Streamlit app and dependencies
 - [x] **Interactive Citations (Flask)**: Ported "Open File" feature to Desktop App

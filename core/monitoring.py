@@ -9,27 +9,45 @@ from typing import List, Optional, Tuple
 
 import psutil
 
-from .config import DATABASE_PATH, DOCUMENTS_DIR, EXTRACTS_DIR, LOGS_DIR
+from .config import (
+    DATABASE_PATH,
+    DOCUMENTS_DIR,
+    EXTRACTS_DIR,
+    LOGS_DIR,
+    load_watch_paths,
+)
 
 
 def get_file_counts() -> Tuple[int, int, int, int, int]:
     """
-    Get counts for ai_search_docs, extracts, and indexed files.
+    Get counts for watched files and indexed files.
 
     Returns:
         Tuple containing:
-        - sample_count (int): Number of files in ai_search_docs
-        - extracts_count (int): Number of files in extracts
-        - indexed_count (int): Number of indexed files in meta.sqlite
-        - sample_folder_count (int): Number of folders in ai_search_docs
-        - extracts_folder_count (int): Number of folders in extracts
+        - sample_count (int): Total number of files in all watch paths
+        - extracts_count (int): Always 0 (deprecated)
+        - indexed_count (int): Number of indexed chunks in meta.sqlite
+        - sample_folder_count (int): Total number of folders in all watch paths
+        - extracts_folder_count (int): Always 0 (deprecated)
     """
-    sample_count = sum(1 for f in Path(DOCUMENTS_DIR).rglob("*") if f.is_file())
-    extracts_count = sum(1 for f in Path(EXTRACTS_DIR).rglob("*") if f.is_file())
-    sample_folder_count = sum(1 for f in Path(DOCUMENTS_DIR).rglob("*") if f.is_dir())
-    extracts_folder_count = sum(1 for f in Path(EXTRACTS_DIR).rglob("*") if f.is_dir())
+    watch_paths = load_watch_paths()
 
-    # Count indexed files in meta.sqlite
+    sample_count = 0
+    sample_folder_count = 0
+
+    for path_str in watch_paths:
+        path = Path(path_str)
+        if path.exists():
+            try:
+                sample_count += sum(1 for f in path.rglob("*") if f.is_file())
+                sample_folder_count += sum(1 for f in path.rglob("*") if f.is_dir())
+            except Exception:
+                pass
+
+    extracts_count = 0
+    extracts_folder_count = 0
+
+    # Count indexed chunks in meta.sqlite
     indexed_count = 0
     if Path(DATABASE_PATH).exists():
         try:
@@ -56,24 +74,27 @@ def get_latest_files() -> (
     Tuple[Optional[Tuple[Path, float]], Optional[Tuple[Path, float]]]
 ):
     """
-    Get the most recently added files in documents and extracts directories.
+    Get the most recently added files in watched directories.
 
     Returns:
         Tuple containing:
         - latest_sample: (Path, timestamp) or None
-        - latest_extract: (Path, timestamp) or None
+        - latest_extract: None (deprecated)
     """
-    # Latest in ai_search_docs
-    sample_files = [
-        (f, f.stat().st_mtime) for f in Path(DOCUMENTS_DIR).rglob("*") if f.is_file()
-    ]
-    latest_sample = max(sample_files, key=lambda x: x[1]) if sample_files else None
+    watch_paths = load_watch_paths()
+    all_files = []
 
-    # Latest in extracts
-    extract_files = [
-        (f, f.stat().st_mtime) for f in Path(EXTRACTS_DIR).rglob("*") if f.is_file()
-    ]
-    latest_extract = max(extract_files, key=lambda x: x[1]) if extract_files else None
+    for path_str in watch_paths:
+        path = Path(path_str)
+        if path.exists():
+            try:
+                files = [(f, f.stat().st_mtime) for f in path.rglob("*") if f.is_file()]
+                all_files.extend(files)
+            except Exception:
+                pass
+
+    latest_sample = max(all_files, key=lambda x: x[1]) if all_files else None
+    latest_extract = None
 
     return latest_sample, latest_extract
 
@@ -110,11 +131,6 @@ def check_for_misplaced_files() -> List[str]:
     Check for files in wrong locations (e.g. root of extracts folder).
 
     Returns:
-        List[str]: List of filenames found in the root of extracts folder.
+        List[str]: Always empty (deprecated).
     """
-    misplaced = []
-    if Path(EXTRACTS_DIR).exists():
-        for item in Path(EXTRACTS_DIR).iterdir():
-            if item.is_file() and item.suffix == ".txt":
-                misplaced.append(item.name)
-    return misplaced
+    return []

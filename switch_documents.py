@@ -52,49 +52,22 @@ def load_existing_config() -> Dict:
 
 
 def sync_config_with_filesystem() -> Dict:
-    """Sync configuration with filesystem categories (Option 1 Architecture)."""
+    """
+    Deprecated: Sync configuration with filesystem categories.
+    Now just ensures watch_paths exists in config.
+    """
     config_path = Path("prompts/watcher_config.yaml")
 
     # Load existing config
     config = load_existing_config()
 
-    # Ensure document_categories section exists
-    if "document_categories" not in config:
-        config["document_categories"] = {}
+    if "watch_paths" not in config:
+        config["watch_paths"] = ["ai_search_docs"]
 
-    # Get existing categories from filesystem
-    existing_categories = get_existing_categories()
-
-    # Add new categories found in filesystem
-    for category in existing_categories:
-        if category not in config["document_categories"]:
-            config["document_categories"][category] = create_default_category_config(
-                category
-            )
-            print(f"✅ Added new category: {category}")
-
-    # Set file patterns if not exists
-    if "file_patterns" not in config:
-        config["file_patterns"] = {
-            "include": ["*.txt", "*.pdf", "*.docx", "*.md"],
-            "ignore": [
-                "*.tmp",
-                "*.log",
-                "*.pyc",
-                "__pycache__",
-                ".git",
-                "*.swp",
-                "*.bak",
-            ],
-        }
-
-    # OPTION 1 ARCHITECTURE: Only watch ai_search_docs
-    config["watch_directories"] = ["ai_search_docs"]
-
-    # Save updated configuration
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(config_path, "w", encoding="utf-8") as f:
-        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+        # Save updated configuration
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
     return config
 

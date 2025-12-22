@@ -1,41 +1,14 @@
-document_categories:
-  business_rules:
-    enabled: true
-    paths:
-    - ai_search_docs/business_rules
-  classic_literature:
-    enabled: true
-    paths:
-    - ai_search_docs/classic_literature
-  meeting_notes:
-    enabled: true
-    paths:
-    - ai_search_docs/meeting_notes
-  personal_notes:
-    enabled: true
-    paths:
-    - ai_search_docs/personal_notes
-  research_papers:
-    enabled: true
-    paths:
-    - ai_search_docs/research_papers
-  software_dev:
-    enabled: true
-    paths:
-    - ai_search_docs/software_dev
-  technical_docs:
-    enabled: true
-    paths:
-    - ai_search_docs/technical_docs
-  user_manuals:
-    enabled: true
-    paths:
-    - ai_search_docs/user_manuals
-  Receipts:
-    enabled: true
-    paths:
-    - ai_search_docs/Receipts
+watch_paths:
+  - "ai_search_docs"
+
+allow_external_paths: false
+
 file_patterns:
+  include:
+  - '*.txt'
+  - '*.pdf'
+  - '*.docx'
+  - '*.md'
   ignore:
   - '*.tmp'
   - '*.log'
@@ -44,10 +17,3 @@ file_patterns:
   - .git
   - '*.swp'
   - '*.bak'
-  include:
-  - '*.txt'
-  - '*.pdf'
-  - '*.docx'
-  - '*.md'
-watch_directories:
-- ai_search_docs

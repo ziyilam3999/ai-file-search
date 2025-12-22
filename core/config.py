@@ -7,12 +7,31 @@ Single source of truth for all LLM and performance settings
 # ============================================================================
 INDEX_PATH = "index.faiss"
 DATABASE_PATH = "meta.sqlite"
-DOCUMENTS_DIR = "ai_search_docs"
-EXTRACTS_DIR = "extracts"
+DOCUMENTS_DIR = "ai_search_docs"  # Deprecated as single source, used as default
+EXTRACTS_DIR = "extracts"  # Deprecated
 LOGS_DIR = "logs"
 BACKUPS_DIR = "backups"
 AI_MODELS_DIR = "ai_models"
 DEFAULT_MODEL_NAME = "Phi-3-mini-4k-instruct-q4.gguf"
+CONFIG_PATH = "prompts/watcher_config.yaml"
+
+
+def load_watch_paths() -> list[str]:
+    """Load watch paths from configuration file."""
+    from pathlib import Path
+
+    import yaml
+
+    try:
+        if Path(CONFIG_PATH).exists():
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+                return config.get("watch_paths", [DOCUMENTS_DIR])
+    except Exception as e:
+        print(f"Error loading config: {e}")
+
+    return [DOCUMENTS_DIR]
+
 
 # LLM Generation Settings - OPTIMIZED FOR SPEED (51.9s → <20s target)
 LLM_CONFIG = {

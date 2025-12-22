@@ -202,33 +202,9 @@ class SmartWatcherController:
 
     def _setup_default_config(self) -> bool:
         """Set up default configuration if needed."""
-        try:
-            from switch_documents import sync_config_with_filesystem, update_config
-
-            print("Configuration synchronized with filesystem")
-            config = sync_config_with_filesystem()
-
-            # Verify Option 1 architecture is enforced
-            if config.get("watch_directories") != ["ai_search_docs"]:
-                print("⚠️  Enforcing Option 1 Architecture: ai_search_docs only")
-                config["watch_directories"] = ["ai_search_docs"]
-
-                # Save corrected config
-                from pathlib import Path
-
-                import yaml
-
-                config_path = Path("prompts/watcher_config.yaml")
-                with open(config_path, "w", encoding="utf-8") as f:
-                    yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-
-            return True
-        except ImportError:
-            print("Warning: switch_documents module not available")
-            return False
-        except Exception as e:
-            print(f"Warning: Error setting up config: {e}")
-            return False
+        # No longer enforcing Option 1 architecture or syncing categories
+        # The watcher will load watch_paths from watcher_config.yaml
+        return True
 
     def _get_pid(self) -> Optional[int]:
         """Get the PID of the running watcher."""

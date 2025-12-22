@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - AI File Search</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/new_search.css') }}">
+    <style>
+        .settings-container {
+            padding: 20px;
+            color: #e0e0e0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .settings-section {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .settings-header {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #404040;
+            padding-bottom: 10px;
+        }
+        .path-list {
+            list-style: none;
+            padding: 0;
+        }
+        .path-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #363636;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .path-text {
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.9em;
+        }
+        .btn-danger {
+            background: #d32f2f;
+            color: white;
+        }
+        .btn-primary {
+            background: #1976d2;
+            color: white;
+        }
+        .btn-secondary {
+            background: #616161;
+            color: white;
+        }
+        .add-path-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .path-input {
+            flex-grow: 1;
+            padding: 8px;
+            background: #1e1e1e;
+            border: 1px solid #404040;
+            color: white;
+            border-radius: 4px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #64b5f6;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-content" style="width: 100%;">
+            <div class="settings-container">
+                <a href="/" class="back-link">← Back to Search</a>
+                
+                <h1>Settings</h1>
+                
+                <div class="settings-section">
+                    <div class="settings-header">
+                        <h2>Watched Folders</h2>
+                        <p>Manage the folders that AI File Search monitors for documents.</p>
+                    </div>
+                    
+                    <ul id="path-list" class="path-list">
+                        <!-- Paths will be loaded here -->
+                    </ul>
+                    
+                    <div class="add-path-form">
+                        <input type="text" id="new-path-input" class="path-input" placeholder="Enter absolute path to folder (e.g. C:\Users\Name\Documents)">
+                        <button id="add-path-btn" class="btn btn-primary">Add Folder</button>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <div class="settings-header">
+                        <h2>Index Management</h2>
+                    </div>
+                    <p>If search results seem outdated or incorrect, you can rebuild the index.</p>
+                    <button id="reindex-btn" class="btn btn-danger">Rebuild Index (Full Reset)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load paths on startup
+        loadPaths();
+
+        async function loadPaths() {
+            try {
+                const response = await fetch('/api/settings/watch-paths');
+                const data = await response.json();
+                const list = document.getElementById('path-list');
+                list.innerHTML = '';
+                
+                data.paths.forEach(path => {
+                    const li = document.createElement('li');
+                    li.className = 'path-item';
+                    li.innerHTML = `
+                        <span class="path-text">${path}</span>
+                        <button class="btn btn-danger btn-sm" onclick="removePath('${path.replace(/\\/g, '\\\\')}')">Remove</button>
+                    `;
+                    list.appendChild(li);
+                });
+            } catch (error) {
+                console.error('Error loading paths:', error);
+            }
+        }
+
+        document.getElementById('add-path-btn').addEventListener('click', async () => {
+            const input = document.getElementById('new-path-input');
+            const path = input.value.trim();
+            if (!path) return;
+            
+            try {
+                const response = await fetch('/api/settings/watch-paths', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({path})
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    input.value = '';
+                    loadPaths();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error adding path: ' + error);
+            }
+        });
+
+        async function removePath(path) {
+            if (!confirm(`Are you sure you want to stop watching "${path}"? This will remove its documents from the index.`)) return;
+            
+            try {
+                const response = await fetch('/api/settings/watch-paths', {
+                    method: 'DELETE',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({path})
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    loadPaths();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error removing path: ' + error);
+            }
+        }
+
+        document.getElementById('reindex-btn').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to rebuild the entire index? This may take a while.')) return;
+            
+            try {
+                const btn = document.getElementById('reindex-btn');
+                btn.disabled = true;
+                btn.textContent = 'Rebuilding...';
+                
+                const response = await fetch('/api/settings/reindex', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert('Index rebuild started successfully.');
+                } else {
+                    alert('Error: ' + result.error);
+                }
+                
+                btn.disabled = false;
+                btn.textContent = 'Rebuild Index (Full Reset)';
+            } catch (error) {
+                alert('Error triggering reindex: ' + error);
+            }
+        });
+    </script>
+</body>
+</html>

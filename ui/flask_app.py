@@ -15,12 +15,14 @@ from flask import (
 # Add core modules to path
 sys.path.append(str(Path(__file__).parent.parent))
 from core.ask import answer_question
+from core.index_manager import IndexManager
 from core.monitoring import get_file_counts
 from core.utils import format_citations, open_local_file
 from smart_watcher import SmartWatcherController
 
 app = Flask(__name__)
 watcher = SmartWatcherController()
+index_manager = IndexManager()
 
 
 @app.route("/")
@@ -129,6 +131,54 @@ def search_stream():
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
 
     return Response(stream_with_context(generate()), mimetype="text/event-stream")
+
+
+@app.route("/settings")
+def settings():
+    return render_template("settings.html")
+
+
+@app.route("/api/settings/watch-paths", methods=["GET"])
+def get_watch_paths():
+    paths = index_manager.get_watch_paths()
+    return jsonify({"paths": paths})
+
+
+@app.route("/api/settings/watch-paths", methods=["POST"])
+def add_watch_path():
+    data = request.json
+    path = data.get("path")
+    if not path:
+        return jsonify({"error": "Path is required"}), 400
+
+    success, message = index_manager.add_watch_path(path)
+    if success:
+        return jsonify({"status": "success", "message": message})
+    else:
+        return jsonify({"error": message}), 400
+
+
+@app.route("/api/settings/watch-paths", methods=["DELETE"])
+def remove_watch_path():
+    data = request.json
+    path = data.get("path")
+    if not path:
+        return jsonify({"error": "Path is required"}), 400
+
+    success, message = index_manager.remove_watch_path(path)
+    if success:
+        return jsonify({"status": "success", "message": message})
+    else:
+        return jsonify({"error": message}), 400
+
+
+@app.route("/api/settings/reindex", methods=["POST"])
+def trigger_reindex():
+    success, message = index_manager.trigger_reindex()
+    if success:
+        return jsonify({"status": "success", "message": message})
+    else:
+        return jsonify({"error": message}), 500
 
 
 if __name__ == "__main__":

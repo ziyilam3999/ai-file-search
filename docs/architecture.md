@@ -56,10 +56,10 @@ High-level design and technology stack decisions for the AI File Search system.
 ## Data Flow
 
 ```
-ai_search_docs/ (User Files)
+Watched Paths (User Files)
         │
-        ▼ [extract.py]
-   extracts/ (Text Content)
+        ▼ [daemon/watch.py + embedding.py]
+   Memory (Text Extraction)
         │
         ▼ [embedding.py]
    index.faiss + meta.sqlite (Searchable Index)
@@ -68,7 +68,7 @@ ai_search_docs/ (User Files)
    AI-Generated Answers with Citations
         │
         ▼ [Citations point back to]
-   ai_search_docs/ (Original Files)
+   Original Files
 ```
 
 ## Directory Structure
@@ -86,13 +86,16 @@ ai-file-search/
 │   ├── config.py                # Configuration management
 │   ├── embedding.py             # Search and indexing
 │   ├── extract.py               # Document processing
+│   ├── index_manager.py         # Index lifecycle management
+│   ├── path_utils.py            # Path validation and stats
 │   └── llm.py                   # AI model interface
 │
 ├── daemon/                      # Background services
 │   └── watch.py                 # File watching daemon
 │
 ├── ui/                          # User interfaces
-│   └── app.py                   # Streamlit web app
+│   ├── flask_app.py             # Flask web app
+│   └── templates/               # HTML templates
 │
 ├── docs/                        # Documentation
 │   ├── guides/                  # User-facing guides

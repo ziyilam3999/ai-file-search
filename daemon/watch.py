@@ -51,45 +51,7 @@ from core.config import (
 )
 from core.embedding import Embedder
 from core.extract import Extractor
-
-# COMPLETED: Replace EmbeddingAdapter mock logging with real incremental updates
-# Current: Adapter logs "Would add document" / "Would save index"
-# Need: Call actual Embedder incremental methods when available
-# Requirements:
-#   - Real-time index updates within 5 seconds
-#   - Atomic operations (success/failure, no partial states)
-#   - Error recovery and retry logic
-#   - Statistics tracking for monitoring
-# Depends on: core/embedding.py incremental methods implementation
-
-# TODO(copilot): Expand statistics collection for performance monitoring
-# Current: Basic counters (files_processed, errors, uptime)
-# Need detailed metrics:
-#   - Per-operation timing (detection, extraction, indexing)
-#   - Throughput rates (files/minute, MB/sec)
-#   - Queue depth over time
-#   - Error categorization and frequency
-#   - Memory usage tracking
-#   - Disk I/O statistics
-# Requirements:
-#   - Expose via get_statistics() API
-#   - Time-series data for trending
-#   - Configurable retention period
-
-
-# TODO(copilot): Implement health monitoring and alerting system
-# Features:
-#   - Watchdog for the watcher (meta-monitoring)
-#   - Automatic restart on crashes
-#   - Performance degradation detection
-#   - Disk space monitoring for index files
-#   - Memory leak detection
-#   - Configuration drift detection
-#   - Email/webhook notifications for critical issues
-# Requirements:
-#   - Configurable alert thresholds
-#   - Rate limiting for notifications
-#   - Graceful degradation modes
+from core.path_utils import get_supported_files, validate_watch_path
 
 
 class EmbeddingAdapter:
@@ -236,9 +198,9 @@ class EmbeddingAdapter:
             self._stats["operations_failed"] += 1
             return False
 
-    def build_index(self, extracts_path: Path) -> None:
+    def build_index(self, watch_paths: List[str]) -> None:
         """Delegate to the underlying Embedder's build_index method."""
-        self.embedder.build_index(extracts_dir=str(extracts_path))
+        self.embedder.build_index(watch_paths=watch_paths)
 
     def get_adapter_stats(self) -> Dict[str, Any]:
         """Get detailed statistics about adapter operations."""
@@ -305,7 +267,6 @@ class EmbeddingAdapter:
                 self.embedder.clear_cache()
 
             # Add metadata to database
-            # Store the full relative path, not just the filename!
             metadata_entries = [
                 (next_id + i, file_path, chunk) for i, chunk in enumerate(chunks)
             ]
@@ -326,7 +287,6 @@ class EmbeddingAdapter:
     def _remove_existing_document(self, file_path: str) -> bool:
         """Remove existing document chunks from index (for updates)."""
         try:
-            # Use the full relative path for matching, not just the basename
             conn = sqlite3.connect(self.embedder.db_path)
             cursor = conn.cursor()
 
@@ -360,51 +320,18 @@ class EmbeddingAdapter:
         except Exception:
             return 0
 
-    def _cleanup_old_backups(self) -> None:
-        """Clean up old backup files, keeping only the last 3."""
-        try:
-            backup_files = glob.glob("index_backup_*.faiss")
-            backup_files.sort(reverse=True)  # Most recent first
-
-            # Remove all but the 3 most recent
-            for old_backup in backup_files[3:]:
-                os.remove(old_backup)
-                logger.debug(f"Removed old backup: {old_backup}")
-
-        except Exception as e:
-            logger.debug(f"Error cleaning up backups: {e}")
-
     def search(self, query: str) -> List[Dict[str, Optional[str]]]:
-        """
-        Search the index for the given query and return a list of dicts with 'path' and 'chunk' keys.
-
-        Args:
-            query: The search query string
-
-        Returns:
-            List of dictionaries containing 'path' and 'chunk' keys
-        """
+        """Search the index for the given query."""
         try:
-            # Use the Embedder's query method to get results with 'id'
             results = self.embedder.query(query)
-            conn = sqlite3.connect(DATABASE_PATH)
-            # cursor = conn.cursor()
             formatted = []
             for r in results:
-                # r is a tuple: (file, chunk) or (file, chunk, id)
-                if isinstance(r, dict):
-                    file_path = r.get("file") or r.get("path")
-                    chunk = r.get("chunk")
-                elif isinstance(r, tuple):
-                    # Try to unpack (file, chunk) or (id, file, chunk) or (chunk, file, id, doc_id, score)
-                    if len(r) == 5:
-                        chunk, file_path, _, _, _ = r
-                    elif len(r) == 3:
-                        _, file_path, chunk = r
-                    elif len(r) == 2:
-                        file_path, chunk = r
-                    else:
-                        file_path, chunk = None, None
+                if len(r) == 5:
+                    chunk, file_path, _, _, _ = r
+                elif len(r) == 3:
+                    _, file_path, chunk = r
+                elif len(r) == 2:
+                    file_path, chunk = r
                 else:
                     file_path, chunk = None, None
                 formatted.append(
@@ -413,32 +340,10 @@ class EmbeddingAdapter:
                         "chunk": chunk,
                     }
                 )
-            conn.close()
             return formatted
         except Exception as e:
             logger.error(f"Error in search: {e}")
             return []
-
-
-class ExtractorAdapter:
-    """Adapter to make the existing Extractor class work with the watcher."""
-
-    def __init__(self) -> None:
-        self.extractor = Extractor()
-
-    def extract_text(self, file_path: str) -> str:
-        """Extract text from a file."""
-        if self.extractor is not None:
-            return self.extractor.run(Path(file_path))
-        else:
-            raise RuntimeError("Extractor not initialized")
-
-    def _extract_document(self, file_path: Path) -> str:
-        """Extract text from a document using the extractor."""
-        if self.extractor is not None:
-            return self.extractor.run(file_path)
-        else:
-            raise RuntimeError("Extractor not initialized")
 
 
 class FileChangeQueue:
@@ -528,13 +433,6 @@ class FileChangeHandler(FileSystemEventHandler):
         self.include_patterns = config.get("file_patterns", {}).get("include", [])
         self.ignore_patterns = config.get("file_patterns", {}).get("ignore", [])
 
-        logger.debug(
-            f"FileChangeHandler initialized with include patterns: {self.include_patterns}"
-        )
-        logger.debug(
-            f"FileChangeHandler initialized with ignore patterns: {self.ignore_patterns}"
-        )
-
     def _should_process_file(self, file_path: str) -> bool:
         """Check if a file should be processed based on include/ignore patterns."""
         filename = os.path.basename(file_path)
@@ -544,7 +442,6 @@ class FileChangeHandler(FileSystemEventHandler):
             if fnmatch.fnmatch(filename, pattern) or fnmatch.fnmatch(
                 file_path, pattern
             ):
-                logger.debug(f"File {file_path} ignored due to pattern {pattern}")
                 return False
 
         # Check include patterns
@@ -553,28 +450,23 @@ class FileChangeHandler(FileSystemEventHandler):
 
         for pattern in self.include_patterns:
             if fnmatch.fnmatch(filename, pattern):
-                logger.debug(f"File {file_path} included due to pattern {pattern}")
                 return True
 
-        logger.debug(f"File {file_path} not included by any pattern")
         return False
 
     def on_modified(self, event) -> None:
         """Handle file modification events."""
         if not event.is_directory and self._should_process_file(event.src_path):
-            logger.debug(f"File modified: {event.src_path}")
             self.file_queue.add_change(event.src_path, "modified")
 
     def on_created(self, event) -> None:
         """Handle file creation events."""
         if not event.is_directory and self._should_process_file(event.src_path):
-            logger.debug(f"File created: {event.src_path}")
             self.file_queue.add_change(event.src_path, "created")
 
     def on_deleted(self, event) -> None:
         """Handle file deletion events."""
         if not event.is_directory and self._should_process_file(event.src_path):
-            logger.debug(f"File deleted: {event.src_path}")
             self.file_queue.add_change(event.src_path, "deleted")
 
 
@@ -588,7 +480,6 @@ class FileWatcher:
 
         # Core components
         self.embedding_manager: Optional[EmbeddingAdapter] = None
-        self.document_extractor: Optional[ExtractorAdapter] = None
         self.file_queue = FileChangeQueue()
         self.observer = Observer()
         self.scheduler = BackgroundScheduler()
@@ -633,42 +524,33 @@ class FileWatcher:
                 if section in yaml_config:
                     config[section].update(yaml_config[section])
 
-            # OPTION 1 ARCHITECTURE: Enforce ai_search_docs only watching
-            config["watch_directories"] = [DOCUMENTS_DIR]
+            # Load watch paths
+            watch_paths = []
+            if "watch_paths" in yaml_config:
+                for path in yaml_config["watch_paths"]:
+                    is_valid, error = validate_watch_path(path)
+                    if is_valid:
+                        watch_paths.append(path)
+                    else:
+                        logger.warning(f"Skipping invalid watch path '{path}': {error}")
 
-            # Extract watch directories from document_categories if present
-            if "document_categories" in yaml_config:
-                watch_dirs = set()
-                for category, category_config in yaml_config[
-                    "document_categories"
-                ].items():
-                    if category_config.get("enabled", True):
-                        for path in category_config.get("paths", []):
-                            # Only watch ai_search_docs paths (Option 1 architecture)
-                            if path.startswith(f"{DOCUMENTS_DIR}/"):
-                                watch_dirs.add(DOCUMENTS_DIR)
+            # Fallback to default if no valid paths found
+            if not watch_paths:
+                logger.warning("No valid watch paths found in config, using default")
+                watch_paths = [DOCUMENTS_DIR]
 
-                if watch_dirs:
-                    config["watch_directories"] = list(watch_dirs)
+            config["watch_paths"] = watch_paths
 
-            # Override with any direct YAML settings (but preserve Option 1)
+            # Override with any direct YAML settings
             if "file_patterns" in yaml_config:
                 config["file_patterns"].update(yaml_config["file_patterns"])
 
-            # NEVER allow extracts in watch_directories (Option 1 enforcement)
-            if "watch_directories" in yaml_config:
-                yaml_dirs = yaml_config["watch_directories"]
-                if isinstance(yaml_dirs, list):
-                    # Filter out extracts directory
-                    filtered_dirs = [d for d in yaml_dirs if d != EXTRACTS_DIR]
-                    if DOCUMENTS_DIR not in filtered_dirs:
-                        filtered_dirs.append(DOCUMENTS_DIR)
-                    config["watch_directories"] = filtered_dirs
+            # Security check: allow_external_paths
+            allow_external = yaml_config.get("allow_external_paths", False)
+            config["allow_external_paths"] = allow_external
 
             logger.info(f"Configuration loaded from {self.config_path}")
-            logger.info(
-                f"Watching directories (Option 1): {config['watch_directories']}"
-            )
+            logger.info(f"Watching paths: {config['watch_paths']}")
             return config
         except Exception as e:
             logger.error(f"Error loading config: {e}")
@@ -677,7 +559,8 @@ class FileWatcher:
     def _default_config(self) -> Dict[str, Any]:
         """Return default configuration."""
         return {
-            "watch_directories": [DOCUMENTS_DIR],  # Only watch input directory
+            "watch_paths": [DOCUMENTS_DIR],
+            "allow_external_paths": False,
             "file_patterns": {
                 "include": ["*.txt", "*.pdf", "*.docx", "*.md"],
                 "ignore": [
@@ -743,10 +626,6 @@ class FileWatcher:
         try:
             logger.info("Initializing embedding manager...")
             self.embedding_manager = EmbeddingAdapter()
-
-            logger.info("Initializing document extractor...")
-            self.document_extractor = ExtractorAdapter()
-
             logger.info("Core components initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize components: {e}")
@@ -756,15 +635,15 @@ class FileWatcher:
         """Set up file system watching."""
         handler = FileChangeHandler(self.file_queue, self.config)
 
-        watch_dirs = self.config.get("watch_directories", [])
-        for watch_dir in watch_dirs:
-            if os.path.exists(watch_dir):
-                self.observer.schedule(handler, watch_dir, recursive=True)
-                logger.info(f"Watching directory: {watch_dir}")
+        watch_paths = self.config.get("watch_paths", [])
+        for watch_path in watch_paths:
+            if os.path.exists(watch_path):
+                self.observer.schedule(handler, watch_path, recursive=True)
+                logger.info(f"Watching directory: {watch_path}")
             else:
-                logger.warning(f"Watch directory does not exist: {watch_dir}")
+                logger.warning(f"Watch directory does not exist: {watch_path}")
 
-        if not watch_dirs:
+        if not watch_paths:
             logger.warning("No watch directories configured")
 
     def _setup_scheduler(self) -> None:
@@ -800,10 +679,12 @@ class FileWatcher:
                     for file_path, event_type, timestamp in changes:
                         batch_changes[event_type].append(file_path)
 
-                    # Process additions and modifications (with extraction)
-                    for event_type in ["created", "modified"]:
-                        if event_type in batch_changes:
-                            self._process_added_files(batch_changes[event_type])
+                    # Process additions and modifications
+                    files_to_process = (
+                        batch_changes["created"] + batch_changes["modified"]
+                    )
+                    if files_to_process:
+                        self._process_added_files(files_to_process)
 
                     # Process deletions
                     if "deleted" in batch_changes:
@@ -827,7 +708,7 @@ class FileWatcher:
         logger.info("File processing worker stopped")
 
     def _process_added_files(self, file_paths: List[str]) -> None:
-        """Process added/modified files with extraction to extracts/."""
+        """Process added/modified files with direct extraction."""
         if not file_paths:
             return
 
@@ -836,41 +717,28 @@ class FileWatcher:
 
         successful_extractions = []
         failed_extractions = []
+        extractor = Extractor()
 
         for file_path in file_paths:
             try:
                 # Step 1: Extract text from source file
                 logger.debug(f"Extracting text from: {file_path}")
-                if self.document_extractor is None:
-                    logger.error("Document extractor not initialized")
-                    failed_extractions.append(file_path)
-                    continue
-                text = self.document_extractor.extract_text(file_path)
+                text = extractor.run(Path(file_path))
 
                 if not text or len(text.strip()) < 10:
                     logger.warning(f"No meaningful text extracted from {file_path}")
                     failed_extractions.append(file_path)
                     continue
 
-                # Step 2: Determine extract path
-                extract_path = self._get_extract_path(file_path)
-
-                # Step 3: Save extracted text to extracts/
-                extract_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(extract_path, "w", encoding="utf-8") as f:
-                    f.write(text)
-
-                logger.debug(f"Saved extracted text to: {extract_path}")
-
-                # Step 4: Add to search index using extract path
+                # Step 2: Add to search index using absolute path
                 if self.embedding_manager is None:
                     logger.error("Embedding manager not initialized")
                     failed_extractions.append(file_path)
                     continue
-                relative_extract_path = str(extract_path.relative_to("extracts"))
-                success = self.embedding_manager.add_document(
-                    relative_extract_path, text
-                )
+
+                # Use absolute path
+                abs_path = str(Path(file_path).resolve()).replace("\\", "/")
+                success = self.embedding_manager.add_document(abs_path, text)
 
                 if success:
                     successful_extractions.append(file_path)
@@ -884,7 +752,7 @@ class FileWatcher:
                     )
                     self._stats["total_size_bytes"] += file_size
 
-                    logger.info(f"Successfully processed: {file_path} → {extract_path}")
+                    logger.info(f"Successfully processed: {file_path}")
                 else:
                     failed_extractions.append(file_path)
                     logger.error(f"Failed to add to index: {file_path}")
@@ -911,28 +779,6 @@ class FileWatcher:
                 f"Failed to process {len(failed_extractions)} files: {failed_extractions[:3]}"
             )
 
-    def _get_extract_path(self, source_path: str) -> Path:
-        """Convert source file path to corresponding extract path."""
-        source = Path(source_path)
-
-        # Convert ai_search_docs/category/file.pdf → extracts/category/file.txt
-        if len(source.parts) >= 2 and source.parts[0] == "ai_search_docs":
-            # Preserve the category structure
-            relative_parts = source.parts[1:]  # Skip 'ai_search_docs'
-
-            # Change extension to .txt
-            name_with_txt_ext = source.stem + ".txt"
-            extract_parts = ("extracts",) + relative_parts[:-1] + (name_with_txt_ext,)
-
-            extract_path = Path(*extract_parts)
-            logger.debug(f"Extract path: {source} → {extract_path}")
-            return extract_path
-        else:
-            # Fallback for other paths - this should rarely be used
-            fallback_path = Path("extracts") / (source.stem + ".txt")
-            logger.warning(f"Using fallback extract path: {source} → {fallback_path}")
-            return fallback_path
-
     def _process_deleted_files(self, file_paths: List[str]) -> None:
         """Process deleted files by removing from index."""
         if not file_paths:
@@ -942,24 +788,23 @@ class FileWatcher:
 
         for file_path in file_paths:
             try:
-                # Convert to extract path for index removal
-                extract_path = self._get_extract_path(file_path)
-                relative_extract_path = str(extract_path.relative_to("extracts"))
-
-                # Remove from index
+                # Remove from index using absolute path
                 if self.embedding_manager is None:
                     logger.error("Embedding manager not initialized")
                     continue
-                success = self.embedding_manager.remove_document(relative_extract_path)
+
+                # We might not be able to resolve absolute path if file is deleted
+                # But we should have stored it as absolute path
+                # Try to resolve if possible, otherwise assume it was absolute or relative to cwd
+                # Since we store absolute paths, we need to try to match that.
+                # The file_path from watchdog is usually absolute or relative to cwd.
+                abs_path = str(Path(file_path).resolve()).replace("\\", "/")
+
+                success = self.embedding_manager.remove_document(abs_path)
 
                 if success:
                     self._stats["files_deleted"] += 1
                     logger.info(f"Removed from index: {file_path}")
-
-                # Also remove the extract file if it exists
-                if extract_path.exists():
-                    extract_path.unlink()
-                    logger.debug(f"Deleted extract file: {extract_path}")
 
             except Exception as e:
                 logger.error(f"Error processing deleted file {file_path}: {e}")
@@ -987,70 +832,21 @@ class FileWatcher:
             else:
                 self.embedding_manager = EmbeddingAdapter()
 
-            # Recursively find all files
-            watch_dirs = self.config.get("watch_directories", [])
-            include_patterns = self.config.get("file_patterns", {}).get("include", [])
-            all_files = self._get_all_files(watch_dirs, include_patterns)
-
-            total_files = 0
-            for file_path in all_files:
-                try:
-                    if self.document_extractor is not None:
-                        text = self.document_extractor.extract_text(file_path)
-                        if text.strip() and self.embedding_manager is not None:
-                            # Compute relative path for citation
-                            for base_dir in watch_dirs:
-                                if file_path.startswith(base_dir):
-                                    rel_path = os.path.relpath(file_path, base_dir)
-                                    break
-                            else:
-                                rel_path = file_path  # fallback, should not happen
-
-                            self.embedding_manager.add_document(rel_path, text)
-                            total_files += 1
-                except Exception as e:
-                    logger.error(f"Error reindexing {file_path}: {e}")
-                    self._stats["errors"] = (self._stats.get("errors") or 0) + 1
-
-            # Save the new index
+            # Rebuild index using watch paths
+            watch_paths = self.config.get("watch_paths", [])
             if self.embedding_manager is not None:
-                self.embedding_manager.save_index()
+                self.embedding_manager.build_index(watch_paths)
 
             # Update statistics
             self._stats["last_full_reindex"] = datetime.now().isoformat()
 
             duration = time.time() - start_time
-            logger.info(
-                f"Nightly reindex completed: {total_files} files processed in {duration:.2f} seconds"
-            )
+            logger.info(f"Nightly reindex completed in {duration:.2f} seconds")
 
         except Exception as e:
             logger.error(f"Error during nightly reindex: {e}")
             logger.error(traceback.format_exc())
             self._stats["errors"] = (self._stats.get("errors") or 0) + 1
-
-    def _should_process_file_patterns(self, file_path: str) -> bool:
-        """Check if file should be processed based on patterns."""
-        filename = os.path.basename(file_path)
-
-        # Check ignore patterns
-        ignore_patterns = self.config.get("file_patterns", {}).get("ignore", [])
-        for pattern in ignore_patterns:
-            if fnmatch.fnmatch(filename, pattern) or fnmatch.fnmatch(
-                file_path, pattern
-            ):
-                return False
-
-        # Check include patterns
-        include_patterns = self.config.get("file_patterns", {}).get("include", [])
-        if not include_patterns:
-            return True
-
-        for pattern in include_patterns:
-            if fnmatch.fnmatch(filename, pattern):
-                return True
-
-        return False
 
     def _backup_index(self) -> None:
         """Create a backup of the current index."""
@@ -1154,7 +950,6 @@ class FileWatcher:
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
             logger.error(traceback.format_exc())
-        # The recursive self.stop() call is removed to prevent infinite recursion!
 
     def run(self) -> None:
         """Start the watcher and keep it running until interrupted."""
@@ -1165,26 +960,6 @@ class FileWatcher:
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received. Stopping watcher...")
             self.stop()
-
-    def _get_all_files(self, base_dirs: List[str], patterns: List[str]) -> List[str]:
-        """
-        Recursively find all files matching patterns in all base_dirs and subfolders.
-        Returns relative paths for citation.
-        """
-        found_files = []
-        for base_dir in base_dirs:
-            for root, dirs, files in os.walk(base_dir):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(file_path, base_dir)
-                    # Check include patterns
-                    for pattern in patterns:
-                        if fnmatch.fnmatch(file, pattern):
-                            found_files.append(os.path.join(base_dir, rel_path))
-                            break
-        return found_files
-
-    # TODO(copilot): Use _get_all_files in reindex and other relevant places
 
 
 def main() -> None:

@@ -17,6 +17,9 @@ import numpy as np
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
+from core.extract import Extractor
+from core.path_utils import get_supported_files
+
 from .config import DATABASE_PATH, EXTRACTS_DIR, INDEX_PATH
 
 # Configuration
@@ -83,18 +86,25 @@ class Embedder:
         _METADATA_CACHE = None
         logger.info("CACHE: Cleared index and metadata caches")
 
-    def build_index(self, extracts_dir: str = EXTRACTS_DIR) -> None:
+    def build_index(self, watch_paths: Optional[List[str]] = None) -> None:
         """
-        Build FAISS index from all extracted text files.
+        Build FAISS index from source documents in watch_paths.
 
         Args:
-            extracts_dir: Directory containing extracted text files
+            watch_paths: List of directory paths to index. If None, loads from config.
 
         Side Effects:
             - Creates index.faiss file
             - Creates meta.sqlite database with file metadata
         """
-        logger.info("BUILDING: document embeddings index...")
+        from core.config import load_watch_paths
+
+        if watch_paths is None:
+            watch_paths = load_watch_paths()
+
+        logger.info(
+            f"BUILDING: document embeddings index from {len(watch_paths)} paths..."
+        )
         start_time = time.time()
 
         # Clear existing caches
@@ -121,115 +131,65 @@ class Embedder:
         """
         )
 
-        # Process all text files
+        # Process all files
         all_chunks = []
         chunk_metadata = []
         chunk_id = 0
+        extractor = Extractor()
 
-        extracts_path = Path(extracts_dir)
-        if not extracts_path.exists():
-            logger.error(f"ERROR: {extracts_dir} directory not found")
-            return
+        for watch_path in watch_paths:
+            logger.info(f"SCANNING: {watch_path}")
+            files = get_supported_files(watch_path)
 
-        # Walk through all text files in extracts directory
-        for file_path in extracts_path.rglob("*.txt"):
-            logger.info(f"PROCESSING: {file_path}")
-            # CRITICAL FIX: Ensure forward slashes for cross-platform compatibility
-            rel_path = str(file_path.relative_to(extracts_path)).replace("\\", "/")
-
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-
-                chunks = self._chunk_text(content)
-                if chunks:
-                    # CRITICAL FIX: Map back to original file in ai_search_docs for citation
-                    original_file_path = self._map_to_original_file(rel_path)
-
-                    # ONLY index if we have a valid original file mapping
-                    if original_file_path is None:
-                        logger.warning(
-                            f"SKIPPING: {rel_path} - no original file found in ai_search_docs"
-                        )
+            for file_path in files:
+                logger.info(f"PROCESSING: {file_path}")
+                try:
+                    content = extractor.run(file_path)
+                    if not content:
                         continue
 
-                    logger.success(f"MAPPING: {rel_path} → {original_file_path}")
+                    chunks = self._chunk_text(content)
+                    if chunks:
+                        # Store absolute path
+                        abs_path = str(file_path.resolve()).replace("\\", "/")
 
-                    for doc_chunk_id, chunk in enumerate(chunks):
-                        all_chunks.append(chunk)
-                        # Store original file path for citations
-                        chunk_metadata.append(
-                            (chunk_id, original_file_path, chunk, doc_chunk_id)
-                        )
-                        chunk_id += 1
+                        for i, chunk in enumerate(chunks):
+                            all_chunks.append(chunk)
+                            chunk_metadata.append((chunk_id, abs_path, chunk, i))
+                            chunk_id += 1
 
-                    logger.info(f"ADDED: {len(chunks)} chunks from {rel_path}")
+                            # Batch insert to keep memory usage low
+                            if len(all_chunks) >= 1000:
+                                self._batch_insert(
+                                    index, model, cursor, all_chunks, chunk_metadata
+                                )
+                                all_chunks = []
+                                chunk_metadata = []
 
-            except Exception as e:
-                logger.error(f"ERROR: processing {file_path}: {e}")
+                except Exception as e:
+                    logger.error(f"Failed to process {file_path}: {e}")
 
-        if not all_chunks:
-            logger.error("ERROR: No chunks found to index")
-            return
+        # Process remaining chunks
+        if all_chunks:
+            self._batch_insert(index, model, cursor, all_chunks, chunk_metadata)
 
-        logger.info(f"TOTAL: {len(all_chunks)} chunks to embed")
-
-        # Generate embeddings in batches
-        logger.info("GENERATING: embeddings...")
-        embed_start_time = time.time()
-
-        # Process in batches for better memory management
-        batch_size = 100
-        embeddings = []
-        for i in range(0, len(all_chunks), batch_size):
-            batch_chunks = all_chunks[i : i + batch_size]
-            batch_embeddings = model.encode(
-                batch_chunks,
-                convert_to_numpy=True,
-                normalize_embeddings=True,
-                show_progress_bar=False,
-            )
-            embeddings.extend(batch_embeddings)
-
-            if (i // batch_size + 1) % 10 == 0:
-                logger.info(
-                    f"PROGRESS: {i + len(batch_chunks)}/{len(all_chunks)} embeddings generated"
-                )
-
-        embeddings = np.array(embeddings, dtype=np.float32)
-        embed_time = time.time() - embed_start_time
-        logger.success(f"SUCCESS: {len(embeddings)} embeddings in {embed_time:.2f}s")
-
-        # Index building phase
-        index_start_time = time.time()
-        logger.info("BUILDING: FAISS index...")
-        index.add(embeddings)
-        index_time = time.time() - index_start_time
-        logger.success(f"SUCCESS: FAISS index built in {index_time:.3f}s")
-
-        # Database insertion phase
-        db_insert_start = time.time()
-        logger.info("INSERTING: metadata into database...")
-        cursor.executemany(
-            "INSERT INTO meta (id, file, chunk, doc_chunk_id) VALUES (?, ?, ?, ?)",
-            chunk_metadata,
-        )
+        # Save index
+        faiss.write_index(index, self.index_path)
         conn.commit()
         conn.close()
-        db_insert_time = time.time() - db_insert_start
-        logger.success(f"SUCCESS: Database insert in {db_insert_time:.3f}s")
 
-        # Save index to disk
-        save_start_time = time.time()
-        logger.info("SAVING: index to disk...")
-        faiss.write_index(index, self.index_path)
-        save_time = time.time() - save_start_time
-        logger.success(f"SUCCESS: Index saved in {save_time:.3f}s")
+        elapsed = time.time() - start_time
+        logger.success(f"INDEXING COMPLETE: {chunk_id} chunks in {elapsed:.2f}s")
 
-        # Final statistics
-        total_time = time.time() - start_time
-        logger.success(
-            f"COMPLETE: Index built in {total_time:.2f}s total ({len(all_chunks)} chunks)"
+    def _batch_insert(self, index, model, cursor, chunks, metadata):
+        """Helper to insert a batch of chunks."""
+        embeddings = model.encode(
+            chunks, convert_to_numpy=True, normalize_embeddings=True
+        )
+        index.add(embeddings)
+        cursor.executemany(
+            "INSERT INTO meta (id, file, chunk, doc_chunk_id) VALUES (?, ?, ?, ?)",
+            metadata,
         )
 
     def query(self, query_text: str, k: int = 5) -> List[Tuple]:
@@ -298,147 +258,3 @@ class Embedder:
             chunks.append(chunk)
             start += CHUNK_SIZE - CHUNK_OVERLAP
         return chunks
-
-    def _map_to_original_file(self, extracts_rel_path: str) -> Optional[str]:
-        """Map extracted file path back to original file in ai_search_docs with robust Unicode handling.
-
-        CRITICAL: This function MUST return ai_search_docs/ paths for correct citations.
-        NEVER return extracts/ paths in citations.
-
-        Args:
-            extracts_rel_path: Relative path from extracts/ (e.g., 'business_rules/file.txt')
-
-        Returns:
-            Original file path in ai_search_docs (e.g., 'ai_search_docs/business_rules/file.pdf')
-            Returns None if no original file exists - this will SKIP indexing the file.
-        """
-
-        def normalize_filename(name: str) -> str:
-            """Normalize filename for robust comparison by handling Unicode and extensions."""
-            # Remove common extensions
-            if name.endswith((".txt", ".pdf", ".docx", ".md")):
-                name = name.rsplit(".", 1)[0]
-
-            # Normalize Unicode characters (NFKC handles compatibility characters)
-            normalized = unicodedata.normalize("NFKC", name)
-
-            # Strip whitespace and normalize internal spaces
-            return " ".join(normalized.split())
-
-        def fuzzy_match_file(
-            base_name: str, directory: Path, threshold: float = 0.85
-        ) -> Optional[Path]:
-            """Find best matching file using fuzzy string matching."""
-            if not directory.exists():
-                return None
-
-            best_match = None
-            best_score = threshold
-            normalized_base = normalize_filename(base_name)
-
-            logger.info(f"FUZZY SEARCH: Looking for '{normalized_base}' in {directory}")
-
-            for file_path in directory.iterdir():
-                if file_path.is_file():
-                    normalized_file = normalize_filename(file_path.stem)
-
-                    # Calculate similarity ratio
-                    similarity = SequenceMatcher(
-                        None, normalized_base, normalized_file
-                    ).ratio()
-
-                    logger.debug(
-                        f"COMPARE: '{normalized_base}' vs '{normalized_file}' = {similarity:.3f}"
-                    )
-
-                    if similarity > best_score:
-                        best_match = file_path
-                        best_score = similarity
-                        logger.info(
-                            f"NEW BEST: {file_path.name} (score: {similarity:.3f})"
-                        )
-
-            if best_match:
-                logger.success(
-                    f"FUZZY MATCH: '{base_name}' → '{best_match.name}' (score: {best_score:.3f})"
-                )
-
-            return best_match
-
-        # Parse the extracts path
-        path_parts = extracts_rel_path.split("/")
-        if len(path_parts) < 2:
-            # Single file at root level
-            potential_original = f"ai_search_docs/{extracts_rel_path}"
-            return potential_original if Path(potential_original).exists() else None
-
-        category = path_parts[0]  # e.g., 'business_rules'
-        filename_txt = path_parts[-1]  # e.g., 'file.txt'
-
-        # Normalize the filename for robust matching
-        base_name = normalize_filename(filename_txt)
-
-        logger.info(f"MAPPING: {extracts_rel_path}")
-        logger.info(f"  Category: {category}")
-        logger.info(f"  Original filename: '{filename_txt}'")
-        logger.info(f"  Normalized base: '{base_name}'")
-
-        # Check what original file exists in ai_search_docs
-        ai_docs_category = Path(f"ai_search_docs/{category}")
-        if not ai_docs_category.exists():
-            logger.warning(
-                f"CATEGORY MISSING: ai_search_docs/{category} does not exist"
-            )
-            return None
-
-        # PHASE 1: Try exact matching with normalized names
-        logger.info("PHASE 1: Exact matching with extensions")
-        for ext in [".pdf", ".docx", ".txt", ".md"]:
-            # Try with normalized base name
-            test_filename = f"{base_name}{ext}"
-            original_file = ai_docs_category / test_filename
-
-            logger.debug(f"  Testing exact: {test_filename}")
-
-            if original_file.exists():
-                result_path = str(original_file).replace("\\", "/")
-                logger.success(f"EXACT MATCH: {extracts_rel_path} → {result_path}")
-                return result_path
-
-        # PHASE 2: Try fuzzy matching as fallback
-        logger.info("PHASE 2: Fuzzy matching fallback")
-        matched_file = fuzzy_match_file(base_name, ai_docs_category)
-
-        if matched_file:
-            result_path = str(matched_file).replace("\\", "/")
-            logger.success(f"FUZZY SUCCESS: {extracts_rel_path} → {result_path}")
-            return result_path
-
-        # PHASE 3: Last resort - try original filename without normalization
-        logger.info("PHASE 3: Last resort with original filename")
-        original_base = (
-            filename_txt[:-4]
-            if filename_txt.endswith(".txt")
-            else filename_txt[:-3] if filename_txt.endswith(".md") else filename_txt
-        )
-
-        for ext in [".pdf", ".docx", ".txt", ".md"]:
-            test_filename = f"{original_base}{ext}"
-            original_file = ai_docs_category / test_filename
-
-            if original_file.exists():
-                result_path = str(original_file).replace("\\", "/")
-                logger.success(f"ORIGINAL MATCH: {extracts_rel_path} → {result_path}")
-                return result_path
-
-        # No original file found - return None to skip indexing this file
-        logger.error(
-            f"NO MATCH FOUND: {extracts_rel_path} - will be SKIPPED from indexing"
-        )
-        logger.info(f"  Available files in {ai_docs_category}:")
-        if ai_docs_category.exists():
-            for file in ai_docs_category.iterdir():
-                if file.is_file():
-                    logger.info(f"    - {file.name}")
-
-        return None

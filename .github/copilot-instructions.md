@@ -132,6 +132,9 @@ If you detect an empty workspace or the user asks to start a new project:
         # Logs
         *.log
         logs/
+
+        # Temporary Status Files
+        _TASK_STATUS.md
         ```
     *   **Framework-Specific Patterns:** Based on the tech stack confirmed in step 2, add the appropriate ignores:
         | Stack | Additional Ignores |

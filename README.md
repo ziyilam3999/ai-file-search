@@ -6,7 +6,7 @@ Zero-configuration smart document search system with automatic discovery and rea
 
 1. **Complete Setup**: `python complete_setup.py`
 2. **Start Watcher**: `python smart_watcher.py start`
-3. **Launch UI**: `python -m streamlit run ui/app.py`
+3. **Launch App**: `python run_app.py`
 4. **Search Documents**: `python cli.py "your search query"`
 
 ## Key Features
@@ -15,7 +15,7 @@ Zero-configuration smart document search system with automatic discovery and rea
 - **Smart Watcher**: Real-time file monitoring and indexing
 - **Citation References**: Citations point to user-accessible files in `ai_search_docs/`
 - **Multi-Format Support**: PDF, DOCX, TXT, and Markdown files
-- **Modern UI**: Streamlit-based search interface with AI-powered answers
+- **Modern UI**: Native desktop app with AI-powered answers
 - **Background Processing**: File watcher runs as background service
 
 ## Project Structure
@@ -79,8 +79,8 @@ Document Search
 # Command line search
 python cli.py "machine learning algorithms"
 
-# Interactive web interface
-python -m streamlit run ui/app.py
+# Interactive desktop app
+python run_app.py
 
 Document Management
 # Auto-discover new categories

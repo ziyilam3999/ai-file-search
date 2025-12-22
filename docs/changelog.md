@@ -18,6 +18,10 @@ All notable changes to this project are documented in this file.
 - Path constants `INDEX_PATH`, `DATABASE_PATH`, `DOCUMENTS_DIR`, `EXTRACTS_DIR`, `LOGS_DIR`, `BACKUPS_DIR` in `core/config.py`
 - Standardized `.gitignore` patterns for OS, IDE, and Python environment files
 
+### Removed
+- **Streamlit UI:** Removed `ui/app.py`, `ui/components.py`, and `ui/styles.py` as the project has migrated to a native Desktop App (Flask + PyWebview).
+- **Dependencies:** Removed `streamlit` from `pyproject.toml`.
+
 ### Changed
 - **Refactoring:** Updated `core/utils.py` `format_citations` to support both HTML and plain text output, ensuring CLI compatibility.
 - **Refactoring:** Split `ui/app.py` into `ui/styles.py` and `ui/components.py` for better maintainability.

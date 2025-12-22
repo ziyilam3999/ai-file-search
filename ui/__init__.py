@@ -1,3 +1,3 @@
 """UI: ui package
-Purpose: Streamlit web interface for AI File Search
+Purpose: User interface for AI File Search (Flask + PyWebview)
 """

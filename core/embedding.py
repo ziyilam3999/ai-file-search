@@ -61,6 +61,9 @@ class Embedder:
             logger.info("LOADING: FAISS index (updated)...")
             _INDEX_CACHE = faiss.read_index(self.index_path)
             _INDEX_MTIME = current_mtime
+            logger.info(
+                f"INDEX: Type={type(_INDEX_CACHE).__name__}, Total Vectors={_INDEX_CACHE.ntotal}"
+            )
             logger.success("SUCCESS: FAISS index loaded")
 
         return _INDEX_CACHE
@@ -84,6 +87,16 @@ class Embedder:
                 # Create lookup dictionary: id -> (file, chunk, doc_chunk_id)
                 _METADATA_CACHE = {row[0]: (row[1], row[2], row[3]) for row in metadata}
                 _METADATA_MTIME = current_mtime
+
+                if _METADATA_CACHE:
+                    min_id = min(_METADATA_CACHE.keys())
+                    max_id = max(_METADATA_CACHE.keys())
+                    logger.info(
+                        f"METADATA: ID Range=[{min_id}, {max_id}], Count={len(_METADATA_CACHE)}"
+                    )
+                else:
+                    logger.info("METADATA: Empty")
+
                 logger.success(
                     f"SUCCESS: metadata loaded ({len(_METADATA_CACHE)} entries)"
                 )

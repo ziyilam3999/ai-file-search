@@ -15,6 +15,7 @@ All notable changes to this project are documented in this file.
 - **Index Missing:** Fixed issue where `index.faiss` was missing, causing search to fail on first run.
 
 ### Added
+- **Indexing Progress:** Added real-time progress bar to the UI status bar to visualize background indexing status (processed/total files).
 - **Multi-Folder Watching:** Support for watching multiple disjoint folders via `watcher_config.yaml`.
 - **Settings UI:** New settings page in Flask UI to manage watch paths.
 - **Path Validation:** Security checks for watch paths to prevent system directory monitoring.

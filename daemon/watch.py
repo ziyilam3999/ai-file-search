@@ -12,6 +12,7 @@ for changes and automatically updates the search index. Features include:
 
 import fnmatch
 import glob
+import json
 import os
 import shutil
 import signal
@@ -84,6 +85,7 @@ class EmbeddingAdapter:
                 # Use IndexIDMap to support add_with_ids and remove_ids
                 index = faiss.IndexIDMap(faiss.IndexFlatL2(384))
                 faiss.write_index(index, self.embedder.index_path)
+                logger.info("INDEX: Created new IndexIDMap(IndexFlatL2)")
 
             # Check/Create SQLite DB
             # We always connect to ensure table exists even if file exists
@@ -547,8 +549,40 @@ class FileWatcher:
             "total_size_bytes": 0,
             "last_processed_time": 0,
         }
+        self._progress: Dict[str, Any] = {
+            "is_indexing": False,
+            "current_file": None,
+            "processed_count": 0,
+            "total_files": 0,
+            "percent_complete": 0,
+        }
 
         logger.info("FileWatcher initialized")
+
+    def _save_status(self) -> None:
+        """Save current status and progress to JSON file."""
+        try:
+            status_data = {
+                "status": "running" if self._running else "stopped",
+                "last_updated": datetime.now().isoformat(),
+                "stats": self._stats,
+                "progress": self._progress,
+            }
+
+            # Atomic write
+            status_file = Path("logs/watcher_status.json")
+            temp_file = Path("logs/watcher_status.json.tmp")
+
+            # Ensure directory exists
+            status_file.parent.mkdir(exist_ok=True)
+
+            with open(temp_file, "w") as f:
+                json.dump(status_data, f, indent=2)
+
+            temp_file.replace(status_file)
+
+        except Exception as e:
+            logger.error(f"Failed to save status file: {e}")
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from YAML file."""
@@ -760,13 +794,34 @@ class FileWatcher:
             return
 
         logger.info(f"Processing {len(file_paths)} added/modified files")
+
+        # Update progress start
+        self._progress.update(
+            {
+                "is_indexing": True,
+                "total_files": len(file_paths),
+                "processed_count": 0,
+                "percent_complete": 0,
+            }
+        )
+        self._save_status()
+
         batch_start_time = time.time()
 
         successful_extractions = []
         failed_extractions = []
         extractor = Extractor()
 
-        for file_path in file_paths:
+        for i, file_path in enumerate(file_paths):
+            # Update progress current file
+            self._progress["current_file"] = str(Path(file_path).name)
+            self._progress["processed_count"] = i
+            self._progress["percent_complete"] = int((i / len(file_paths)) * 100)
+
+            # Save status periodically
+            if i % 5 == 0:
+                self._save_status()
+
             try:
                 # Step 1: Extract text from source file
                 logger.debug(f"Extracting text from: {file_path}")
@@ -812,6 +867,18 @@ class FileWatcher:
         # Batch completion
         processing_time = time.time() - batch_start_time
         self._stats["processing_time_seconds"] += processing_time
+
+        # Reset progress
+        self._progress.update(
+            {
+                "is_indexing": False,
+                "current_file": None,
+                "processed_count": len(file_paths),
+                "total_files": len(file_paths),
+                "percent_complete": 100,
+            }
+        )
+        self._save_status()
 
         if successful_extractions:
             # Save index after successful batch
@@ -921,6 +988,7 @@ class FileWatcher:
         stats = self._stats.copy()
         stats["queue_size"] = self.file_queue.size()
         stats["is_running"] = self._running
+        stats["progress"] = self._progress.copy()
         if stats["start_time"]:
             stats["uptime_seconds"] = time.time() - (stats["start_time"] or 0)
         return stats

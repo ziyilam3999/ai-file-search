@@ -28,6 +28,7 @@ Project roadmap, sprint tasks, and session log.
 - [x] **Security**: Path validation to prevent system directory monitoring
 
 ### December 2025: Maintenance & Standards
+- [x] **UI Progress Bar**: Visual indicator for background indexing status
 - [x] **Deprecate Streamlit**: Removed legacy Streamlit app and dependencies
 - [x] **Interactive Citations (Flask)**: Ported "Open File" feature to Desktop App
 - [x] **Interactive Citations (Streamlit)**: Allow users to open files directly from citations

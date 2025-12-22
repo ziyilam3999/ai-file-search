@@ -4,6 +4,7 @@ class AIFileSearchUI {
         this.currentChatId = 1;
         this.chatHistory = new Map();
         this.isSearching = false; // Track if there's an active search
+        this.wasIndexing = false; // Track indexing state for UI transitions
         this.initializeElements();
         this.bindEvents();
         this.loadChatHistory();
@@ -24,6 +25,8 @@ class AIFileSearchUI {
         this.watcherText = document.getElementById('watcher-text');
         this.docCount = document.getElementById('doc-count');
         this.indexCount = document.getElementById('index-count');
+        this.indexingProgress = document.getElementById('indexing-progress');
+        this.progressText = document.getElementById('progress-text');
     }
 
     bindEvents() {
@@ -260,6 +263,70 @@ class AIFileSearchUI {
         
         // Remove typing cursor when done
         answerParagraph.classList.remove('typing-cursor');
+    }
+
+    startStatusPolling() {
+        // Poll status every 500ms (faster polling for smoother progress)
+        setInterval(async () => {
+            try {
+                const response = await fetch('/api/status');
+                if (response.ok) {
+                    const status = await response.json();
+                    this.updateStatus(status);
+                }
+            } catch (error) {
+                console.error('Error polling status:', error);
+            }
+        }, 500);
+    }
+
+    updateStatus(status) {
+        // Update watcher status
+        if (status.watcher === 'running') {
+            this.watcherIndicator.className = 'status-indicator active';
+            this.watcherText.textContent = 'Watcher: Active';
+        } else {
+            this.watcherIndicator.className = 'status-indicator inactive';
+            this.watcherText.textContent = 'Watcher: Stopped';
+        }
+
+        // Update counts
+        this.docCount.textContent = `${status.documents || 0} docs`;
+        this.indexCount.textContent = `${status.indexed || 0} indexed`;
+        
+        // Update indexing progress
+        const isIndexing = status.progress && status.progress.is_indexing;
+        
+        if (isIndexing) {
+            this.wasIndexing = true;
+            if (this.indexingProgress) {
+                this.indexingProgress.style.display = 'flex';
+                const percent = status.progress.percent_complete || 0;
+                const current = status.progress.processed_count || 0;
+                const total = status.progress.total_files || 0;
+                if (this.progressText) {
+                    this.progressText.textContent = `Indexing: ${current}/${total} (${percent}%)`;
+                }
+            }
+        } else {
+            if (this.wasIndexing) {
+                this.wasIndexing = false;
+                if (this.indexingProgress && this.progressText) {
+                    this.progressText.textContent = 'Indexing: Complete';
+                    // Keep visible for 3 seconds
+                    setTimeout(() => {
+                        if (!this.wasIndexing) {
+                            this.indexingProgress.style.display = 'none';
+                        }
+                    }, 3000);
+                }
+            } else {
+                // Only hide if we are NOT showing the "Complete" message
+                if (this.indexingProgress && this.progressText && this.progressText.textContent !== 'Indexing: Complete') {
+                    this.indexingProgress.style.display = 'none';
+                }
+            }
+        }
     }
 
     initializeConversationContainer() {

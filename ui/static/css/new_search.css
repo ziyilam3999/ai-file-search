@@ -362,3 +362,42 @@ body {
         gap: 10px;
     }
 }
+
+/* Status Bar */
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 8px 20px;
+    background-color: #1a1a1a;
+    border-bottom: 1px solid #333333;
+    font-size: 12px;
+    color: #888888;
+    flex-shrink: 0;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #666666;
+}
+
+.status-indicator.active {
+    background-color: #4caf50;
+    box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
+}
+
+.status-indicator.inactive {
+    background-color: #f44336;
+}
+
+.status-item .icon {
+    font-size: 14px;
+}

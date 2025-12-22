@@ -57,6 +57,17 @@ def get_status():
         # Get watcher status
         is_running = watcher.is_running()
 
+        # Get progress from watcher status file if available
+        progress = {}
+        try:
+            status_file = Path("logs/watcher_status.json")
+            if status_file.exists():
+                with open(status_file, "r") as f:
+                    status_data = json.load(f)
+                    progress = status_data.get("progress", {})
+        except Exception:
+            pass
+
         # Get file counts
         (sample_count, extracts_count, indexed_count, _, _) = get_file_counts()
 
@@ -66,6 +77,7 @@ def get_status():
                 "documents": sample_count,
                 "extracts": extracts_count,
                 "indexed": indexed_count,
+                "progress": progress,
             }
         )
     except Exception as e:

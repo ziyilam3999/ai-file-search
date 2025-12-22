@@ -6,7 +6,7 @@ Known bugs, issues, and their resolution status.
 
 | ID | Description | Severity | Status | Reported |
 |----|-------------|----------|--------|----------|
-| - | No active defects | - | - | - |
+| DEF-017 | Model singleton not persisting between requests (~85-90s reload on each query) | High | Open | 2025-12-22 |
 
 ## Resolved Defects
 

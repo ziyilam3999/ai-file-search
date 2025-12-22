@@ -204,6 +204,9 @@ def get_phi3_llm(model_path: Optional[str] = None, verbose: bool = False) -> Phi
     global _phi3_instance
 
     if _phi3_instance is None:
+        logger.info("SINGLETON: Creating NEW Phi-3 instance (first time)")
         _phi3_instance = Phi3LLM(model_path, verbose)
+    else:
+        logger.info("SINGLETON: Reusing EXISTING Phi-3 instance (model already loaded)")
 
     return _phi3_instance

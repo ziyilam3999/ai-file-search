@@ -5,6 +5,7 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Protocol Enforcement:** Updated `.github/copilot-instructions.md` with observable Pre-Flight Report, abstract Domain Categories, and Confirmation Gate for complex tasks.
 - **Interactive Citations (Flask):** Ported "Open File" feature to the Desktop App (Flask backend) for feature parity.
 - **Interactive Citations (Streamlit):** Added "Open" button to citations in Streamlit UI to open source files in default system viewer.
 - **Scenario E (Test Coverage Audit):** Added new scenario to `.github/copilot-instructions.md` for comprehensive test audits.

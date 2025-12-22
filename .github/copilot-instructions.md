@@ -41,10 +41,18 @@ Before finalizing ANY response, execute this internal refinement loop:
     *   **Consistent:** Follows project standards and scenario format.
 
 #### Phase 3: Output
-1.  **Indicator Line:** Start response with: `✅ P0 | Scenario [X]`
+1.  **Pre-Flight Report:** Start EVERY task-execution response with:
+    ```
+    📋 PRE-FLIGHT
+    Scenario: [A/B/C/D/E] ([Name])
+    Domains Affected: [List from Domain Categories in Protocol 4]
+    Complexity: [Simple (1 domain) | Complex (2+ domains)]
+    Status File Required: [Yes/No]
+    ```
+    This report is **MANDATORY**. If it is missing, the response is non-compliant.
 2.  **Deliver:** Output the refined result.
 
-*Note: Phase 2 runs silently. The user sees only the Indicator Line and final output. Do NOT describe these internal steps to the user.*
+*Note: Phase 2 runs silently. The user sees only the Pre-Flight Report and final output. Do NOT describe these internal steps to the user.*
 
 ---
 
@@ -227,15 +235,28 @@ At the end of every task (Scenario A, B, or C), you must provide a structured re
 
 ### PROTOCOL 4: EXECUTION TRACKING (Complex Tasks)
 
-For tasks with **3 or more distinct phases** spanning multiple tool calls, you MUST create a temporary status file to track progress.
+For **complex tasks** (defined below), you MUST create a temporary status file to track progress.
 
-#### When to Use
-*   Multi-phase migrations or refactoring
-*   Tasks that may span multiple user interactions
-*   Any work where losing track of progress would be costly
+#### Domain Categories (Abstract)
+Identify which of the following conceptual domains the task will touch:
+
+| Domain | Description | Examples |
+|--------|-------------|----------|
+| **Source** | Business logic, models, services, utilities | `src/`, `lib/`, `core/`, `app/`, `pkg/` |
+| **Interface** | User-facing layers (UI, CLI, API) | `ui/`, `web/`, `cli/`, `api/`, `routes/` |
+| **Verification** | Tests, specs, benchmarks | `tests/`, `test/`, `spec/`, `__tests__/` |
+| **Config** | Build, dependencies, CI/CD, environment | `package.json`, `pyproject.toml`, `Cargo.toml`, `.github/`, `Dockerfile` |
+
+#### Complexity Trigger Rule
+At the start of each task, map the affected files to the Domain Categories above.
+*   **1 Domain:** Simple task. Proceed with atomic execution.
+*   **2+ Domains:** **Complex task.** `_TASK_STATUS.md` is **MANDATORY** before any file edits.
+
+#### First Tool Call Constraint
+For complex tasks, the **FIRST tool call** in your response MUST be `create_file` for `_TASK_STATUS.md`. Any other tool call first is a **protocol violation**.
 
 #### When NOT to Use
-*   Simple file edits (1-2 steps)
+*   Simple file edits affecting only 1 domain
 *   Single-command terminal operations
 *   Research/analysis tasks (Scenario D)
 
@@ -272,6 +293,15 @@ For tasks with **3 or more distinct phases** spanning multiple tool calls, you M
 *   **Resumability:** If session is interrupted, next agent can continue
 *   **Transparency:** User sees exactly what's planned and done
 *   **Auditability:** Decisions are documented in real-time
+
+#### Confirmation Gate (Complex Tasks Only)
+After creating `_TASK_STATUS.md`, output the status file content and ask:
+
+> "This task affects **[N] domains**: [list]. Here is my execution plan.
+> Reply **'Proceed'** to continue, or provide adjustments."
+
+**DO NOT execute any further tool calls until the user confirms.**
+This gate ensures the user has visibility into the scope before irreversible changes occur.
 
 ### GENERAL EXECUTION STEPS (Apply to ALL Scenarios)
 0.  **Check State:** Ensure the git working directory is clean before starting. If not, ask the user to commit or stash changes.

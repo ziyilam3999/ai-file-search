@@ -135,6 +135,9 @@ If you detect an empty workspace or the user asks to start a new project:
 
         # Temporary Status Files
         _TASK_STATUS.md
+
+        # GitHub Folder (private copilot instructions)
+        .github/
         ```
     *   **Framework-Specific Patterns:** Based on the tech stack confirmed in step 2, add the appropriate ignores:
         | Stack | Additional Ignores |

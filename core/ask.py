@@ -17,7 +17,7 @@ from .llm import get_phi3_llm
 
 
 def answer_question(
-    query: str, top_k: int = 5, streaming: bool = False
+    query: str, top_k: int = 4, streaming: bool = False
 ) -> Union[
     Tuple[str, List[Dict[str, Any]]], Tuple[Iterator[str], List[Dict[str, Any]]]
 ]:
@@ -117,11 +117,10 @@ Answer:"""
     try:
         generation_start = time.time()
         if streaming:
-            # Return streaming generator
+            # Return streaming generator; log timing inside generator
             answer_generator = _generate_streaming_answer_with_phi3(
-                full_prompt, citations
+                full_prompt, citations, generation_start, retrieval_time
             )
-            # Note: For streaming, timing is logged inside the generator
             return answer_generator, citations
         else:
             # Return complete answer (existing behavior)
@@ -232,7 +231,12 @@ def _generate_fallback_answer(query: str, results: List, citations: List[Dict]) 
     return answer
 
 
-def _generate_streaming_answer_with_phi3(prompt: str, citations: List[Dict]):
+def _generate_streaming_answer_with_phi3(
+    prompt: str,
+    citations: List[Dict],
+    generation_start: float,
+    retrieval_time: float,
+):
     """
     Generate a streaming answer using Phi-3 LLM with config settings.
 
@@ -247,15 +251,26 @@ def _generate_streaming_answer_with_phi3(prompt: str, citations: List[Dict]):
         # Get Phi-3 instance
         llm = get_phi3_llm()
 
-        # Generate streaming answer using Phi-3
+        # Generate streaming answer using Phi-3 with timing
         full_answer = ""
+        token_count = 0
+        first_token_time: float | None = None
+
         for token in llm.generate_streaming_answer(
             prompt=prompt,
             max_tokens=int(LLM_CONFIG["max_tokens"]),
             temperature=float(LLM_CONFIG["temperature"]),
         ):
-            full_answer += token
-            yield token
+            if token:
+                token_count += 1
+                if first_token_time is None:
+                    first_token_time = time.time()
+                    time_to_first = first_token_time - generation_start
+                    logger.info(
+                        f"⏱️ FIRST TOKEN: {time_to_first:.2f}s (includes model load)"
+                    )
+                full_answer += token
+                yield token
 
         # Add citations at the end if not already present
         if "Citations:" not in full_answer and citations:
@@ -268,6 +283,15 @@ def _generate_streaming_answer_with_phi3(prompt: str, citations: List[Dict]):
             # Stream the citations section
             for char in citations_text:
                 yield char
+
+        # Log total generation time (streaming)
+        total_generation_time = time.time() - generation_start
+        logger.info(
+            f"⏱️ GENERATION TIME (stream): {total_generation_time:.2f}s (tokens={token_count})"
+        )
+        logger.info(
+            f"⏱️ TOTAL TIME (stream): {retrieval_time + total_generation_time:.2f}s"
+        )
 
     except Exception as e:
         logger.error(f"ERROR: Phi-3 streaming generation error: {e}")

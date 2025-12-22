@@ -16,6 +16,8 @@ All notable changes to this project are documented in this file.
 - Standardized `.gitignore` patterns for OS, IDE, and Python environment files
 
 ### Changed
+- **Refactoring:** Cleaned up test suite by removing experimental `tests/test_simple_rag.py`.
+- **Testing:** Added new unit tests `tests/test_core_utils.py` and `tests/test_core_config.py` to improve coverage.
 - **Refactoring:** Extracted system monitoring logic from `tools/live_monitor.py` to `core/monitoring.py`.
 - **Refactoring:** Updated `ui/flask_app.py` and `tools/live_monitor.py` to use the new `core/monitoring` module.
 - **Refactoring:** Cleaned up `ui/static/js/new_search.js` by extracting stream reading logic into `readStreamResponse` method.

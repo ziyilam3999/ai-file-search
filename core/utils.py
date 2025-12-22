@@ -62,8 +62,8 @@ def format_citations(citations: List[Dict[str, Any]], as_html: bool = True) -> s
         filename = os.path.basename(file_path)
         file_display = file_path.replace("\\", "/")
 
-        # Collect all content chunks
-        all_bullet_points = []
+        # Collect all content chunks (as plain text paragraphs)
+        all_paragraphs = []
 
         for cite in cites:
             content = cite.get("chunk", "")
@@ -73,86 +73,36 @@ def format_citations(citations: List[Dict[str, Any]], as_html: bool = True) -> s
             lines = content.split("\n")
             cleaned_lines = []
             for line in lines:
-                # Skip lines that are mostly non-alphanumeric (separators)
-                if (
-                    len(line.strip()) > 3
-                    and len(re.findall(r"[\w\s]", line)) < len(line) * 0.5
-                ):
+                line = line.strip()
+                # Skip empty lines or lines that are mostly non-alphanumeric (separators)
+                if not line:
+                    continue
+                if len(line) > 3 and len(re.findall(r"[\w\s]", line)) < len(line) * 0.5:
                     continue
                 cleaned_lines.append(line)
-            content = "\n".join(cleaned_lines)
 
-            # Enhanced content splitting to preserve ALL content
-            bullet_points = []
+            # Join cleaned lines into a single paragraph
+            if cleaned_lines:
+                paragraph = " ".join(cleaned_lines)
+                # Truncate if too long (max 300 chars for preview)
+                if len(paragraph) > 300:
+                    paragraph = paragraph[:300] + "..."
+                all_paragraphs.append(paragraph)
 
-            if ". " in content and len(content.split(". ")) > 2:
-                # Split by sentences
-                sentences = re.split(r"(?<=\.)\s+", content)
-                parts = [s.strip() for s in sentences if s.strip()]
-
-                for part in parts:
-                    part = part.strip()
-                    if (
-                        part
-                        and not part.endswith(".")
-                        and not part.endswith("!")
-                        and not part.endswith("?")
-                    ):
-                        part += "."
-                    if part:
-                        bullet_points.append(f"• {part}")
-
-            elif " - " in content and len(content.split(" - ")) > 2:
-                # Split by dashes
-                parts = [s.strip() for s in content.split(" - ") if s.strip()]
-                for part in parts:
-                    part = part.strip()
-                    if (
-                        part
-                        and not part.endswith(".")
-                        and not part.endswith("!")
-                        and not part.endswith("?")
-                    ):
-                        if len(part) > 20:
-                            part += "."
-                    if part:
-                        bullet_points.append(f"• {part}")
-
-            elif "\n" in content:
-                # Split by line breaks
-                parts = [s.strip() for s in content.split("\n") if s.strip()]
-                bullet_points = [f"• {part}" for part in parts]
-
-            else:
-                # Fallback: Split into logical chunks
-                words = content.split()
-                chunk_size = 20
-
-                for j in range(0, len(words), chunk_size):
-                    chunk = " ".join(words[j : j + chunk_size])
-                    if chunk.strip():
-                        bullet_points.append(f"• {chunk}")
-
-            # If no bullet points created, use the full content
-            if not bullet_points:
-                bullet_points = [f"• {content}"]
-
-            all_bullet_points.extend(bullet_points)
-
-        # Remove duplicate bullet points (if chunks overlap)
-        unique_bullets = []
-        seen_bullets = set()
-        for bp in all_bullet_points:
-            if bp not in seen_bullets:
-                unique_bullets.append(bp)
-                seen_bullets.add(bp)
+        # Remove duplicate paragraphs (if chunks overlap)
+        unique_paragraphs = []
+        seen_paragraphs = set()
+        for para in all_paragraphs:
+            if para not in seen_paragraphs:
+                unique_paragraphs.append(para)
+                seen_paragraphs.add(para)
 
         if as_html:
-            # Convert to HTML
-            bullets_html = "".join(
+            # Convert to HTML with collapsible details
+            paragraphs_html = "".join(
                 [
-                    f'<div style="margin-bottom: 4px;">{bp}</div>'
-                    for bp in unique_bullets
+                    f'<p style="margin: 8px 0; line-height: 1.6;">{html.escape(para)}</p>'
+                    for para in unique_paragraphs
                 ]
             )
 
@@ -162,26 +112,29 @@ def format_citations(citations: List[Dict[str, Any]], as_html: bool = True) -> s
 
             formatted_output.append(
                 f"""
-                <div style="margin-bottom: 16px; padding: 12px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;" title="{safe_file_path}">
+                <div style="margin-bottom: 12px; padding: 10px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;" title="{safe_file_path}">
                         <div style="font-weight: 600; color: #4CAF50; font-size: 0.9em;">
-                            SOURCE {id_str}: {safe_filename}
+                            [{id_str}] {safe_filename}
                         </div>
                         <button class="open-file-btn" data-file-path="{safe_file_path}" style="background-color: #4CAF50; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">
                             📂 Open
                         </button>
                     </div>
-                    <div style="color: #e0e0e0; font-size: 0.95em; line-height: 1.5;">
-                        {bullets_html}
-                    </div>
+                    <details style="margin-top: 8px;">
+                        <summary style="cursor: pointer; color: #aaa; font-size: 0.85em;">Show context</summary>
+                        <div style="color: #e0e0e0; font-size: 0.9em; margin-top: 8px; padding-left: 8px; border-left: 2px solid #444;">
+                            {paragraphs_html}
+                        </div>
+                    </details>
                 </div>
                 """
             )
         else:
             # Plain text formatting
-            bullets_text = "\n".join([f"  {bp}" for bp in unique_bullets])
+            paragraphs_text = "\n".join([f"  {para}" for para in unique_paragraphs])
             formatted_output.append(
-                f"SOURCE {id_str}: {file_display}\n{bullets_text}\n"
+                f"SOURCE {id_str}: {file_display}\n{paragraphs_text}\n"
             )
 
     return "".join(formatted_output) if as_html else "\n".join(formatted_output)

@@ -5,6 +5,7 @@ Outputs : answer (str), citations (list)
 Uses    : prompts/retrieval_prompt.md, all-MiniLM-L6-v2 embeddings, Phi-3 LLM
 """
 
+import time
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Tuple, Union
 
@@ -36,8 +37,11 @@ def answer_question(
     logger.info(f"THINKING: Answering question: '{query}' (streaming={streaming})")
 
     # 1. Embed the question and find top chunks
+    retrieval_start = time.time()
     embedder = Embedder()
     results = embedder.query(query, k=top_k)
+    retrieval_time = time.time() - retrieval_start
+    logger.info(f"⏱️ RETRIEVAL TIME: {retrieval_time:.2f}s")
 
     if not results:
         empty_answer = (
@@ -111,15 +115,20 @@ Answer:"""
 
     # 6. Generate answer with streaming or non-streaming
     try:
+        generation_start = time.time()
         if streaming:
             # Return streaming generator
             answer_generator = _generate_streaming_answer_with_phi3(
                 full_prompt, citations
             )
+            # Note: For streaming, timing is logged inside the generator
             return answer_generator, citations
         else:
             # Return complete answer (existing behavior)
             answer = _generate_answer_with_phi3(full_prompt, citations)
+            generation_time = time.time() - generation_start
+            logger.info(f"⏱️ GENERATION TIME: {generation_time:.2f}s")
+            logger.info(f"⏱️ TOTAL TIME: {retrieval_time + generation_time:.2f}s")
             return answer, citations
     except Exception as e:
         logger.error(f"ERROR: Answer generation failed: {e}")

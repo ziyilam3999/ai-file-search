@@ -266,7 +266,7 @@ class AIFileSearchUI {
     }
 
     startStatusPolling() {
-        // Poll status every 500ms (faster polling for smoother progress)
+        // Poll status every 2000ms (reduced to minimize log noise)
         setInterval(async () => {
             try {
                 const response = await fetch('/api/status');
@@ -277,7 +277,7 @@ class AIFileSearchUI {
             } catch (error) {
                 console.error('Error polling status:', error);
             }
-        }, 500);
+        }, 2000);
     }
 
     updateStatus(status) {
@@ -312,18 +312,16 @@ class AIFileSearchUI {
             if (this.wasIndexing) {
                 this.wasIndexing = false;
                 if (this.indexingProgress && this.progressText) {
-                    this.progressText.textContent = 'Indexing: Complete';
-                    // Keep visible for 3 seconds
-                    setTimeout(() => {
-                        if (!this.wasIndexing) {
-                            this.indexingProgress.style.display = 'none';
-                        }
-                    }, 3000);
+                    this.progressText.textContent = 'Indexing: Complete ✓';
+                    // Keep visible permanently (don't hide)
                 }
             } else {
-                // Only hide if we are NOT showing the "Complete" message
-                if (this.indexingProgress && this.progressText && this.progressText.textContent !== 'Indexing: Complete') {
-                    this.indexingProgress.style.display = 'none';
+                // Show "Ready" state if not indexing and not previously indexing
+                if (this.indexingProgress && this.progressText) {
+                    if (this.progressText.textContent !== 'Indexing: Complete ✓') {
+                        this.progressText.textContent = 'Index: Ready';
+                    }
+                    this.indexingProgress.style.display = 'flex';
                 }
             }
         }

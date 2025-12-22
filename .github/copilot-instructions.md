@@ -124,6 +124,7 @@ Before declaring a task "done," mentally execute this checklist:
 - [ ] Did I provide the Final Report (Technical + ELI5)?
 - [ ] **[Complex Tasks Only]** Did I update `_TASK_STATUS.md` after EACH phase?
 - [ ] **[Complex Tasks Only]** Did I DELETE `_TASK_STATUS.md` after the final commit?
+- [ ] **[Complex Tasks Only]** Did I VERIFY deletion with `Test-Path` or `ls` (expected: False/error)?
 
 **If ANY checkbox is unchecked, GO BACK and complete it before responding to the user.**
 
@@ -429,6 +430,9 @@ For complex tasks, the **FIRST tool call** in your response MUST be `create_file
 *   Single-command terminal operations
 *   Research/analysis tasks (Scenario D)
 
+#### Critical Tool Usage Note
+**For file deletion (`_TASK_STATUS.md` cleanup):** ALWAYS use `run_in_terminal` with `Remove-Item` (Windows) or `rm` (Unix). Never use `replace_string_in_file` or other edit tools to delete files—they may fail silently.
+
 #### Procedure
 1.  **Create Status File:** At task start, create `_TASK_STATUS.md` in the project root with:
     *   Task title and objective
@@ -442,10 +446,13 @@ For complex tasks, the **FIRST tool call** in your response MUST be `create_file
     d.  **DO NOT proceed to the next phase until the file is updated.**
     *This is the ONLY authoritative progress tracker. The `manage_todo_list` tool is for internal AI state only and does NOT satisfy this requirement.*
 
-3.  **Delete on Completion:** Once ALL phases are `✅ Done` and committed:
-    a.  Run `rm _TASK_STATUS.md` in the terminal.
-    b.  **Verify deletion** by checking the file no longer exists.
-    c.  This step is part of the DoD. The task is NOT complete if this file exists.
+3.  **Delete on Completion (MANDATORY):** Once ALL phases are `✅ Done` and committed:
+    a.  **Use Terminal ONLY:** Run `Remove-Item _TASK_STATUS.md` (Windows) or `rm _TASK_STATUS.md` (Unix) using the `run_in_terminal` tool. Do NOT use file editing tools for deletion.
+    b.  **Verify Deletion:** Immediately run `Test-Path _TASK_STATUS.md` (Windows) or `ls _TASK_STATUS.md` (Unix). Expected result: `False` or "No such file".
+    c.  **If Verification Fails:** Re-run the delete command. Do NOT proceed until the file is confirmed deleted.
+    d.  This step is part of the DoD. The task is **NOT complete** if this file still exists.
+    
+    ⚠️ **FAILURE MODE:** If you see "nothing to commit" after deletion, this is a RED FLAG—the file was never deleted. Check terminal output and retry.
 
 #### Template
 ```markdown
@@ -591,3 +598,4 @@ Fix bugs (in priority order):
 | **Ambiguous Requirement** | Do NOT proceed. Ask clarifying questions before writing any code. |
 | **Missing Documentation** | Create the missing doc file with a placeholder template before proceeding. |
 | **Context Too Large** | Use the "Context Window Optimization" guide above. Summarize lengthy docs if needed. |
+| **Nothing to Commit After Deletion** | RED FLAG: The deletion command failed silently. Re-run `Remove-Item _TASK_STATUS.md` and verify with `Test-Path _TASK_STATUS.md`. Do NOT declare task complete. |

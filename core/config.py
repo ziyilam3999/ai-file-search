@@ -37,7 +37,7 @@ def load_watch_paths() -> list[str]:
 LLM_CONFIG = {
     "max_tokens": 30,  # Reduced for faster responses (30 words)
     "temperature": 0.1,  # Keep deterministic
-    "n_ctx": 1536,  # Smaller context for faster KV cache operations
+    "n_ctx": 2048,  # Context window (must fit prompt + retrieved chunks + output)
     "n_threads": 8,  # CPU threads for inference
     "n_batch": 384,  # Larger batch for higher throughput (watch RAM)
 }

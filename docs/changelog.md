@@ -5,12 +5,20 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Standalone Desktop App:** New `run_app.py` launcher that wraps the UI in a native window using `pywebview`.
+- **Unified Startup:** Launcher automatically starts the file watcher daemon if not running.
+- **Streaming Support:** Added Server-Sent Events (SSE) to Flask backend for real-time answer generation.
+- **System Status:** Added `/api/status` endpoint and UI status bar to monitor watcher health and file counts.
+- **Shared Utilities:** Created `core/utils.py` for shared citation formatting logic.
 - Documentation structure migration to standard format
 - `docs/guides/` subfolder for user-facing documentation
 - Path constants `INDEX_PATH`, `DATABASE_PATH`, `DOCUMENTS_DIR`, `EXTRACTS_DIR`, `LOGS_DIR`, `BACKUPS_DIR` in `core/config.py`
 - Standardized `.gitignore` patterns for OS, IDE, and Python environment files
 
 ### Changed
+- **Refactoring:** Extracted system monitoring logic from `tools/live_monitor.py` to `core/monitoring.py`.
+- **Refactoring:** Updated `ui/flask_app.py` and `tools/live_monitor.py` to use the new `core/monitoring` module.
+- **Refactoring:** Cleaned up `ui/static/js/new_search.js` by extracting stream reading logic into `readStreamResponse` method.
 - Updated `.github/copilot-instructions.md` with stricter documentation-driven development protocols
 - Moved user guides to `docs/guides/` directory
 - Refactored `core/embedding.py` to use centralized path constants from `config.py`
@@ -20,6 +28,12 @@ All notable changes to this project are documented in this file.
 - Improved configuration loading in `daemon/watch.py` to correctly merge defaults with YAML config
 - Updated `tests/test_watch.py` to align with new configuration logic
 - Refactored `core/config.py` to use `DATABASE_PATH` constant in `calculate_document_page()`
+
+### Fixed
+- **Performance:** Implemented in-memory caching for FAISS index and metadata to fix query latency regression (3.3s -> <200ms).
+- **Integration Tests:** Fixed `test_search_finds_files_in_subfolders` by correctly patching paths and handling DB connections.
+- **Stability:** Fixed `daemon/watch.py` to correctly save index to disk and invalidate cache on updates.
+- **Robustness:** Added error handling for corrupted/missing `meta.sqlite` in `core/embedding.py`.
 - Replaced emoji characters in `quick_test.py` with text-based indicators per `standards.md`
 
 ### Fixed

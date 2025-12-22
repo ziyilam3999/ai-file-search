@@ -100,6 +100,7 @@ Answer:"""
                         if len(chunk_text) > 500
                         else chunk_text
                     ),
+                    "score": float(score),
                 }
             )
             context_parts.append(f"[{i + 1}] {chunk_text}")

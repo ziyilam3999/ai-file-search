@@ -297,6 +297,13 @@ class EmbeddingAdapter:
             embeddings_array = np.array(embeddings, dtype=np.float32)
             index.add(embeddings_array)
 
+            # Save updated index to disk
+            faiss.write_index(index, self.embedder.index_path)
+
+            # Invalidate Embedder cache so next query reloads it
+            if hasattr(self.embedder, "clear_cache"):
+                self.embedder.clear_cache()
+
             # Add metadata to database
             # Store the full relative path, not just the filename!
             metadata_entries = [
@@ -308,7 +315,7 @@ class EmbeddingAdapter:
             )
 
             conn.commit()
-            # conn.close()
+            conn.close()
 
             return True
 
@@ -337,7 +344,7 @@ class EmbeddingAdapter:
                     f"Removed {len(existing_ids)} existing chunks for {file_path}"
                 )
 
-            # conn.close()
+            conn.close()
             return len(existing_ids) > 0
 
         except Exception as e:
@@ -389,8 +396,10 @@ class EmbeddingAdapter:
                     file_path = r.get("file") or r.get("path")
                     chunk = r.get("chunk")
                 elif isinstance(r, tuple):
-                    # Try to unpack (file, chunk) or (id, file, chunk)
-                    if len(r) == 3:
+                    # Try to unpack (file, chunk) or (id, file, chunk) or (chunk, file, id, doc_id, score)
+                    if len(r) == 5:
+                        chunk, file_path, _, _, _ = r
+                    elif len(r) == 3:
                         _, file_path, chunk = r
                     elif len(r) == 2:
                         file_path, chunk = r

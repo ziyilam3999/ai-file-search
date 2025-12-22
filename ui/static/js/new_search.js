@@ -8,6 +8,7 @@ class AIFileSearchUI {
         this.bindEvents();
         this.loadChatHistory();
         this.adjustTextareaHeight(); // Initialize textarea height
+        this.startStatusPolling(); // Start polling system status
     }
 
     initializeElements() {
@@ -16,6 +17,12 @@ class AIFileSearchUI {
         this.answerContent = document.getElementById('answer-content');
         this.newChatBtn = document.getElementById('new-chat-btn');
         this.chatList = document.getElementById('chat-list');
+        
+        // Status elements
+        this.watcherIndicator = document.getElementById('watcher-indicator');
+        this.watcherText = document.getElementById('watcher-text');
+        this.docCount = document.getElementById('doc-count');
+        this.indexCount = document.getElementById('index-count');
     }
 
     bindEvents() {
@@ -78,9 +85,29 @@ class AIFileSearchUI {
         // Save question to current chat
         this.addToChat(this.currentChatId, 'question', question);
 
+        // Create answer container
+        const conversationContainer = this.answerContent.querySelector('.conversation-container');
+        const loadingDiv = conversationContainer.querySelector('.loading-indicator');
+        
+        const answerDiv = document.createElement('div');
+        answerDiv.className = 'message answer-message';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'answer-text';
+        answerDiv.appendChild(contentDiv);
+        
+        // Replace loading indicator with answer div
+        if (loadingDiv) {
+            loadingDiv.replaceWith(answerDiv);
+        } else {
+            conversationContainer.appendChild(answerDiv);
+        }
+        
+        this.scrollToBottom();
+
         try {
-            // Make API call to search endpoint
-            const response = await fetch('/search', {
+            // Use EventSource for streaming if available, otherwise fetch
+            const response = await fetch('/search/stream', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -95,24 +122,61 @@ class AIFileSearchUI {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const data = await response.json();
-            
-            // Show answer with typing animation (this will remove loading indicator)
-            await this.typeAnswer(data.answer || 'No answer found.');
-            
-            // Save answer to current chat
-            this.addToChat(this.currentChatId, 'answer', data.answer || 'No answer found.');
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullAnswer = '';
+            let citationsHtml = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            
+                            if (data.type === 'token') {
+                                fullAnswer += data.content;
+                                contentDiv.innerHTML = this.formatText(fullAnswer);
+                                this.scrollToBottom();
+                            } else if (data.type === 'citations') {
+                                citationsHtml = data.content;
+                            } else if (data.type === 'error') {
+                                contentDiv.innerHTML += `<div class="error">Error: ${data.content}</div>`;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing SSE data:', e);
+                        }
+                    }
+                }
+            }
+
+            // Append citations at the end
+            if (citationsHtml) {
+                const citationsDiv = document.createElement('div');
+                citationsDiv.className = 'citations-container';
+                citationsDiv.innerHTML = citationsHtml;
+                contentDiv.appendChild(citationsDiv);
+            }
+
+            // Save complete answer to history
+            this.addToChat(this.currentChatId, 'answer', fullAnswer, citationsHtml);
             
             // Update chat title if it's the first question
             this.updateChatTitle(this.currentChatId, question);
-            
+
         } catch (error) {
             console.error('Search error:', error);
-            await this.typeAnswer(`Error: ${error.message}`);
+            contentDiv.innerHTML += `<div class="error-message">Error: ${error.message}</div>`;
             this.addToChat(this.currentChatId, 'error', error.message);
         } finally {
-            this.isSearching = false;
             this.setLoadingState(false);
+            this.isSearching = false;
+            this.scrollToBottom();
         }
     }
 

@@ -53,9 +53,9 @@ def test_citation_formatting():
     ]
 
     result = format_citations(citations)
-    assert "[1]" in result
+    assert "SOURCE 1" in result
     assert "test.txt" in result
-    assert "page 1" in result
+    assert "Page:</strong> 1" in result
     assert "Sample text chunk" in result
 
 

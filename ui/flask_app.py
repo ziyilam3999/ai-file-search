@@ -1,13 +1,26 @@
+import json
 import sys
+import time
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    render_template,
+    request,
+    stream_with_context,
+)
 
 # Add core modules to path
 sys.path.append(str(Path(__file__).parent.parent))
 from core.ask import answer_question
+from core.monitoring import get_file_counts
+from core.utils import format_citations
+from smart_watcher import SmartWatcherController
 
 app = Flask(__name__)
+watcher = SmartWatcherController()
 
 
 @app.route("/")
@@ -20,8 +33,31 @@ def new_search():
     return render_template("new_search.html")
 
 
+@app.route("/api/status")
+def get_status():
+    """Get system status for the UI status bar."""
+    try:
+        # Get watcher status
+        is_running = watcher.is_running()
+
+        # Get file counts
+        (sample_count, extracts_count, indexed_count, _, _) = get_file_counts()
+
+        return jsonify(
+            {
+                "watcher": "running" if is_running else "stopped",
+                "documents": sample_count,
+                "extracts": extracts_count,
+                "indexed": indexed_count,
+            }
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/search", methods=["POST"])
 def search():
+    """Legacy non-streaming search endpoint."""
     try:
         data = request.json
         question = data.get("question", "")
@@ -32,11 +68,53 @@ def search():
         # Get answer from your existing core function
         answer, citations = answer_question(question, streaming=False)
 
-        return jsonify({"answer": answer, "citations": citations})
+        # Format citations using shared utility
+        formatted_citations = format_citations(citations)
+
+        return jsonify(
+            {
+                "answer": answer,
+                "citations": formatted_citations,
+                "raw_citations": citations,
+            }
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/search/stream", methods=["POST"])
+def search_stream():
+    """Streaming search endpoint using Server-Sent Events (SSE)."""
+    data = request.json
+    question = data.get("question", "")
+
+    if not question:
+        return jsonify({"error": "No question provided"}), 400
+
+    def generate():
+        try:
+            # Call core function with streaming=True
+            # Returns tuple: (generator, citations_list)
+            answer_generator, citations = answer_question(question, streaming=True)
+
+            # 1. Stream the answer tokens
+            for token in answer_generator:
+                if token:
+                    yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+
+            # 2. Send structured citations at the end
+            formatted = format_citations(citations)
+            yield f"data: {json.dumps({'type': 'citations', 'content': formatted})}\n\n"
+
+            # 3. Signal completion
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+
+    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+
+
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)  # Different port from Streamlit
+    app.run(debug=True, port=5001)

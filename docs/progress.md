@@ -22,9 +22,11 @@ Project roadmap, sprint tasks, and session log.
 ## Completed Milestones
 
 ### December 2025: Maintenance & Standards
+- [x] **Standalone Desktop App**: Unified launcher with auto-watcher and native window
 - [x] Update project documentation standards (copilot-instructions.md)
 - [x] Enforce stricter .gitignore rules
 - [x] Migrate milestones.yml to progress.md
+- [x] Fix performance regressions (FAISS caching) and integration tests
 
 ### Weekend 1: Bootstrap & Setup
 - [x] Initialize Poetry project with proper dependencies

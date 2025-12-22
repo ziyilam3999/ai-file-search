@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from unittest.mock import patch
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -147,63 +148,88 @@ def test_search_finds_files_in_subfolders():
             "logging": {"level": "INFO", "console_output": True},
         }
 
-        watcher = FileWatcher()
-        watcher.config = config
-        watcher._initialize_components()
+        # Define temp paths for index and db
+        temp_index = Path(temp_dir) / "index.faiss"
+        temp_db = Path(temp_dir) / "meta.sqlite"
 
-        # Initialize the DB schema (meta table) before adding files
-        watcher.embedding_manager.build_index(extracts_path=Path(temp_dir))
+        # Patch the paths used by Embedder
+        with (
+            patch("core.embedding.INDEX_PATH", str(temp_index)),
+            patch("core.embedding.DATABASE_PATH", str(temp_db)),
+        ):
 
-        # Now write files to subfolders
-        file1 = sub1 / "doc.txt"
-        file2 = sub2 / "doc.txt"
-        file3 = sub2 / "ignore.tmp"
-        file1.write_text("This is a test in subfolder one.")
-        file2.write_text("This is a test in subfolder two.")
-        file3.write_text("This should be ignored.")
+            watcher = FileWatcher()
+            watcher.config = config
+            watcher._initialize_components()
 
-        # Index the files in the subfolders incrementally
-        watcher.embedding_manager.add_document(
-            str(file1.relative_to(temp_dir)), file1.read_text()
-        )
-        watcher.embedding_manager.add_document(
-            str(file2.relative_to(temp_dir)), file2.read_text()
-        )
-        watcher.embedding_manager.save_index()
+            # Monkeypatch _map_to_original_file to return the file path itself
+            # This avoids the dependency on ai_search_docs for this test
+            watcher.embedding_manager.embedder._map_to_original_file = lambda p: str(p)
 
-        # Search for text in subfolder one
-        results1 = search_in_index(watcher, "subfolder one")
-        filtered1 = [r for r in results1 if r["path"]]
-        print("Search results for subfolder one:", filtered1)
-        assert any(
-            "subfolder1/doc.txt" in r["path"].replace("\\", "/") for r in filtered1
-        ), "Expected 'subfolder1/doc.txt' in results"
+            # Create a dummy file to ensure index is built
+            dummy = Path(temp_dir) / "dummy.txt"
+            dummy.write_text("Dummy content for initialization.")
 
-        # Search for text in subfolder two
-        results2 = search_in_index(watcher, "subfolder two")
-        filtered2 = [r for r in results2 if r["path"]]
-        print("Search results for subfolder two:", filtered2)
-        assert any(
-            "subfolder2/doc.txt" in r["path"].replace("\\", "/") for r in filtered2
-        ), "Expected 'subfolder2/doc.txt' in results"
+            # Initialize the DB schema (meta table) before adding files
+            # Use patch to ensure _map_to_original_file is mocked during build_index
+            # Note: We need to patch on the embedder instance inside embedding_manager
+            with patch.object(
+                watcher.embedding_manager.embedder,
+                "_map_to_original_file",
+                side_effect=lambda p: str(p),
+            ):
+                watcher.embedding_manager.build_index(extracts_path=Path(temp_dir))
 
-        # Search for ignored file (should not be found)
-        results3 = search_in_index(watcher, "should be ignored")
-        filtered3 = [r for r in results3 if r["path"]]
-        print("Search results for ignored file:", filtered3)
-        assert not any(
-            "ignore.tmp" in r["path"] for r in filtered3
-        ), "Ignored file should not appear in results"
+            # Now write files to subfolders
+            file1 = sub1 / "doc.txt"
+            file2 = sub2 / "doc.txt"
+            file3 = sub2 / "ignore.tmp"
+            file1.write_text("This is a test in subfolder one.")
+            file2.write_text("This is a test in subfolder two.")
+            file3.write_text("This should be ignored.")
 
-        # Search for non-existent text
-        results4 = search_in_index(watcher, "this text does not exist")
-        filtered4 = [r for r in results4 if r["path"]]
-        print("Search results for non-existent text:", filtered4)
-        assert filtered4 == [] or all(
-            "chunk" in r and "path" in r for r in filtered4
-        ), "Non-existent text should return empty or valid result structure"
+            # Index the files in the subfolders incrementally
+            watcher.embedding_manager.add_document(
+                str(file1.relative_to(temp_dir)), file1.read_text()
+            )
+            watcher.embedding_manager.add_document(
+                str(file2.relative_to(temp_dir)), file2.read_text()
+            )
+            watcher.embedding_manager.save_index()
 
-        print("✅ Comprehensive subfolder search test passed!")
+            # Search for text in subfolder one
+            results1 = search_in_index(watcher, "subfolder one")
+            filtered1 = [r for r in results1 if r["path"]]
+            print("Search results for subfolder one:", filtered1)
+            assert any(
+                "subfolder1/doc.txt" in r["path"].replace("\\", "/") for r in filtered1
+            ), "Expected 'subfolder1/doc.txt' in results"
+
+            # Search for text in subfolder two
+            results2 = search_in_index(watcher, "subfolder two")
+            filtered2 = [r for r in results2 if r["path"]]
+            print("Search results for subfolder two:", filtered2)
+            assert any(
+                "subfolder2/doc.txt" in r["path"].replace("\\", "/") for r in filtered2
+            ), "Expected 'subfolder2/doc.txt' in results"
+
+            # Search for ignored file (should not be found)
+            results3 = search_in_index(watcher, "should be ignored")
+            filtered3 = [r for r in results3 if r["path"]]
+            print("Search results for ignored file:", filtered3)
+            assert not any(
+                "ignore.tmp" in r["path"] for r in filtered3
+            ), "Ignored file should not appear in results"
+
+            # Search for non-existent text
+            results4 = search_in_index(watcher, "this text does not exist")
+            filtered4 = [r for r in results4 if r["path"]]
+            print("Search results for non-existent text:", filtered4)
+            assert filtered4 == [] or all(
+                "chunk" in r and "path" in r for r in filtered4
+            ), "Non-existent text should return empty or valid result structure"
+
+            print("✅ Comprehensive subfolder search test passed!")
 
 
 if __name__ == "__main__":

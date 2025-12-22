@@ -23,6 +23,10 @@ from .config import DATABASE_PATH, EXTRACTS_DIR, INDEX_PATH
 CHUNK_SIZE = 200  # words per chunk
 CHUNK_OVERLAP = 50  # word overlap between chunks
 
+_MODEL_CACHE = None
+_INDEX_CACHE = None
+_METADATA_CACHE = None
+
 
 class Embedder:
     """Handles document embedding and similarity search using FAISS."""
@@ -31,6 +35,53 @@ class Embedder:
         self.model_name = "all-MiniLM-L6-v2"
         self.index_path = INDEX_PATH
         self.db_path = DATABASE_PATH
+
+    def _get_model(self):
+        global _MODEL_CACHE
+        if _MODEL_CACHE is None:
+            logger.info("LOADING: sentence transformer model...")
+            _MODEL_CACHE = SentenceTransformer(self.model_name)
+            logger.success("SUCCESS: model loaded")
+        return _MODEL_CACHE
+
+    def _get_index(self):
+        global _INDEX_CACHE
+        if _INDEX_CACHE is None:
+            if not Path(self.index_path).exists():
+                return None
+            logger.info("LOADING: FAISS index...")
+            _INDEX_CACHE = faiss.read_index(self.index_path)
+            logger.success("SUCCESS: FAISS index loaded")
+        return _INDEX_CACHE
+
+    def _get_metadata(self):
+        global _METADATA_CACHE
+        if _METADATA_CACHE is None:
+            if not Path(self.db_path).exists():
+                return None
+            logger.info("LOADING: metadata cache...")
+            try:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute("SELECT id, file, chunk, doc_chunk_id FROM meta")
+                metadata = cursor.fetchall()
+                conn.close()
+                # Create lookup dictionary: id -> (file, chunk, doc_chunk_id)
+                _METADATA_CACHE = {row[0]: (row[1], row[2], row[3]) for row in metadata}
+                logger.success(
+                    f"SUCCESS: metadata loaded ({len(_METADATA_CACHE)} entries)"
+                )
+            except sqlite3.OperationalError as e:
+                logger.error(f"ERROR: Database corrupted or missing table 'meta': {e}")
+                return None
+        return _METADATA_CACHE
+
+    def clear_cache(self):
+        """Clear all in-memory caches to force reload from disk."""
+        global _INDEX_CACHE, _METADATA_CACHE
+        _INDEX_CACHE = None
+        _METADATA_CACHE = None
+        logger.info("CACHE: Cleared index and metadata caches")
 
     def build_index(self, extracts_dir: str = EXTRACTS_DIR) -> None:
         """
@@ -46,10 +97,11 @@ class Embedder:
         logger.info("BUILDING: document embeddings index...")
         start_time = time.time()
 
+        # Clear existing caches
+        self.clear_cache()
+
         # Initialize model
-        logger.info("LOADING: sentence transformer model...")
-        model = SentenceTransformer(self.model_name)
-        logger.success("SUCCESS: model loaded")
+        model = self._get_model()
 
         # Initialize FAISS index
         index = faiss.IndexFlatL2(384)  # all-MiniLM-L6-v2 has 384 dimensions
@@ -57,9 +109,10 @@ class Embedder:
         # Initialize database
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
+        cursor.execute("DROP TABLE IF EXISTS meta")
         cursor.execute(
             """
-            CREATE TABLE IF NOT EXISTS meta (
+            CREATE TABLE meta (
                 id INTEGER PRIMARY KEY,
                 file TEXT,
                 chunk TEXT,
@@ -169,7 +222,7 @@ class Embedder:
         # Save index to disk
         save_start_time = time.time()
         logger.info("SAVING: index to disk...")
-        faiss.write_index(index, "index.faiss")
+        faiss.write_index(index, self.index_path)
         save_time = time.time() - save_start_time
         logger.success(f"SUCCESS: Index saved in {save_time:.3f}s")
 
@@ -193,14 +246,17 @@ class Embedder:
         CRITICAL: This method MUST return 5-tuple format (chunk_text, file_path, chunk_id, doc_chunk_id, score)
         for compatibility with ask.py citation generation.
         """
-        if not Path(self.index_path).exists() or not Path(self.db_path).exists():
+        # Use cached index and metadata
+        index = self._get_index()
+        id_to_row = self._get_metadata()
+
+        if index is None or id_to_row is None:
             logger.error("ERROR: Index or database not found. Run build_index() first.")
             return []
 
         try:
-            # Load model and index
-            model = SentenceTransformer(self.model_name)
-            index = faiss.read_index(self.index_path)
+            # Load model (cached)
+            model = self._get_model()
 
             # Generate query embedding
             query_embedding = model.encode(
@@ -210,21 +266,12 @@ class Embedder:
             # Search
             scores, indices = index.search(query_embedding.astype(np.float32), k)
 
-            # Get metadata from database
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, file, chunk, doc_chunk_id FROM meta")
-            metadata = cursor.fetchall()
-            conn.close()
-
-            # Create lookup dictionary
-            id_to_row = {row[0]: (row[1], row[2], row[3]) for row in metadata}
-
             results = []
             # Return results in 5-tuple format: (chunk_text, file_path, chunk_id, doc_chunk_id, score)
             for score, idx in zip(scores[0], indices[0]):
-                if idx < len(metadata):
-                    target_id = idx
+                # Check if idx exists in metadata (it should, unless index/db are out of sync)
+                if idx in id_to_row:
+                    target_id = int(idx)  # Ensure int for dictionary lookup
                     file_path, chunk_text, doc_chunk_id = id_to_row[target_id]
                     # 5-tuple format required by ask.py
                     results.append(

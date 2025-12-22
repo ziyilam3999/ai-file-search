@@ -9,100 +9,20 @@ Usage: python live_monitor.py
 """
 
 import os
-import sqlite3
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
+# Add project root to path to allow importing core modules
+sys.path.append(str(Path(__file__).parent.parent))
 
-def get_file_counts():
-    """Get counts for ai_search_docs, extracts, and indexed files"""
-    # Use project root as base path
-    base_path = Path(__file__).parent.parent
-
-    ai_search_docs_path = base_path / "ai_search_docs"
-    extracts_path = base_path / "extracts"
-    meta_db_path = base_path / "meta.sqlite"
-
-    sample_count = sum(1 for f in ai_search_docs_path.rglob("*") if f.is_file())
-    extracts_count = sum(1 for f in extracts_path.rglob("*") if f.is_file())
-    sample_folder_count = sum(1 for f in ai_search_docs_path.rglob("*") if f.is_dir())
-    extracts_folder_count = sum(1 for f in extracts_path.rglob("*") if f.is_dir())
-
-    # Count indexed files in meta.sqlite
-    indexed_count = 0
-    if meta_db_path.exists():
-        try:
-            conn = sqlite3.connect(str(meta_db_path))
-            cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM meta")
-            indexed_count = cur.fetchone()[0]
-            conn.close()
-        except Exception:
-            pass
-
-    return (
-        sample_count,
-        extracts_count,
-        indexed_count,
-        sample_folder_count,
-        extracts_folder_count,
-    )
-
-
-def get_latest_files():
-    """Get the most recently added files"""
-    base_path = Path(__file__).parent.parent
-
-    # Latest in ai_search_docs
-    ai_search_docs_path = base_path / "ai_search_docs"
-    sample_files = [
-        (f, f.stat().st_mtime) for f in ai_search_docs_path.rglob("*") if f.is_file()
-    ]
-    latest_sample = max(sample_files, key=lambda x: x[1]) if sample_files else None
-
-    # Latest in extracts
-    extracts_path = base_path / "extracts"
-    extract_files = [
-        (f, f.stat().st_mtime) for f in extracts_path.rglob("*") if f.is_file()
-    ]
-    latest_extract = max(extract_files, key=lambda x: x[1]) if extract_files else None
-
-    return latest_sample, latest_extract
-
-
-def check_watcher_status():
-    """Check if watcher is running by checking PID"""
-    try:
-        import psutil
-
-        base_path = Path(__file__).parent.parent
-        pid_file = base_path / "logs" / "watcher.pid"
-        if pid_file.exists():
-            with open(pid_file, "r") as f:
-                pid = int(f.read().strip())
-            if psutil.pid_exists(pid):
-                return "running"
-            else:
-                return "stopped"
-        else:
-            return "stopped"
-    except Exception as e:
-        print(f"❌ Watcher Status: UNKNOWN ({e})")
-        return "unknown"
-
-
-def check_for_misplaced_files():
-    """Check for files in wrong locations"""
-    base_path = Path(__file__).parent.parent
-    extracts_root = base_path / "extracts"
-
-    misplaced = []
-    if extracts_root.exists():
-        for item in extracts_root.iterdir():
-            if item.is_file() and item.suffix == ".txt":
-                misplaced.append(item.name)
-    return misplaced
+from core.monitoring import (
+    check_for_misplaced_files,
+    check_watcher_status,
+    get_file_counts,
+    get_latest_files,
+)
 
 
 def main():

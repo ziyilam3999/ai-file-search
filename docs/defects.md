@@ -12,6 +12,9 @@ Known bugs, issues, and their resolution status.
 
 | ID | Description | Severity | Resolution | Resolved |
 |----|-------------|----------|------------|----------|
+| DEF-009 | Performance regression (FAISS index reload on every query) | Critical | Implemented in-memory caching for FAISS index | 2025-12-22 |
+| DEF-010 | Integration test failure (Temp path handling) | High | Fixed path patching and DB connection handling | 2025-12-22 |
+| DEF-011 | Corrupted DB handling in Ask | Medium | Added error handling for missing/corrupted meta table | 2025-12-22 |
 | DEF-001 | Citation hallucination (fake Investopedia references) | Critical | Added relevance threshold (1.2), enhanced prompts | 2025-09-01 |
 | DEF-002 | Citations point to extracts/ instead of ai_search_docs/ | Critical | Implemented _map_to_original_file() mapping | 2025-09-06 |
 | DEF-003 | Garbled LLM output ("distits rock nrock head") | Critical | Removed ChatML format, simplified prompts | 2025-07-15 |

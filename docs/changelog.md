@@ -5,6 +5,7 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **Stale Cache:** Fixed issue where the running app would not see new files because it was using a stale in-memory index. Added automatic reload when `index.faiss` changes on disk.
 - **Watcher Startup:** Added `_initial_scan` to `FileWatcher` to automatically detect and index existing files in newly added watch paths upon startup.
 - **Index Missing:** Fixed issue where `index.faiss` was missing, causing search to fail on first run.
 

@@ -29,6 +29,8 @@ CHUNK_OVERLAP = 50  # word overlap between chunks
 _MODEL_CACHE = None
 _INDEX_CACHE = None
 _METADATA_CACHE = None
+_INDEX_MTIME = 0.0
+_METADATA_MTIME = 0.0
 
 
 class Embedder:
@@ -48,21 +50,31 @@ class Embedder:
         return _MODEL_CACHE
 
     def _get_index(self):
-        global _INDEX_CACHE
-        if _INDEX_CACHE is None:
-            if not Path(self.index_path).exists():
-                return None
-            logger.info("LOADING: FAISS index...")
+        global _INDEX_CACHE, _INDEX_MTIME
+
+        if not Path(self.index_path).exists():
+            return None
+
+        current_mtime = Path(self.index_path).stat().st_mtime
+
+        if _INDEX_CACHE is None or current_mtime > _INDEX_MTIME:
+            logger.info("LOADING: FAISS index (updated)...")
             _INDEX_CACHE = faiss.read_index(self.index_path)
+            _INDEX_MTIME = current_mtime
             logger.success("SUCCESS: FAISS index loaded")
+
         return _INDEX_CACHE
 
     def _get_metadata(self):
-        global _METADATA_CACHE
-        if _METADATA_CACHE is None:
-            if not Path(self.db_path).exists():
-                return None
-            logger.info("LOADING: metadata cache...")
+        global _METADATA_CACHE, _METADATA_MTIME
+
+        if not Path(self.db_path).exists():
+            return None
+
+        current_mtime = Path(self.db_path).stat().st_mtime
+
+        if _METADATA_CACHE is None or current_mtime > _METADATA_MTIME:
+            logger.info("LOADING: metadata cache (updated)...")
             try:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
@@ -71,6 +83,7 @@ class Embedder:
                 conn.close()
                 # Create lookup dictionary: id -> (file, chunk, doc_chunk_id)
                 _METADATA_CACHE = {row[0]: (row[1], row[2], row[3]) for row in metadata}
+                _METADATA_MTIME = current_mtime
                 logger.success(
                     f"SUCCESS: metadata loaded ({len(_METADATA_CACHE)} entries)"
                 )

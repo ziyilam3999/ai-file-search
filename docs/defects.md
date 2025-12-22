@@ -12,6 +12,7 @@ Known bugs, issues, and their resolution status.
 
 | ID | Description | Severity | Resolution | Resolved |
 |----|-------------|----------|------------|----------|
+| DEF-015 | App crash due to FAISS/DB desync (Zombie Vectors) | Critical | Upgraded to IndexIDMap and synchronized deletions | 2025-12-22 |
 | DEF-012 | Missing index file on fresh run | High | Rebuilt index manually | 2025-12-22 |
 | DEF-014 | Poor retrieval recall (top_k=1) | High | Increased top_k to 5 and added metadata reload on cache miss | 2025-12-22 |
 | DEF-013 | Stale index cache in app process | High | Implemented mtime check for index/metadata reload | 2025-12-22 |

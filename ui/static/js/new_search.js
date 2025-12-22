@@ -59,6 +59,17 @@ class AIFileSearchUI {
                 this.selectChat(parseInt(chatItem.dataset.chatId));
             }
         });
+
+        // Handle file open clicks (delegation for dynamically added buttons)
+        this.answerContent.addEventListener('click', (e) => {
+            const btn = e.target.closest('.open-file-btn');
+            if (btn) {
+                const filePath = btn.dataset.filePath;
+                if (filePath) {
+                    window.openFile(filePath);
+                }
+            }
+        });
     }
 
     adjustTextareaHeight() {
@@ -493,6 +504,27 @@ class AIFileSearchUI {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
+
+// Global function for opening files (called by inline onclick in citations)
+window.openFile = async function(filePath) {
+    try {
+        const response = await fetch('/api/open-file', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ file_path: filePath })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to open file');
+        }
+        console.log('File opened successfully');
+    } catch (error) {
+        console.error('Error opening file:', error);
+        alert('Could not open file: ' + error.message);
+    }
+};
 
 // Initialize the UI when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {

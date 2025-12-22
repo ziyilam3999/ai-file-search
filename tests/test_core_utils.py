@@ -101,6 +101,37 @@ def test_format_citations_path_normalization():
     assert "folder/subfolder/doc.pdf" in result
 
 
+def test_format_citations_plain_text():
+    """Test formatting with as_html=False."""
+    citations = [
+        {
+            "file": "test_doc.txt",
+            "chunk": "This is a test sentence.",
+        }
+    ]
+    result = format_citations(citations, as_html=False)
+    assert "test_doc.txt" in result
+    assert "This is a test sentence." in result
+    assert "<div" not in result
+    assert "<button" not in result
+    assert "SOURCE 1:" in result
+
+
+def test_format_citations_html_structure():
+    """Test that HTML output contains expected structure."""
+    citations = [
+        {
+            "file": "test_doc.txt",
+            "chunk": "Content",
+        }
+    ]
+    result = format_citations(citations, as_html=True)
+    assert "<div" in result
+    assert "<button" in result
+    assert "open-file-btn" in result
+    assert 'data-file-path="test_doc.txt"' in result
+
+
 def test_format_citations_bullet_points():
     """Test that content with multiple sentences is formatted as bullet points."""
     content = "First point. Second point. Third point."

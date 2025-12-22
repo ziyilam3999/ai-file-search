@@ -16,7 +16,7 @@ from flask import (
 sys.path.append(str(Path(__file__).parent.parent))
 from core.ask import answer_question
 from core.monitoring import get_file_counts
-from core.utils import format_citations
+from core.utils import format_citations, open_local_file
 from smart_watcher import SmartWatcherController
 
 app = Flask(__name__)
@@ -31,6 +31,21 @@ def home():
 @app.route("/new-search")
 def new_search():
     return render_template("new_search.html")
+
+
+@app.route("/api/open-file", methods=["POST"])
+def api_open_file():
+    """API endpoint to open a local file."""
+    try:
+        data = request.get_json()
+        file_path = data.get("file_path")
+        if not file_path:
+            return jsonify({"error": "No file path provided"}), 400
+
+        open_local_file(file_path)
+        return jsonify({"status": "success", "message": f"Opened {file_path}"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/status")

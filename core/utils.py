@@ -1,3 +1,4 @@
+import html
 import os
 import platform
 import re
@@ -29,15 +30,19 @@ def open_local_file(file_path: str) -> None:
         logger.error(f"Failed to open file: {e}")
 
 
-def format_citations(citations: List[Dict[str, Any]]) -> str:
+def format_citations(citations: List[Dict[str, Any]], as_html: bool = True) -> str:
     """
     Format citations for display with clean, professional formatting.
     Shared between Streamlit and Flask UIs.
+
+    Args:
+        citations: List of citation dictionaries
+        as_html: If True, returns HTML with 'Open' buttons. If False, returns plain text.
     """
     if not citations:
         return "No citations available."
 
-    formatted_html = []
+    formatted_output = []
 
     for i, cite in enumerate(citations):
         # Clean up the file path for better display
@@ -102,22 +107,35 @@ def format_citations(citations: List[Dict[str, Any]]) -> str:
         if not bullet_points:
             bullet_points = [f"• {content}"]
 
-        # Convert to HTML
-        bullets_html = "".join(
-            [f'<div style="margin-bottom: 4px;">{bp}</div>' for bp in bullet_points]
-        )
+        if as_html:
+            # Convert to HTML
+            bullets_html = "".join(
+                [f'<div style="margin-bottom: 4px;">{bp}</div>' for bp in bullet_points]
+            )
 
-        formatted_html.append(
-            f"""
-            <div style="margin-bottom: 16px; padding: 12px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
-                <div style="font-weight: 600; color: #4CAF50; margin-bottom: 8px; font-size: 0.9em;">
-                    SOURCE {i+1}: {file_display}
-                </div>
-                <div style="color: #e0e0e0; font-size: 0.95em; line-height: 1.5;">
-                    {bullets_html}
-                </div>
-            </div>
-            """
-        )
+            # Escape file path for HTML attribute
+            safe_file_path = html.escape(file_path)
 
-    return "".join(formatted_html)
+            formatted_output.append(
+                f"""
+                <div style="margin-bottom: 16px; padding: 12px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div style="font-weight: 600; color: #4CAF50; font-size: 0.9em;">
+                            SOURCE {i+1}: {file_display}
+                        </div>
+                        <button class="open-file-btn" data-file-path="{safe_file_path}" style="background-color: #4CAF50; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">
+                            📂 Open
+                        </button>
+                    </div>
+                    <div style="color: #e0e0e0; font-size: 0.95em; line-height: 1.5;">
+                        {bullets_html}
+                    </div>
+                </div>
+                """
+            )
+        else:
+            # Plain text formatting
+            bullets_text = "\n".join([f"  {bp}" for bp in bullet_points])
+            formatted_output.append(f"SOURCE {i+1}: {file_display}\n{bullets_text}\n")
+
+    return "".join(formatted_output) if as_html else "\n".join(formatted_output)

@@ -13,6 +13,7 @@ Technical debt and cleanup tasks.
 
 | ID | Description | Completed |
 |----|-------------|-----------|
+| TD-015 | Refactor ui/app.py into modular components (styles, components) | 2025-12-22 |
 | TD-014 | Extract monitoring logic to core/monitoring.py and clean up JS | 2025-12-21 |
 | TD-013 | Refactor daemon module for better configuration usage and code cleanup | 2025-12-21 |
 | TD-012 | Centralize AI model paths in config.py and clean up extract.py | 2025-12-21 |

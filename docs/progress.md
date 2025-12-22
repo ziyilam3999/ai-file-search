@@ -22,6 +22,7 @@ Project roadmap, sprint tasks, and session log.
 ## Completed Milestones
 
 ### December 2025: Maintenance & Standards
+- [x] **Interactive Citations**: Allow users to open files directly from citations
 - [x] **Standalone Desktop App**: Unified launcher with auto-watcher and native window
 - [x] Update project documentation standards (copilot-instructions.md)
 - [x] Enforce stricter .gitignore rules

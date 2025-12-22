@@ -10,9 +10,10 @@ Test plans, coverage reports, and quality assurance documentation.
 | test_embedding.py | Unit | Embedding/search tests | Passing |
 | test_extract.py | Unit | Document extraction tests | Passing |
 | test_watch.py | Unit | File watcher tests | 24/25 Passing |
-| test_core_utils.py | Unit | Core utilities (citations) | Passing |
+| test_core_utils.py | Unit | Core utilities (citations, file opening) | Passing |
 | test_core_config.py | Unit | Configuration logic | Passing |
 | test_ui.py | Integration | Streamlit UI tests | 5/5 Passing |
+| test_ui_components.py | Unit | UI components (rendering, styles) | Passing |
 | test_complete_system.py | Integration | Full system tests | Passing |
 | test_regression.py | Regression | Citation accuracy tests | 6/6 Passing |
 | test_quick.py | Smoke | Fast validation tests | 5/5 Passing |
@@ -40,8 +41,9 @@ pytest tests/test_embedding.py -v
 - **test_embedding.py**: Vector search and indexing
 - **test_extract.py**: PDF/DOCX/TXT extraction
 - **test_watch.py**: File watcher functionality
-- **test_core_utils.py**: Utility functions (citation formatting)
+- **test_core_utils.py**: Utility functions (citation formatting, file opening)
 - **test_core_config.py**: Configuration management
+- **test_ui_components.py**: UI rendering logic and components
 
 ### 2. Integration Tests
 - **test_ui.py**: Streamlit UI components

@@ -1,14 +1,71 @@
 """Tests for core/utils.py"""
 
+import os
+import platform
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.utils import format_citations
+from core.utils import format_citations, open_local_file
+
+
+def test_open_local_file_windows():
+    """Test opening file on Windows."""
+    with (
+        patch("platform.system", return_value="Windows"),
+        patch("os.startfile") as mock_startfile,
+        patch("pathlib.Path.exists", return_value=True),
+    ):
+
+        open_local_file("test.txt")
+        # On Windows, it calls os.startfile with the resolved path
+        # We check if it was called. The exact path argument depends on resolution,
+        # so we just check it was called.
+        assert mock_startfile.called
+
+
+def test_open_local_file_macos():
+    """Test opening file on macOS."""
+    with (
+        patch("platform.system", return_value="Darwin"),
+        patch("subprocess.call") as mock_call,
+        patch("pathlib.Path.exists", return_value=True),
+    ):
+
+        open_local_file("test.txt")
+        assert mock_call.called
+        args = mock_call.call_args[0][0]
+        assert args[0] == "open"
+
+
+def test_open_local_file_linux():
+    """Test opening file on Linux."""
+    with (
+        patch("platform.system", return_value="Linux"),
+        patch("subprocess.call") as mock_call,
+        patch("pathlib.Path.exists", return_value=True),
+    ):
+
+        open_local_file("test.txt")
+        assert mock_call.called
+        args = mock_call.call_args[0][0]
+        assert args[0] == "xdg-open"
+
+
+def test_open_local_file_not_found():
+    """Test opening non-existent file."""
+    with (
+        patch("pathlib.Path.exists", return_value=False),
+        patch("loguru.logger.error") as mock_log,
+    ):
+
+        open_local_file("nonexistent.txt")
+        mock_log.assert_called()
 
 
 def test_format_citations_empty():

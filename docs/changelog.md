@@ -5,6 +5,7 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Interactive Citations:** Added "Open" button to citations in Streamlit UI to open source files in default system viewer.
 - **Scenario E (Test Coverage Audit):** Added new scenario to `.github/copilot-instructions.md` for comprehensive test audits.
 - **Standalone Desktop App:** New `run_app.py` launcher that wraps the UI in a native window using `pywebview`.
 - **Unified Startup:** Launcher automatically starts the file watcher daemon if not running.
@@ -17,6 +18,9 @@ All notable changes to this project are documented in this file.
 - Standardized `.gitignore` patterns for OS, IDE, and Python environment files
 
 ### Changed
+- **Refactoring:** Split `ui/app.py` into `ui/styles.py` and `ui/components.py` for better maintainability.
+- **Refactoring:** Moved `open_local_file` utility to `core/utils.py` for shared usage.
+- **Testing:** Added `tests/test_ui_components.py` and updated `tests/test_core_utils.py` to cover new functionality.
 - **Scenario C Enhancement:** Updated refactoring scenario to explicitly require adding unit tests for refactored functions.
 - **Refactoring:** Cleaned up test suite by removing experimental `tests/test_simple_rag.py`.
 - **Testing:** Added new unit tests `tests/test_core_utils.py` and `tests/test_core_config.py` to improve coverage.

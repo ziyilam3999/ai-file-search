@@ -1,5 +1,32 @@
+import os
+import platform
 import re
+import subprocess
+from pathlib import Path
 from typing import Any, Dict, List
+
+from loguru import logger
+
+
+def open_local_file(file_path: str) -> None:
+    """
+    Open a file in the system's default viewer.
+    Cross-platform support for Windows, macOS, and Linux.
+    """
+    try:
+        path = Path(file_path).resolve()
+        if not path.exists():
+            logger.error(f"File not found: {path}")
+            return
+
+        if platform.system() == "Windows":
+            os.startfile(str(path))
+        elif platform.system() == "Darwin":  # macOS
+            subprocess.call(("open", str(path)))
+        else:  # Linux
+            subprocess.call(("xdg-open", str(path)))
+    except Exception as e:
+        logger.error(f"Failed to open file: {e}")
 
 
 def format_citations(citations: List[Dict[str, Any]]) -> str:

@@ -5,6 +5,7 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **Startup:** Fixed `ModuleNotFoundError: No module named 'webview'` and `pythonnet` build errors by updating `pyproject.toml` dependencies and configuration.
 - **Watcher Initialization:** Fixed crash loop when `index.faiss` or `meta.sqlite` are missing. Added `_ensure_index_exists` to `EmbeddingAdapter` to automatically initialize empty index structures on startup.
 - **Zombie Vectors:** Fixed critical bug where deleted files remained in the FAISS index, causing crashes and incorrect search results. Upgraded to `faiss.IndexIDMap` for stable ID management and implemented proper synchronization between SQLite metadata and vector index.
 - **Retrieval Quality:** Increased default `top_k` from 1 to 5 to improve search recall and prevent missing relevant documents when irrelevant ones (like "Peter Pan") appear at the top.

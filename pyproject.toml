@@ -2,13 +2,12 @@
 name = "ai-file-search"
 version = "0.1.0"
 description = "Local AI file-search"
-package-mode = true
-packages = [{ include = "ai_file_search", from = "src" }]
+package-mode = false
 authors = [
     {name = "Anson Lam",email = "ziyilam@gmail.com"}
 ]
 readme = "README.md"
-requires-python = "^3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "pdfminer-six (>=20250506,<20250507)",
     "python-docx (>=1.2.0,<2.0.0)",
@@ -23,7 +22,8 @@ dependencies = [
     "typer[all] (>=0.16.0,<0.17.0)",
     "apscheduler (>=3.11.0,<4.0.0)",
     "flask (>=3.0.0,<4.0.0)",
-    "pywebview (>=5.0.0,<6.0.0)"
+    "pywebview (>=5.0.0,<6.0.0)",
+    "pythonnet (>=3.0.0,<4.0.0)"
 ]
 
 [build-system]

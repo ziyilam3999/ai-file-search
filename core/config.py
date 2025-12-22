@@ -33,11 +33,11 @@ def load_watch_paths() -> list[str]:
     return [DOCUMENTS_DIR]
 
 
-# LLM Generation Settings - OPTIMIZED FOR SPEED (103s → <25s target)
+# LLM Generation Settings - OPTIMIZED FOR SPEED (105s → ~70-80s target)
 LLM_CONFIG = {
-    "max_tokens": 40,  # Reduced for faster responses
+    "max_tokens": 30,  # Reduced for faster responses (30 words)
     "temperature": 0.1,  # Keep deterministic
-    "n_ctx": 2048,  # Smaller context to shrink KV/cache for speed
+    "n_ctx": 1536,  # Smaller context for faster KV cache operations
     "n_threads": 8,  # CPU threads for inference
     "n_batch": 384,  # Larger batch for higher throughput (watch RAM)
 }

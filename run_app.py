@@ -9,6 +9,16 @@ import webview
 from smart_watcher import SmartWatcherController
 
 
+def preload_model():
+    """Pre-load the Phi-3 model in the background."""
+    try:
+        from core.llm import preload_phi3_llm
+
+        preload_phi3_llm()
+    except Exception as e:
+        print(f"Launcher: Model pre-load failed (will load on first query): {e}")
+
+
 def start_flask():
     """Starts the Flask server in a background thread."""
     # Import here to avoid circular imports or side effects
@@ -47,12 +57,17 @@ def start_app():
     # 1. Ensure Watcher is running
     ensure_watcher_running()
 
-    # 2. Start Flask in a separate thread
+    # 2. Pre-load AI model in background to avoid cold start on first query
+    print("Launcher: Pre-loading AI model...")
+    preload_thread = threading.Thread(target=preload_model, daemon=True)
+    preload_thread.start()
+
+    # 3. Start Flask in a separate thread
     print("Launcher: Starting UI server...")
     server_thread = threading.Thread(target=start_flask, daemon=True)
     server_thread.start()
 
-    # 3. Wait for server to initialize
+    # 4. Wait for server to initialize
     if wait_for_server():
         print("Launcher: Server ready. Opening window...")
 

@@ -71,6 +71,15 @@ def get_status():
         # Get file counts
         (sample_count, extracts_count, indexed_count, _, _) = get_file_counts()
 
+        # Check if AI model is loaded
+        model_loaded = False
+        try:
+            from core.llm import _phi3_instance
+
+            model_loaded = _phi3_instance is not None
+        except Exception:
+            pass
+
         return jsonify(
             {
                 "watcher": "running" if is_running else "stopped",
@@ -78,6 +87,7 @@ def get_status():
                 "extracts": extracts_count,
                 "indexed": indexed_count,
                 "progress": progress,
+                "model_loaded": model_loaded,
             }
         )
     except Exception as e:

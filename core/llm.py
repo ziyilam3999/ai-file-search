@@ -51,6 +51,8 @@ class Phi3LLM:
             n_ctx=LLM_CONFIG["n_ctx"],  # Use config value
             n_threads=LLM_CONFIG["n_threads"],  # Use config value
             n_batch=LLM_CONFIG["n_batch"],  # Use config value
+            use_mmap=True,  # Memory-mapped file for faster access
+            use_mlock=True,  # Lock model in RAM to prevent swapping
             verbose=verbose,
             # No chat_format - use raw completion
         )
@@ -210,3 +212,16 @@ def get_phi3_llm(model_path: Optional[str] = None, verbose: bool = False) -> Phi
         logger.info("SINGLETON: Reusing EXISTING Phi-3 instance (model already loaded)")
 
     return _phi3_instance
+
+
+def preload_phi3_llm(model_path: Optional[str] = None, verbose: bool = False) -> None:
+    """
+    Pre-load the Phi-3 model on application startup to avoid cold start on first query.
+
+    Args:
+        model_path: Path to model file
+        verbose: Enable verbose logging
+    """
+    logger.info("PRELOAD: Pre-loading Phi-3 model on app startup...")
+    get_phi3_llm(model_path, verbose)
+    logger.success("PRELOAD: Phi-3 model ready for queries")

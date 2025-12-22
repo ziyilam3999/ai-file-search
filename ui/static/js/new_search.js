@@ -5,6 +5,7 @@ class AIFileSearchUI {
         this.chatHistory = new Map();
         this.isSearching = false; // Track if there's an active search
         this.wasIndexing = false; // Track indexing state for UI transitions
+        this.modelLoaded = false; // Track if AI model is loaded
         this.initializeElements();
         this.bindEvents();
         this.loadChatHistory();
@@ -281,6 +282,24 @@ class AIFileSearchUI {
     }
 
     updateStatus(status) {
+        // Check model loading state
+        if (status.model_loaded !== undefined) {
+            if (!this.modelLoaded && status.model_loaded) {
+                this.modelLoaded = true;
+                // Model just finished loading
+                if (this.indexingProgress && this.progressText) {
+                    this.progressText.textContent = 'AI Model: Ready ✓';
+                    this.indexingProgress.style.display = 'flex';
+                }
+            } else if (!status.model_loaded && !this.modelLoaded) {
+                // Model is still loading
+                if (this.indexingProgress && this.progressText) {
+                    this.progressText.textContent = 'Loading AI Model...';
+                    this.indexingProgress.style.display = 'flex';
+                }
+            }
+        }
+        
         // Update watcher status
         if (status.watcher === 'running') {
             this.watcherIndicator.className = 'status-indicator active';
@@ -294,10 +313,10 @@ class AIFileSearchUI {
         this.docCount.textContent = `${status.documents || 0} docs`;
         this.indexCount.textContent = `${status.indexed || 0} indexed`;
         
-        // Update indexing progress
+        // Update indexing progress (only if model is already loaded)
         const isIndexing = status.progress && status.progress.is_indexing;
         
-        if (isIndexing) {
+        if (this.modelLoaded && isIndexing) {
             this.wasIndexing = true;
             if (this.indexingProgress) {
                 this.indexingProgress.style.display = 'flex';
@@ -308,7 +327,7 @@ class AIFileSearchUI {
                     this.progressText.textContent = `Indexing: ${current}/${total} (${percent}%)`;
                 }
             }
-        } else {
+        } else if (this.modelLoaded) {
             if (this.wasIndexing) {
                 this.wasIndexing = false;
                 if (this.indexingProgress && this.progressText) {

@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Index Missing:** Fixed issue where `index.faiss` was missing, causing search to fail on first run.
+
 ### Added
 - **Multi-Folder Watching:** Support for watching multiple disjoint folders via `watcher_config.yaml`.
 - **Settings UI:** New settings page in Flask UI to manage watch paths.

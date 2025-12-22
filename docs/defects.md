@@ -12,6 +12,7 @@ Known bugs, issues, and their resolution status.
 
 | ID | Description | Severity | Resolution | Resolved |
 |----|-------------|----------|------------|----------|
+| DEF-012 | Missing index file on fresh run | High | Rebuilt index manually | 2025-12-22 |
 | DEF-009 | Performance regression (FAISS index reload on every query) | Critical | Implemented in-memory caching for FAISS index | 2025-12-22 |
 | DEF-010 | Integration test failure (Temp path handling) | High | Fixed path patching and DB connection handling | 2025-12-22 |
 | DEF-011 | Corrupted DB handling in Ask | Medium | Added error handling for missing/corrupted meta table | 2025-12-22 |

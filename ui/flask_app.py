@@ -83,7 +83,8 @@ def search():
             return jsonify({"error": "No question provided"}), 400
 
         # Get answer from your existing core function
-        answer, citations = answer_question(question, streaming=False)
+        # Use top_k=5 to ensure we get enough context
+        answer, citations = answer_question(question, top_k=5, streaming=False)
 
         # Format citations using shared utility
         formatted_citations = format_citations(citations)
@@ -113,7 +114,10 @@ def search_stream():
         try:
             # Call core function with streaming=True
             # Returns tuple: (generator, citations_list)
-            answer_generator, citations = answer_question(question, streaming=True)
+            # Use top_k=5 to ensure we get enough context
+            answer_generator, citations = answer_question(
+                question, top_k=5, streaming=True
+            )
 
             # 1. Stream the answer tokens
             for token in answer_generator:

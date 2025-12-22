@@ -5,6 +5,8 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **Retrieval Quality:** Increased default `top_k` from 1 to 5 to improve search recall and prevent missing relevant documents when irrelevant ones (like "Peter Pan") appear at the top.
+- **Cache Consistency:** Added safety check to force metadata reload if a search result ID is missing from the cache, preventing silent failures when index and metadata are slightly out of sync.
 - **Stale Cache:** Fixed issue where the running app would not see new files because it was using a stale in-memory index. Added automatic reload when `index.faiss` changes on disk.
 - **Watcher Startup:** Added `_initial_scan` to `FileWatcher` to automatically detect and index existing files in newly added watch paths upon startup.
 - **Index Missing:** Fixed issue where `index.faiss` was missing, causing search to fail on first run.

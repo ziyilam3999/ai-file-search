@@ -16,7 +16,7 @@ from .llm import get_phi3_llm
 
 
 def answer_question(
-    query: str, top_k: int = 1, streaming: bool = False
+    query: str, top_k: int = 5, streaming: bool = False
 ) -> Union[
     Tuple[str, List[Dict[str, Any]]], Tuple[Iterator[str], List[Dict[str, Any]]]
 ]:
@@ -25,7 +25,7 @@ def answer_question(
 
     Args:
         query: User's question
-        top_k: Number of top chunks to retrieve for context
+        top_k: Number of top chunks to retrieve for context (default: 5)
         streaming: If True, return generator for streaming; if False, return complete answer
 
     Returns:

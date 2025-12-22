@@ -242,14 +242,31 @@ class Embedder:
             results = []
             # Return results in 5-tuple format: (chunk_text, file_path, chunk_id, doc_chunk_id, score)
             for score, idx in zip(scores[0], indices[0]):
-                # Check if idx exists in metadata (it should, unless index/db are out of sync)
-                if idx in id_to_row:
-                    target_id = int(idx)  # Ensure int for dictionary lookup
-                    file_path, chunk_text, doc_chunk_id = id_to_row[target_id]
-                    # 5-tuple format required by ask.py
-                    results.append(
-                        (chunk_text, file_path, target_id, doc_chunk_id, score)
+                if idx == -1:
+                    continue
+
+                target_id = int(idx)
+
+                # Check if idx exists in metadata
+                if target_id not in id_to_row:
+                    # Cache miss! Try forcing a reload of metadata
+                    logger.warning(
+                        f"Index ID {target_id} not found in metadata cache. Forcing reload..."
                     )
+                    # Force reload by resetting mtime
+                    global _METADATA_MTIME
+                    _METADATA_MTIME = 0
+                    id_to_row = self._get_metadata()
+
+                    if id_to_row is None or target_id not in id_to_row:
+                        logger.error(
+                            f"Index ID {target_id} still missing after reload. Index/DB out of sync."
+                        )
+                        continue
+
+                file_path, chunk_text, doc_chunk_id = id_to_row[target_id]
+                # 5-tuple format required by ask.py
+                results.append((chunk_text, file_path, target_id, doc_chunk_id, score))
 
             return results
 

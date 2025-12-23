@@ -27,6 +27,63 @@ function Write-Info { param($msg) Write-Host "→ $msg" -ForegroundColor Cyan }
 function Write-Warning { param($msg) Write-Host "⚠ $msg" -ForegroundColor Yellow }
 function Write-Error { param($msg) Write-Host "✗ $msg" -ForegroundColor Red }
 
+# Parse version from copilot-instructions.md first line
+function Get-CopilotVersion {
+    param([string]$filePath)
+    
+    if (-not (Test-Path $filePath)) {
+        return $null
+    }
+    
+    try {
+        $firstLine = Get-Content $filePath -First 1 -ErrorAction Stop
+        if ($firstLine -match 'copilot-instructions v([\d.]+)') {
+            return [version]$matches[1]
+        }
+    } catch {
+        Write-Warning "Could not read version from: $filePath"
+    }
+    
+    return $null
+}
+
+# Compare two versions
+function Compare-CopilotVersion {
+    param(
+        [version]$sourceVersion,
+        [version]$targetVersion
+    )
+    
+    # If target has no version, treat as v0.0 (always update)
+    if ($null -eq $targetVersion) {
+        return $true
+    }
+    
+    # If source has no version but target does, don't update
+    if ($null -eq $sourceVersion) {
+        return $false
+    }
+    
+    # Compare versions
+    return $sourceVersion -gt $targetVersion
+}
+
+# Check if two paths are the same
+function Test-SamePath {
+    param(
+        [string]$path1,
+        [string]$path2
+    )
+    
+    try {
+        $resolved1 = [System.IO.Path]::GetFullPath($path1).TrimEnd('\', '/')
+        $resolved2 = [System.IO.Path]::GetFullPath($path2).TrimEnd('\', '/')
+        return $resolved1 -eq $resolved2
+    } catch {
+        return $false
+    }
+}
+
 # Detect source file in current repo
 function Find-SourceFile {
     $currentDir = Get-Location
@@ -116,13 +173,24 @@ if (-not $sourceFile) {
 }
 
 Write-Success "Found source: $sourceFile"
+$sourceVersion = Get-CopilotVersion -filePath $sourceFile
+if ($sourceVersion) {
+    Write-Info "Source version: v$sourceVersion"
+} else {
+    Write-Warning "No version found in source (will be treated as v0.0)"
+}
 $sourceHash = (Get-FileHash $sourceFile -Algorithm MD5).Hash
 Write-Info "Source MD5: $sourceHash"
 Write-Host ""
 
+# Get source directory for path comparison
+$sourceDir = Split-Path (Resolve-Path $sourceFile).Path -Parent
+$sourceRepoRoot = Split-Path $sourceDir -Parent
+
 # Step 2: Sync to targets
 Write-Info "Step 2: Syncing to target repositories..."
 $syncCount = 0
+$skipCount = 0
 $excludeCount = 0
 $verifyCount = 0
 
@@ -133,6 +201,14 @@ foreach ($targetRepo in $targetRepos) {
     # Check if target repo exists
     if (-not (Test-Path $targetRepo)) {
         Write-Warning "Repository not found, skipping: $targetRepo"
+        $skipCount++
+        continue
+    }
+    
+    # Check if source and target are the same
+    if (Test-SamePath -path1 $sourceRepoRoot -path2 $targetRepo) {
+        Write-Warning "Source and target are the same, skipping self-sync"
+        $skipCount++
         continue
     }
     
@@ -143,8 +219,26 @@ foreach ($targetRepo in $targetRepos) {
         Write-Success "Created .github directory"
     }
     
-    # Copy file
+    # Check target version
     $targetFile = Join-Path $targetGithubDir "copilot-instructions.md"
+    $targetVersion = Get-CopilotVersion -filePath $targetFile
+    
+    if ($targetVersion) {
+        Write-Info "Target version: v$targetVersion"
+    } else {
+        Write-Info "Target version: None (will be treated as v0.0)"
+    }
+    
+    # Compare versions
+    $shouldUpdate = Compare-CopilotVersion -sourceVersion $sourceVersion -targetVersion $targetVersion
+    
+    if (-not $shouldUpdate) {
+        Write-Warning "Target version is same or newer, skipping sync"
+        $skipCount++
+        continue
+    }
+    
+    # Copy file
     try {
         Copy-Item -Path $sourceFile -Destination $targetFile -Force
         $targetHash = (Get-FileHash $targetFile -Algorithm MD5).Hash
@@ -177,15 +271,25 @@ Write-Host "══════════════════════�
 Write-Host "Sync Summary:" -ForegroundColor Cyan
 Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host "  Source File:        $sourceFile"
+if ($sourceVersion) {
+    Write-Host "  Source Version:     v$sourceVersion"
+} else {
+    Write-Host "  Source Version:     None"
+}
 Write-Host "  Target Repos:       $($targetRepos.Count)"
 Write-Host "  Files Synced:       $syncCount"
+Write-Host "  Files Skipped:      $skipCount"
 Write-Host "  Exclusions Added:   $excludeCount"
 Write-Host "  Verified Ignored:   $verifyCount"
 Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
 
-if ($syncCount -eq $targetRepos.Count) {
+if ($syncCount -gt 0) {
     Write-Host ""
-    Write-Success "All operations completed successfully!"
+    Write-Success "Sync completed successfully!"
+    exit 0
+} elseif ($skipCount -eq $targetRepos.Count) {
+    Write-Host ""
+    Write-Info "All targets are up-to-date or skipped."
     exit 0
 } else {
     Write-Host ""

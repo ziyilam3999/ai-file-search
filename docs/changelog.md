@@ -10,7 +10,10 @@ All notable changes to this project are documented in this file.
   - Syncs to configured target repos with MD5 verification
   - Automatically configures .git/info/exclude to prevent commits
   - Verifies git exclusion with status check
-  - Color-coded output with summary report
+  - **Smart version comparison:** Only syncs if target version is older (semantic versioning)
+  - **Missing version handling:** Treats missing version as v0.0 (always updates)
+  - **Self-sync prevention:** Skips if source and target paths are identical
+  - Color-coded output with detailed summary report
   - Prevents accidental exposure of personal AI instructions to company repos
 
 ### Changed

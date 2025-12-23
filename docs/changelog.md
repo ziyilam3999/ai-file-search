@@ -5,6 +5,11 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Changed
+- **Refactoring Phase 3 (TD-019):** Split 1159-line `daemon/watch.py` God file into focused modules:
+  - `daemon/watch.py` (696 lines) - FileWatcher orchestration
+  - `daemon/embedding_adapter.py` (358 lines) - EmbeddingAdapter class
+  - `daemon/file_queue.py` (136 lines) - FileChangeQueue + FileChangeHandler
+  - Result: 40% line reduction, improved maintainability and testability
 - **Refactoring Phase 2 (TD-020, TD-021):** Centralized configuration and eliminated code duplication:
   - **Path Constants:** Replaced 25+ hardcoded `"meta.sqlite"` and `"index.faiss"` strings across tools/ and tests/ with `DATABASE_PATH` and `INDEX_PATH` imports from `core.config`. Improves maintainability and single source of truth compliance.
   - **Model Caching:** Eliminated duplicate `SentenceTransformer` loading in `daemon/watch.py`. `EmbeddingAdapter` now uses `Embedder._get_model()` singleton, reducing memory footprint by ~500MB.

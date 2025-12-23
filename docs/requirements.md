@@ -60,6 +60,14 @@ A zero-configuration smart document search system with automatic discovery and r
 | FR-005.6 | Unified Launcher (Auto-start watcher) | Pending |
 | FR-005.7 | Embedded System Status Panel | Pending |
 
+### FR-007: Developer Tools
+| ID | Requirement | Status |
+|----|-------------|--------|
+| FR-007.1 | Sync copilot-instructions.md across repos | Done |
+| FR-007.2 | Auto-detect source file in current repo | Done |
+| FR-007.3 | Configure .git/info/exclude automatically | Done |
+| FR-007.4 | Verify git exclusion with status check | Done |
+
 ## Non-Functional Requirements
 
 ### NFR-001: Performance

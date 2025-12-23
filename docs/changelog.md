@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Copilot Instructions Sync Tool:** New PowerShell script `tools/sync_copilot_instructions.ps1` automates syncing copilot-instructions.md across multiple repositories:
+  - Auto-detects source file in current repository (.github/ or root)
+  - Syncs to configured target repos with MD5 verification
+  - Automatically configures .git/info/exclude to prevent commits
+  - Verifies git exclusion with status check
+  - Color-coded output with summary report
+  - Prevents accidental exposure of personal AI instructions to company repos
+
 ### Changed
 - **Refactoring Phase 5 (TD-022):** Improved type annotations across daemon modules for better IDE support and type safety:
   - Added `numpy.typing` with `npt.NDArray[np.float32]` for precise embedding array types

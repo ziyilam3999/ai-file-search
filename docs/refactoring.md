@@ -8,7 +8,7 @@ Technical debt and cleanup tasks.
 |----|-------------|----------|--------|--------|
 | TD-017 | Code Duplication: SQLite/FAISS/Model loading scattered across modules | Critical | High | Not Started |
 | TD-018 | Architectural Violations: Empty src/ folder, misplaced root scripts | High | Low | Completed |
-| TD-019 | Code Complexity: daemon/watch.py is 1157 lines (God file) | Medium | High | Not Started |
+| TD-019 | Code Complexity: daemon/watch.py is 1157 lines (God file) | Medium | High | Completed |
 | TD-020 | Inconsistent Path Constants: Tools hardcode paths instead of using config | Medium | Medium | Completed |
 | TD-021 | Model Caching Inconsistency: Multiple SentenceTransformer instances | Medium | Medium | Completed |
 | TD-022 | Type Annotation Gaps in daemon/watch.py | Low | Low | Not Started |
@@ -144,13 +144,20 @@ daemon/
 **Effort:** High (estimated 4-6 hours)
 
 **Steps:**
-1. [ ] Create `daemon/embedding_adapter.py` - extract EmbeddingAdapter class
-2. [ ] Create `daemon/file_queue.py` - extract FileChangeQueue + FileChangeHandler
-3. [ ] Create `daemon/config_loader.py` - extract config loading logic
-4. [ ] Refactor `daemon/watch.py` to import from new modules
-5. [ ] Update `daemon/__init__.py` with public exports
-6. [ ] Run all tests to verify no regressions
-7. [ ] Update imports in `smart_watcher.py`, `run_watcher.py`
+1. [x] Create `daemon/embedding_adapter.py` - extract EmbeddingAdapter class
+2. [x] Create `daemon/file_queue.py` - extract FileChangeQueue + FileChangeHandler
+3. [x] Refactor `daemon/watch.py` to import from new modules
+4. [x] Update `daemon/__init__.py` with public exports
+5. [x] Run all tests to verify no regressions
+6. [ ] Update imports in `smart_watcher.py`, `run_watcher.py` (if needed)
+
+**Result:** Completed 2025-12-23. daemon/watch.py reduced from 1159 to 696 lines (40% reduction).
+
+**New Structure:**
+- `daemon/watch.py` - 696 lines (FileWatcher orchestration)
+- `daemon/embedding_adapter.py` - 358 lines (EmbeddingAdapter)
+- `daemon/file_queue.py` - 136 lines (FileChangeQueue + Handler)
+- `daemon/__init__.py` - Updated with public exports
 
 ---
 

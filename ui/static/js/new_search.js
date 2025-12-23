@@ -19,8 +19,15 @@ class AIFileSearchUI {
         this.answerContent = document.getElementById('answer-content');
         this.newChatBtn = document.getElementById('new-chat-btn');
         this.settingsBtn = document.getElementById('settings-btn');
+        this.logsBtn = document.getElementById('logs-btn');
         this.chatList = document.getElementById('chat-list');
         
+        // Log Modal elements
+        this.logModal = document.getElementById('log-modal');
+        this.closeLogModalBtn = document.getElementById('close-log-modal');
+        this.logContainer = document.getElementById('log-container');
+        this.logPollInterval = null;
+
         // Status elements
         this.watcherIndicator = document.getElementById('watcher-indicator');
         this.watcherText = document.getElementById('watcher-text');
@@ -54,6 +61,23 @@ class AIFileSearchUI {
                 window.location.href = '/settings';
             });
         }
+
+        // Logs button
+        if (this.logsBtn) {
+            this.logsBtn.addEventListener('click', () => this.toggleLogs(true));
+        }
+
+        // Close Log Modal
+        if (this.closeLogModalBtn) {
+            this.closeLogModalBtn.addEventListener('click', () => this.toggleLogs(false));
+        }
+
+        // Close modal on outside click
+        window.addEventListener('click', (e) => {
+            if (e.target === this.logModal) {
+                this.toggleLogs(false);
+            }
+        });
 
         // Chat item selection and deletion
         this.chatList.addEventListener('click', (e) => {
@@ -264,6 +288,61 @@ class AIFileSearchUI {
         
         // Remove typing cursor when done
         answerParagraph.classList.remove('typing-cursor');
+    }
+
+    toggleLogs(show) {
+        if (show) {
+            this.logModal.style.display = 'block';
+            this.fetchLogs(); // Fetch immediately
+            // Poll every 2 seconds
+            if (!this.logPollInterval) {
+                this.logPollInterval = setInterval(() => this.fetchLogs(), 2000);
+            }
+        } else {
+            this.logModal.style.display = 'none';
+            if (this.logPollInterval) {
+                clearInterval(this.logPollInterval);
+                this.logPollInterval = null;
+            }
+        }
+    }
+
+    async fetchLogs() {
+        try {
+            const response = await fetch('/api/logs');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.logs) {
+                    this.renderLogs(data.logs);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching logs:', error);
+        }
+    }
+
+    renderLogs(logs) {
+        if (!this.logContainer) return;
+        
+        const wasScrolledToBottom = this.logContainer.scrollHeight - this.logContainer.scrollTop === this.logContainer.clientHeight;
+
+        this.logContainer.innerHTML = logs.map(line => {
+            let className = 'log-entry';
+            if (line.includes('ERROR')) className += ' log-error';
+            else if (line.includes('WARNING')) className += ' log-warning';
+            else if (line.includes('SUCCESS')) className += ' log-success';
+            else if (line.includes('INFO')) className += ' log-info';
+            
+            // Highlight timestamps
+            const formattedLine = line.replace(/^(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})/, '<span class="log-time">$1</span>');
+            
+            return `<div class="${className}">${formattedLine}</div>`;
+        }).join('');
+
+        // Auto-scroll if was at bottom
+        if (wasScrolledToBottom) {
+            this.logContainer.scrollTop = this.logContainer.scrollHeight;
+        }
     }
 
     startStatusPolling() {

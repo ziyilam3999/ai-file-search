@@ -48,6 +48,7 @@ A zero-configuration smart document search system with automatic discovery and r
 | FR-005.3 | Display citations with file references | Done |
 | FR-005.4 | Show performance metrics | Done |
 | FR-005.5 | Standalone Desktop App (PyWebview) | Pending |
+| FR-005.6 | Live Activity Log Viewer | Done |
 
 ### FR-006: Multi-Folder Watching
 | ID | Requirement | Status |

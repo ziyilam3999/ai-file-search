@@ -5,6 +5,11 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Live Activity Log:** Added real-time log viewer to the UI:
+  - **New Endpoint:** `/api/logs` returns the last 50 lines of `watcher.log`
+  - **UI Component:** Added "Logs" button and modal to the main search interface
+  - **Auto-Refresh:** Logs update every 2 seconds when the modal is open
+  - **Visuals:** Color-coded log entries (INFO, WARNING, ERROR) for better readability
 - **Immediate Indexing for New Watch Paths:** Enhanced watch path management to immediately scan and index files when adding new paths via Settings UI:
   - **Scan Completion Tracking:** Watcher now signals when initial scan is complete via `watcher_status.json`
   - **Synchronous Restart:** `restart_watcher()` waits for scan completion before returning

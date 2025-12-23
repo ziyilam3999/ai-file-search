@@ -94,6 +94,30 @@ def get_status():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/logs")
+def get_logs():
+    """Get the last 50 lines of the watcher log."""
+    try:
+        log_file = Path("logs/watcher.log")
+        if not log_file.exists():
+            return jsonify({"logs": ["Log file not found."]})
+
+        lines = []
+        # Read last 50 lines efficiently
+        try:
+            with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                # Simple approach for now: read all lines and slice
+                # For very large logs, we might want to seek from end
+                all_lines = f.readlines()
+                lines = all_lines[-50:]
+        except Exception as e:
+            lines = [f"Error reading logs: {str(e)}"]
+
+        return jsonify({"logs": lines})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/search", methods=["POST"])
 def search():
     """Legacy non-streaming search endpoint."""

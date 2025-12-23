@@ -13,8 +13,8 @@ import yaml
 from loguru import logger
 
 from core.config import CONFIG_PATH, DATABASE_PATH, INDEX_PATH
-from core.embedding import Embedder
 from core.path_utils import normalize_path, validate_watch_path
+from daemon.embedding_adapter import EmbeddingAdapter
 from smart_watcher import SmartWatcherController
 
 
@@ -23,7 +23,7 @@ class IndexManager:
 
     def __init__(self):
         self.watcher_controller = SmartWatcherController()
-        self.embedder = Embedder()
+        self.embedding_adapter = EmbeddingAdapter()
 
     def _load_config(self) -> dict:
         """Load configuration from file."""
@@ -118,8 +118,8 @@ class IndexManager:
                     text = extractor.run(file_path)
 
                     if text and len(text.strip()) >= 10:
-                        # Use embedder to add document
-                        success = self.embedder.add_document(abs_path, text)
+                        # Use embedding adapter to add document (has add_document method)
+                        success = self.embedding_adapter.add_document(abs_path, text)
                         if success:
                             indexed_count += 1
                             logger.info(f"Indexed: {file_path.name}")
@@ -189,7 +189,7 @@ class IndexManager:
                 conn.close()
 
                 # Clear embedding cache to force reload
-                self.embedder.clear_cache()
+                self.embedding_adapter.embedder.clear_cache()
                 logger.info("Cleared embedding cache after path removal")
 
             # Restart watcher

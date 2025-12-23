@@ -11,6 +11,12 @@ All notable changes to this project are documented in this file.
   - **Direct Indexing:** `add_watch_path()` immediately extracts and indexes files from new path
   - **User Feedback:** Settings UI now shows "Found N files to index" message
   - **Problem Solved:** Files are now immediately searchable after adding a watch path (fixes DEF-019)
+
+### Fixed
+- **DEF-020: Immediate Indexing API Error:** Fixed critical bug where `_scan_new_path()` called non-existent `Embedder.add_document()` method:
+  - **Root Cause:** DEF-019 fix incorrectly assumed `Embedder` class had `add_document()` method (only `EmbeddingAdapter` has it)
+  - **Solution:** Changed to use `EmbeddingAdapter` which provides the incremental `add_document()` method
+  - **Lesson Learned:** Added FM-4 (API Verification) rule to copilot-instructions.md to prevent similar regressions
 - **Index Sync Verification Tool:** New `tools/verify_index_sync.py` diagnostic tool with three commands:
   - `check`: Detect orphaned vectors in FAISS that don't exist in database
   - `repair`: Automatically remove orphaned vectors to restore sync

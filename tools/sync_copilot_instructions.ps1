@@ -336,11 +336,31 @@ if ($sourceVersion) {
 }
 $sourceHash = (Get-FileHash $sourceFile -Algorithm MD5).Hash
 Write-Info -Message "Source MD5: $sourceHash"
-Write-Host ""
 
 # Get source directory for path comparison
 $sourceDir = Split-Path (Resolve-Path $sourceFile).Path -Parent
 $sourceRepoRoot = Split-Path $sourceDir -Parent
+
+# Check if source file is tracked in source repo and untrack if needed
+Write-Host ""
+Write-Info -Message "Checking source repository..."
+if (Test-GitTracked -RepoPath $sourceRepoRoot -File "$GITHUB_DIR/$COPILOT_FILE_NAME") {
+    Write-Info -Message "Source file is tracked in git, removing from index..."
+    if (Remove-FromGitIndex -RepoPath $sourceRepoRoot -File "$GITHUB_DIR/$COPILOT_FILE_NAME") {
+        Write-Success -Message "Source repo: File untracked successfully"
+    }
+} else {
+    Write-Info -Message "Source file is not tracked (good)"
+}
+
+# Ensure source has exclusion configured
+if (-not (Test-Path (Join-Path $sourceRepoRoot ".git"))) {
+    Write-Warning -Message "Source is not a git repository"
+} else {
+    Add-GitExclusion -RepoPath $sourceRepoRoot | Out-Null
+}
+
+Write-Host ""
 
 # Step 2: Sync to targets
 Write-Info -Message "Step 2: Syncing to target repositories..."
@@ -384,28 +404,28 @@ foreach ($targetRepo in $TARGET_REPOS) {
     # Compare versions
     $shouldUpdate = Compare-CopilotVersion -SourceVersion $sourceVersion -TargetVersion $targetVersion
     
-    if (-not $shouldUpdate) {
+    if ($shouldUpdate) {
+        # Copy file only if version check passes
+        try {
+            Copy-Item -Path $sourceFile -Destination $targetFile -Force
+            $targetHash = (Get-FileHash $targetFile -Algorithm MD5).Hash
+            
+            if ($targetHash -eq $sourceHash) {
+                Write-Success -Message "Synced successfully (MD5 verified)"
+                $results.Synced++
+            } else {
+                Write-Warning -Message "Synced but hash mismatch"
+            }
+        } catch {
+            Write-Error -Message "Failed to copy: $_"
+            continue
+        }
+    } else {
         Write-Warning -Message "Target version is same or newer, skipping sync"
         $results.Skipped++
-        continue
     }
     
-    # Copy file
-    try {
-        Copy-Item -Path $sourceFile -Destination $targetFile -Force
-        $targetHash = (Get-FileHash $targetFile -Algorithm MD5).Hash
-        
-        if ($targetHash -eq $sourceHash) {
-            Write-Success -Message "Synced successfully (MD5 verified)"
-            $results.Synced++
-        } else {
-            Write-Warning -Message "Synced but hash mismatch"
-        }
-    } catch {
-        Write-Error -Message "Failed to copy: $_"
-        continue
-    }
-    
+    # Always check and configure git (even if sync was skipped)
     # Check if file is tracked in git and remove if needed
     if (Test-GitTracked -RepoPath $targetRepo -File "$GITHUB_DIR/$COPILOT_FILE_NAME") {
         Write-Info -Message "File is tracked in git, removing from index..."

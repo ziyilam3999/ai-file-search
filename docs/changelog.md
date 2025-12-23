@@ -9,6 +9,8 @@ All notable changes to this project are documented in this file.
   - Auto-detects source file in current repository (.github/ or root)
   - Syncs to configured target repos with MD5 verification
   - **Auto-untrack feature:** Detects if file is tracked in git index and automatically removes it with `git rm --cached` + commit
+  - **Source repo protection:** Checks and untracks file in source repository itself before syncing
+  - **Always configure git:** Untrack and add exclusion rules even when sync is skipped (version already up-to-date)
   - Automatically configures .git/info/exclude to prevent commits
   - Verifies git exclusion with status check
   - **Smart version comparison:** Only syncs if target version is older (semantic versioning)

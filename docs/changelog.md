@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file.
 - **Copilot Instructions Sync Tool:** New PowerShell script `tools/sync_copilot_instructions.ps1` automates syncing copilot-instructions.md across multiple repositories:
   - Auto-detects source file in current repository (.github/ or root)
   - Syncs to configured target repos with MD5 verification
+  - **Auto-untrack feature:** Detects if file is tracked in git index and automatically removes it with `git rm --cached` + commit
   - Automatically configures .git/info/exclude to prevent commits
   - Verifies git exclusion with status check
   - **Smart version comparison:** Only syncs if target version is older (semantic versioning)

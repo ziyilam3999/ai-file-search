@@ -228,6 +228,69 @@ function Test-GitIgnored {
     }
 }
 
+# Check if file is tracked in git index
+function Test-GitTracked {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)]
+        [string]$RepoPath,
+        
+        [Parameter()]
+        [string]$File = "$GITHUB_DIR/$COPILOT_FILE_NAME"
+    )
+    
+    Push-Location $RepoPath
+    try {
+        # git ls-files returns non-empty if file is tracked
+        $tracked = git ls-files $File 2>$null
+        return -not [string]::IsNullOrWhiteSpace($tracked)
+    } catch {
+        Write-Verbose "Git ls-files check failed: $_"
+        return $false
+    } finally {
+        Pop-Location
+    }
+}
+
+# Remove file from git index (stop tracking)
+function Remove-FromGitIndex {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)]
+        [string]$RepoPath,
+        
+        [Parameter()]
+        [string]$File = "$GITHUB_DIR/$COPILOT_FILE_NAME"
+    )
+    
+    Push-Location $RepoPath
+    try {
+        # Remove from index but keep working copy
+        $result = git rm --cached $File 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            # Commit the removal
+            git commit -m "chore: stop tracking $COPILOT_FILE_NAME" 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Success -Message "Removed from git tracking: $File"
+                return $true
+            } else {
+                Write-Warning -Message "Failed to commit removal of $File"
+                return $false
+            }
+        } else {
+            Write-Warning -Message "Failed to remove from index: $result"
+            return $false
+        }
+    } catch {
+        Write-Warning -Message "Error removing from git index: $_"
+        return $false
+    } finally {
+        Pop-Location
+    }
+}
+
 # Sync result object for better structure
 function New-SyncResult {
     [CmdletBinding()]
@@ -235,6 +298,7 @@ function New-SyncResult {
         [int]$Synced = 0,
         [int]$Skipped = 0,
         [int]$Excluded = 0,
+        [int]$Untracked = 0,
         [int]$Verified = 0
     )
     
@@ -242,6 +306,7 @@ function New-SyncResult {
         Synced = $Synced
         Skipped = $Skipped
         Excluded = $Excluded
+        Untracked = $Untracked
         Verified = $Verified
     }
 }
@@ -341,6 +406,14 @@ foreach ($targetRepo in $TARGET_REPOS) {
         continue
     }
     
+    # Check if file is tracked in git and remove if needed
+    if (Test-GitTracked -RepoPath $targetRepo -File "$GITHUB_DIR/$COPILOT_FILE_NAME") {
+        Write-Info -Message "File is tracked in git, removing from index..."
+        if (Remove-FromGitIndex -RepoPath $targetRepo -File "$GITHUB_DIR/$COPILOT_FILE_NAME") {
+            $results.Untracked++
+        }
+    }
+    
     # Add exclusion
     if (Add-GitExclusion -RepoPath $targetRepo) {
         $results.Excluded++
@@ -363,6 +436,7 @@ if ($sourceVersion) {
 Write-Host "  Target Repos:       $($TARGET_REPOS.Count)"
 Write-Host "  Files Synced:       $($results.Synced)"
 Write-Host "  Files Skipped:      $($results.Skipped)"
+Write-Host "  Files Untracked:    $($results.Untracked)"
 Write-Host "  Exclusions Added:   $($results.Excluded)"
 Write-Host "  Verified Ignored:   $($results.Verified)"
 Write-Host ("═" * 55) -ForegroundColor Cyan

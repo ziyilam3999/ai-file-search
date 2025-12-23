@@ -33,6 +33,11 @@ pytest tests/ --cov=core --cov-report=html
 
 # Run specific test file
 pytest tests/test_embedding.py -v
+
+# Verify index synchronization
+python tools/verify_index_sync.py check      # Check for sync issues
+python tools/verify_index_sync.py repair     # Fix orphaned vectors
+python tools/verify_index_sync.py stats      # Show detailed statistics
 ```
 
 ## Test Categories
@@ -106,6 +111,28 @@ test_settings:
 |-------|--------|-------|
 | test_watch.py Windows temp file | Skipped | Permission issue on Windows |
 | LLM tests slow | Expected | CPU inference ~46s per test |
+
+## Maintenance & Diagnostics
+
+### Index Synchronization Verification
+Run after removing watch paths or encountering "Index/DB out of sync" errors:
+
+```bash
+# Check for orphaned vectors
+python tools/verify_index_sync.py check
+
+# Fix automatically
+python tools/verify_index_sync.py repair
+
+# View detailed statistics
+python tools/verify_index_sync.py stats
+```
+
+**When to use:**
+- After removing watch paths via Settings UI
+- When queries return "Index/DB out of sync" errors
+- Before major reindexing operations
+- As part of regular maintenance (monthly recommended)
 
 ## Adding New Tests
 

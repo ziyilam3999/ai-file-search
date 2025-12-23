@@ -12,6 +12,7 @@ Known bugs, issues, and their resolution status.
 
 | ID | Description | Severity | Resolution | Resolved |
 |----|-------------|----------|------------|----------|
+| DEF-018 | Index/DB desync when removing watch paths (orphaned FAISS vectors) | Critical | Added FAISS vector removal to remove_watch_path() + verification tool | 2025-12-23 |
 | DEF-017 | Model singleton not persisting between requests (~85-90s reload on each query) | High | Confirmed working - singleton reuses model, timing variations due to inference complexity | 2025-12-22 |
 | DEF-016 | Watcher crash loop when index files missing | High | Added `_ensure_index_exists` to initialize empty index/DB | 2025-12-22 |
 | DEF-015 | App crash due to FAISS/DB desync (Zombie Vectors) | Critical | Upgraded to IndexIDMap and synchronized deletions | 2025-12-22 |

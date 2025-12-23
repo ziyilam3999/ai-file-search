@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Index Sync Verification Tool:** New `tools/verify_index_sync.py` diagnostic tool with three commands:
+  - `check`: Detect orphaned vectors in FAISS that don't exist in database
+  - `repair`: Automatically remove orphaned vectors to restore sync
+  - `stats`: Show detailed statistics about index and database state
+  - Uses efficient `faiss.vector_to_array(index.id_map)` for fast ID extraction
+  - Critical for maintaining FAISS/database synchronization integrity
 - **Copilot Instructions Sync Tool:** New PowerShell script `tools/sync_copilot_instructions.ps1` automates syncing copilot-instructions.md across multiple repositories:
   - Auto-detects source file in current repository (.github/ or root)
   - Syncs to configured target repos with MD5 verification
@@ -94,6 +100,12 @@ All notable changes to this project are documented in this file.
 - **Model Persistence:** Confirmed singleton pattern keeps Phi-3 model loaded in memory, eliminating reload penalty on subsequent queries.
 
 ### Fixed
+- **DEF-018: Index/DB Desync on Path Removal:** Fixed critical bug where removing a watch path deleted database records but left orphaned vectors in FAISS index, causing "Index/DB out of sync" errors during queries:
+  - **Root Cause:** `remove_watch_path()` only deleted from SQLite, not from FAISS
+  - **Impact:** 125 orphaned vectors caused searches to fail retrieving valid documents
+  - **Solution:** Enhanced `core/index_manager.py` to remove vectors from FAISS before deleting DB records
+  - **Prevention:** Created `tools/verify_index_sync.py` for ongoing sync verification and automated repair
+  - **Result:** Queries now return complete results without sync errors
 - **Startup:** Fixed `ModuleNotFoundError: No module named 'webview'` and `pythonnet` build errors by updating `pyproject.toml` dependencies and configuration.
 - **Watcher Initialization:** Fixed crash loop when `index.faiss` or `meta.sqlite` are missing. Added `_ensure_index_exists` to `EmbeddingAdapter` to automatically initialize empty index structures on startup.
 - **Zombie Vectors:** Fixed critical bug where deleted files remained in the FAISS index, causing crashes and incorrect search results. Upgraded to `faiss.IndexIDMap` for stable ID management and implemented proper synchronization between SQLite metadata and vector index.

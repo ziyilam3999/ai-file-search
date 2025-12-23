@@ -15,33 +15,75 @@
     Date: 2025-12-23
 #>
 
+[CmdletBinding()]
+param()
+
+# Constants
+$COPILOT_FILE_NAME = "copilot-instructions.md"
+$GITHUB_DIR = ".github"
+$GIT_EXCLUDE_PATH = ".git\info\exclude"
+$VERSION_REGEX = 'copilot-instructions v([\d.]+)'
+
 # Target repositories
-$targetRepos = @(
+$TARGET_REPOS = @(
     "C:\Users\ziyil\pillar_snapper",
     "C:\Users\ziyil\ai-file-search"
 )
 
-# Colors for output
-function Write-Success { param($msg) Write-Host "✓ $msg" -ForegroundColor Green }
-function Write-Info { param($msg) Write-Host "→ $msg" -ForegroundColor Cyan }
-function Write-Warning { param($msg) Write-Host "⚠ $msg" -ForegroundColor Yellow }
-function Write-Error { param($msg) Write-Host "✗ $msg" -ForegroundColor Red }
+# Output formatting functions
+function Write-Success { 
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Message) 
+    Write-Host "✓ $Message" -ForegroundColor Green 
+}
+
+function Write-Info { 
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Message) 
+    Write-Host "→ $Message" -ForegroundColor Cyan 
+}
+
+function Write-Warning { 
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Message) 
+    Write-Host "⚠ $Message" -ForegroundColor Yellow 
+}
+
+function Write-Error { 
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Message) 
+    Write-Host "✗ $Message" -ForegroundColor Red 
+}
+
+function Write-SectionDivider {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Title)
+    Write-Host ""
+    Write-Host ("═" * 55) -ForegroundColor Cyan
+    Write-Host $Title -ForegroundColor Cyan
+    Write-Host ("═" * 55) -ForegroundColor Cyan
+}
 
 # Parse version from copilot-instructions.md first line
 function Get-CopilotVersion {
-    param([string]$filePath)
+    [CmdletBinding()]
+    [OutputType([version])]
+    param(
+        [Parameter(Mandatory)]
+        [string]$FilePath
+    )
     
-    if (-not (Test-Path $filePath)) {
+    if (-not (Test-Path $FilePath)) {
         return $null
     }
     
     try {
-        $firstLine = Get-Content $filePath -First 1 -ErrorAction Stop
-        if ($firstLine -match 'copilot-instructions v([\d.]+)') {
+        $firstLine = Get-Content $FilePath -First 1 -ErrorAction Stop
+        if ($firstLine -match $VERSION_REGEX) {
             return [version]$matches[1]
         }
     } catch {
-        Write-Warning "Could not read version from: $filePath"
+        Write-Warning -Message "Could not read version from: $FilePath"
     }
     
     return $null
@@ -49,47 +91,64 @@ function Get-CopilotVersion {
 
 # Compare two versions
 function Compare-CopilotVersion {
+    [CmdletBinding()]
+    [OutputType([bool])]
     param(
-        [version]$sourceVersion,
-        [version]$targetVersion
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [version]$SourceVersion,
+        
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [version]$TargetVersion
     )
     
     # If target has no version, treat as v0.0 (always update)
-    if ($null -eq $targetVersion) {
+    if ($null -eq $TargetVersion) {
         return $true
     }
     
     # If source has no version but target does, don't update
-    if ($null -eq $sourceVersion) {
+    if ($null -eq $SourceVersion) {
         return $false
     }
     
     # Compare versions
-    return $sourceVersion -gt $targetVersion
+    return $SourceVersion -gt $TargetVersion
 }
 
 # Check if two paths are the same
 function Test-SamePath {
+    [CmdletBinding()]
+    [OutputType([bool])]
     param(
-        [string]$path1,
-        [string]$path2
+        [Parameter(Mandatory)]
+        [string]$Path1,
+        
+        [Parameter(Mandatory)]
+        [string]$Path2
     )
     
     try {
-        $resolved1 = [System.IO.Path]::GetFullPath($path1).TrimEnd('\', '/')
-        $resolved2 = [System.IO.Path]::GetFullPath($path2).TrimEnd('\', '/')
+        $resolved1 = [System.IO.Path]::GetFullPath($Path1).TrimEnd('\', '/')
+        $resolved2 = [System.IO.Path]::GetFullPath($Path2).TrimEnd('\', '/')
         return $resolved1 -eq $resolved2
     } catch {
+        Write-Verbose "Path comparison failed: $_"
         return $false
     }
 }
 
 # Detect source file in current repo
 function Find-SourceFile {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+    
     $currentDir = Get-Location
     $possiblePaths = @(
-        Join-Path $currentDir ".github\copilot-instructions.md"
-        Join-Path $currentDir "copilot-instructions.md"
+        Join-Path $currentDir "$GITHUB_DIR\$COPILOT_FILE_NAME"
+        Join-Path $currentDir $COPILOT_FILE_NAME
     )
     
     foreach ($path in $possiblePaths) {
@@ -103,16 +162,21 @@ function Find-SourceFile {
 
 # Add exclusion to .git/info/exclude
 function Add-GitExclusion {
+    [CmdletBinding()]
+    [OutputType([bool])]
     param(
-        [string]$repoPath,
-        [string]$pattern = ".github/copilot-instructions.md"
+        [Parameter(Mandatory)]
+        [string]$RepoPath,
+        
+        [Parameter()]
+        [string]$Pattern = "$GITHUB_DIR/$COPILOT_FILE_NAME"
     )
     
-    $excludeFile = Join-Path $repoPath ".git\info\exclude"
+    $excludeFile = Join-Path $RepoPath $GIT_EXCLUDE_PATH
     
     # Check if .git exists
-    if (-not (Test-Path (Join-Path $repoPath ".git"))) {
-        Write-Warning "Not a git repository: $repoPath"
+    if (-not (Test-Path (Join-Path $RepoPath ".git"))) {
+        Write-Warning -Message "Not a git repository: $RepoPath"
         return $false
     }
     
@@ -123,64 +187,90 @@ function Add-GitExclusion {
     
     # Check if pattern already exists
     $content = Get-Content $excludeFile -ErrorAction SilentlyContinue
-    if ($content -contains $pattern) {
-        Write-Info "Exclusion already exists in: $repoPath"
+    if ($content -contains $Pattern) {
+        Write-Info -Message "Exclusion already exists in: $RepoPath"
         return $true
     }
     
     # Add pattern
-    Add-Content -Path $excludeFile -Value $pattern
-    Write-Success "Added exclusion to: $repoPath"
+    Add-Content -Path $excludeFile -Value $Pattern
+    Write-Success -Message "Added exclusion to: $RepoPath"
     return $true
 }
 
 # Verify file is ignored by git
 function Test-GitIgnored {
+    [CmdletBinding()]
+    [OutputType([bool])]
     param(
-        [string]$repoPath,
-        [string]$file = ".github\copilot-instructions.md"
+        [Parameter(Mandatory)]
+        [string]$RepoPath,
+        
+        [Parameter()]
+        [string]$File = "$GITHUB_DIR\$COPILOT_FILE_NAME"
     )
     
-    Push-Location $repoPath
+    Push-Location $RepoPath
     try {
-        $status = git status --porcelain $file 2>$null
+        $status = git status --porcelain $File 2>$null
         if ([string]::IsNullOrWhiteSpace($status)) {
-            Write-Success "Verified ignored in: $repoPath"
+            Write-Success -Message "Verified ignored in: $RepoPath"
             return $true
         } else {
-            Write-Warning "File still tracked in: $repoPath (Status: $status)"
+            Write-Warning -Message "File still tracked in: $RepoPath (Status: $status)"
             return $false
         }
+    } catch {
+        Write-Verbose "Git status check failed: $_"
+        return $false
     } finally {
         Pop-Location
     }
 }
 
+# Sync result object for better structure
+function New-SyncResult {
+    [CmdletBinding()]
+    param(
+        [int]$Synced = 0,
+        [int]$Skipped = 0,
+        [int]$Excluded = 0,
+        [int]$Verified = 0
+    )
+    
+    return [PSCustomObject]@{
+        Synced = $Synced
+        Skipped = $Skipped
+        Excluded = $Excluded
+        Verified = $Verified
+    }
+}
+
 # Main execution
-Write-Info "Starting Copilot Instructions Sync..."
+Write-Info -Message "Starting Copilot Instructions Sync..."
 Write-Host ""
 
 # Step 1: Find source file
-Write-Info "Step 1: Detecting source file..."
+Write-Info -Message "Step 1: Detecting source file..."
 $sourceFile = Find-SourceFile
 
 if (-not $sourceFile) {
-    Write-Error "Could not find copilot-instructions.md in current directory"
-    Write-Info "Searched in:"
-    Write-Host "  - .github\copilot-instructions.md"
-    Write-Host "  - copilot-instructions.md"
+    Write-Error -Message "Could not find $COPILOT_FILE_NAME in current directory"
+    Write-Info -Message "Searched in:"
+    Write-Host "  - $GITHUB_DIR\$COPILOT_FILE_NAME"
+    Write-Host "  - $COPILOT_FILE_NAME"
     exit 1
 }
 
-Write-Success "Found source: $sourceFile"
-$sourceVersion = Get-CopilotVersion -filePath $sourceFile
+Write-Success -Message "Found source: $sourceFile"
+$sourceVersion = Get-CopilotVersion -FilePath $sourceFile
 if ($sourceVersion) {
-    Write-Info "Source version: v$sourceVersion"
+    Write-Info -Message "Source version: v$sourceVersion"
 } else {
-    Write-Warning "No version found in source (will be treated as v0.0)"
+    Write-Warning -Message "No version found in source (will be treated as v0.0)"
 }
 $sourceHash = (Get-FileHash $sourceFile -Algorithm MD5).Hash
-Write-Info "Source MD5: $sourceHash"
+Write-Info -Message "Source MD5: $sourceHash"
 Write-Host ""
 
 # Get source directory for path comparison
@@ -188,53 +278,50 @@ $sourceDir = Split-Path (Resolve-Path $sourceFile).Path -Parent
 $sourceRepoRoot = Split-Path $sourceDir -Parent
 
 # Step 2: Sync to targets
-Write-Info "Step 2: Syncing to target repositories..."
-$syncCount = 0
-$skipCount = 0
-$excludeCount = 0
-$verifyCount = 0
+Write-Info -Message "Step 2: Syncing to target repositories..."
+$results = New-SyncResult
 
-foreach ($targetRepo in $targetRepos) {
+foreach ($targetRepo in $TARGET_REPOS) {
     Write-Host ""
-    Write-Info "Processing: $targetRepo"
+    Write-Info -Message "Processing: $targetRepo"
     
     # Check if target repo exists
     if (-not (Test-Path $targetRepo)) {
-        Write-Warning "Repository not found, skipping: $targetRepo"
-        $skipCount++
+        Write-Warning -Message "Repository not found, skipping: $targetRepo"
+        $results.Skipped++
         continue
     }
     
     # Check if source and target are the same
-    if (Test-SamePath -path1 $sourceRepoRoot -path2 $targetRepo) {
-        Write-Warning "Source and target are the same, skipping self-sync"
-        $skipCount++
+    if (Test-SamePath -Path1 $sourceRepoRoot -Path2 $targetRepo) {
+        Write-Warning -Message "Source and target are the same, skipping self-sync"
+        $results.Skipped++
         continue
     }
     
     # Create .github directory if needed
-    $targetGithubDir = Join-Path $targetRepo ".github"
+    $targetGithubDir = Join-Path $targetRepo $GITHUB_DIR
     if (-not (Test-Path $targetGithubDir)) {
         New-Item -ItemType Directory -Path $targetGithubDir -Force | Out-Null
-        Write-Success "Created .github directory"
+        Write-Success -Message "Created $GITHUB_DIR directory"
     }
     
     # Check target version
-    $targetFile = Join-Path $targetGithubDir "copilot-instructions.md"
-    $targetVersion = Get-CopilotVersion -filePath $targetFile
+    $targetFile = Join-Path $targetGithubDir $COPILOT_FILE_NAME
+    $targetVersion = Get-CopilotVersion -FilePath $targetFile
     
     if ($targetVersion) {
-        Write-Info "Target version: v$targetVersion"
+        Write-Info -Message "Target version: v$targetVersion"
     } else {
-        Write-Info "Target version: None (will be treated as v0.0)"
+        Write-Info -Message "Target version: None (will be treated as v0.0)"
     }
     
     # Compare versions
-    $shouldUpdate = Compare-CopilotVersion -sourceVersion $sourceVersion -targetVersion $targetVersion
+    $shouldUpdate = Compare-CopilotVersion -SourceVersion $sourceVersion -TargetVersion $targetVersion
     
     if (-not $shouldUpdate) {
-        Write-Warning "Target version is same or newer, skipping sync"
-        $skipCount++
+        Write-Warning -Message "Target version is same or newer, skipping sync"
+        $results.Skipped++
         continue
     }
     
@@ -244,55 +331,52 @@ foreach ($targetRepo in $targetRepos) {
         $targetHash = (Get-FileHash $targetFile -Algorithm MD5).Hash
         
         if ($targetHash -eq $sourceHash) {
-            Write-Success "Synced successfully (MD5 verified)"
-            $syncCount++
+            Write-Success -Message "Synced successfully (MD5 verified)"
+            $results.Synced++
         } else {
-            Write-Warning "Synced but hash mismatch"
+            Write-Warning -Message "Synced but hash mismatch"
         }
     } catch {
-        Write-Error "Failed to copy: $_"
+        Write-Error -Message "Failed to copy: $_"
         continue
     }
     
     # Add exclusion
-    if (Add-GitExclusion -repoPath $targetRepo) {
-        $excludeCount++
+    if (Add-GitExclusion -RepoPath $targetRepo) {
+        $results.Excluded++
     }
     
     # Verify ignored
-    if (Test-GitIgnored -repoPath $targetRepo) {
-        $verifyCount++
+    if (Test-GitIgnored -RepoPath $targetRepo) {
+        $results.Verified++
     }
 }
 
 # Summary
-Write-Host ""
-Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "Sync Summary:" -ForegroundColor Cyan
-Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-SectionDivider -Title "Sync Summary:"
 Write-Host "  Source File:        $sourceFile"
 if ($sourceVersion) {
     Write-Host "  Source Version:     v$sourceVersion"
 } else {
     Write-Host "  Source Version:     None"
 }
-Write-Host "  Target Repos:       $($targetRepos.Count)"
-Write-Host "  Files Synced:       $syncCount"
-Write-Host "  Files Skipped:      $skipCount"
-Write-Host "  Exclusions Added:   $excludeCount"
-Write-Host "  Verified Ignored:   $verifyCount"
-Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "  Target Repos:       $($TARGET_REPOS.Count)"
+Write-Host "  Files Synced:       $($results.Synced)"
+Write-Host "  Files Skipped:      $($results.Skipped)"
+Write-Host "  Exclusions Added:   $($results.Excluded)"
+Write-Host "  Verified Ignored:   $($results.Verified)"
+Write-Host ("═" * 55) -ForegroundColor Cyan
 
-if ($syncCount -gt 0) {
+if ($results.Synced -gt 0) {
     Write-Host ""
-    Write-Success "Sync completed successfully!"
+    Write-Success -Message "Sync completed successfully!"
     exit 0
-} elseif ($skipCount -eq $targetRepos.Count) {
+} elseif ($results.Skipped -eq $TARGET_REPOS.Count) {
     Write-Host ""
-    Write-Info "All targets are up-to-date or skipped."
+    Write-Info -Message "All targets are up-to-date or skipped."
     exit 0
 } else {
     Write-Host ""
-    Write-Warning "Some operations failed. Review output above."
+    Write-Warning -Message "Some operations failed. Review output above."
     exit 1
 }

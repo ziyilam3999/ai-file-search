@@ -11,6 +11,8 @@ All notable changes to this project are documented in this file.
   - **Auto-untrack feature:** Detects if file is tracked in git index and automatically removes it with `git rm --cached` + commit
   - **Source repo protection:** Checks and untracks file in source repository itself before syncing
   - **Always configure git:** Untrack and add exclusion rules even when sync is skipped (version already up-to-date)
+  - **New repo support:** Automatically creates .github folder, syncs file, and configures git for repos without copilot-instructions.md
+  - **Easy scalability:** Clear configuration section with instructions for adding new target repos
   - Automatically configures .git/info/exclude to prevent commits
   - Verifies git exclusion with status check
   - **Smart version comparison:** Only syncs if target version is older (semantic versioning)

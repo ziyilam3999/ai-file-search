@@ -24,10 +24,25 @@ $GITHUB_DIR = ".github"
 $GIT_EXCLUDE_PATH = ".git\info\exclude"
 $VERSION_REGEX = 'copilot-instructions v([\d.]+)'
 
-# Target repositories
+# ═══════════════════════════════════════════════════════════════════════════
+# TARGET REPOSITORIES CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+# Add repository paths here. Script will:
+# 1. Create .github folder if missing
+# 2. Sync copilot-instructions.md if target version is older (or missing)
+# 3. Auto-untrack if file is tracked in git
+# 4. Add to .git/info/exclude
+# 5. Verify file is ignored
+#
+# To add a new repository:
+# - Add absolute path to the array below
+# - Ensure path exists and is a git repository
+# ═══════════════════════════════════════════════════════════════════════════
+
 $TARGET_REPOS = @(
     "C:\Users\ziyil\pillar_snapper",
-    "C:\Users\ziyil\ai-file-search"
+    "C:\Users\ziyil\ai-file-search",
+    "C:\Users\ziyil\GetSpace"
 )
 
 # Output formatting functions
@@ -398,10 +413,10 @@ foreach ($targetRepo in $TARGET_REPOS) {
     if ($targetVersion) {
         Write-Info -Message "Target version: v$targetVersion"
     } else {
-        Write-Info -Message "Target version: None (will be treated as v0.0)"
+        Write-Info -Message "Target version: None (will be treated as v0.0 - will sync)"
     }
     
-    # Compare versions
+    # Compare versions (null target version = always sync)
     $shouldUpdate = Compare-CopilotVersion -SourceVersion $sourceVersion -TargetVersion $targetVersion
     
     if ($shouldUpdate) {

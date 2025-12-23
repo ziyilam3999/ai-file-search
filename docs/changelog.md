@@ -7,6 +7,18 @@ All notable changes to this project are documented in this file.
 ### Added
 - **Prompt Understanding Protocol:** New Phase 1.5 in Protocol 0 that assesses user prompt clarity before execution. Uses a 4-point scoring system (Action verb, Target, Behavior, Scope) to determine if clarification is needed. Includes Fast-Path triggers to skip assessment for well-structured requests, preventing over-bureaucratization while ensuring ambiguous requests are clarified before execution.
 - **Model Pre-loading:** Phi-3 model now loads on app startup in background thread, eliminating cold start delay on first query.
+
+### Changed
+- **Copilot Instructions Restructure (v2.1):** Major overhaul for AI readability and token efficiency:
+  - Added Quick Reference Decision Tree at top for O(1) scenario lookup
+  - Consolidated 3 scattered checklists into unified CHECKLISTS section
+  - Introduced SCENARIO TEMPLATE (shared structure) to eliminate ~100 lines of duplication
+  - Renamed Scenario phases to Steps (avoiding collision with Protocol 0 Phases)
+  - Added inline ⚠️ FAILURE MODE callouts at risk points
+  - Added visible heading anchors `[A]`, `[B]`, etc. for fast navigation
+  - Compressed Protocol 1 (Project Init) from 60 lines to 15-line table
+  - Added version header for staleness detection
+  - **Result:** 677 lines → 340 lines (50% reduction), ~1,200 tokens saved per session
 - **Loading Indicator:** Status bar now shows "Loading AI Model..." during startup, then "AI Model: Ready ✓" when complete.
 
 ### Changed

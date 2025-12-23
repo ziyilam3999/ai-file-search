@@ -6,23 +6,33 @@
     This script detects copilot-instructions.md in the current repo and syncs it to
     specified target repositories. It automatically configures .git/info/exclude to
     prevent the file from being committed and verifies the exclusion.
+    
+    The script also syncs itself to target repos, ensuring all repos have the latest
+    version of the sync tool.
 
 .EXAMPLE
     .\sync_copilot_instructions.ps1
     
 .NOTES
     Author: AI File Search Project
+    Version: 1.0.0
     Date: 2025-12-23
 #>
 
 [CmdletBinding()]
 param()
 
+# Script version (update this when making changes)
+$SCRIPT_VERSION = [version]"1.0.0"
+$SCRIPT_NAME = "sync_copilot_instructions.ps1"
+
 # Constants
 $COPILOT_FILE_NAME = "copilot-instructions.md"
 $GITHUB_DIR = ".github"
+$TOOLS_DIR = "tools"
 $GIT_EXCLUDE_PATH = ".git\info\exclude"
 $VERSION_REGEX = 'copilot-instructions v([\d.]+)'
+$SCRIPT_VERSION_REGEX = 'Version:\s*([\d.]+)'
 
 # ═══════════════════════════════════════════════════════════════════════════
 # TARGET REPOSITORIES CONFIGURATION
@@ -99,6 +109,33 @@ function Get-CopilotVersion {
         }
     } catch {
         Write-Warning -Message "Could not read version from: $FilePath"
+    }
+    
+    return $null
+}
+
+# Parse version from script .NOTES section
+function Get-ScriptVersion {
+    [CmdletBinding()]
+    [OutputType([version])]
+    param(
+        [Parameter(Mandatory)]
+        [string]$FilePath
+    )
+    
+    if (-not (Test-Path $FilePath)) {
+        return $null
+    }
+    
+    try {
+        $content = Get-Content $FilePath -First 30 -ErrorAction Stop
+        foreach ($line in $content) {
+            if ($line -match $SCRIPT_VERSION_REGEX) {
+                return [version]$matches[1]
+            }
+        }
+    } catch {
+        Write-Warning -Message "Could not read script version from: $FilePath"
     }
     
     return $null
@@ -314,7 +351,8 @@ function New-SyncResult {
         [int]$Skipped = 0,
         [int]$Excluded = 0,
         [int]$Untracked = 0,
-        [int]$Verified = 0
+        [int]$Verified = 0,
+        [int]$ScriptsSynced = 0
     )
     
     return [PSCustomObject]@{
@@ -323,6 +361,7 @@ function New-SyncResult {
         Excluded = $Excluded
         Untracked = $Untracked
         Verified = $Verified
+        ScriptsSynced = $ScriptsSynced
     }
 }
 
@@ -331,7 +370,7 @@ Write-Info -Message "Starting Copilot Instructions Sync..."
 Write-Host ""
 
 # Step 1: Find source file
-Write-Info -Message "Step 1: Detecting source file..."
+Write-Info -Message "Step 1: Detecting source file and script..."
 $sourceFile = Find-SourceFile
 
 if (-not $sourceFile) {
@@ -356,6 +395,12 @@ Write-Info -Message "Source MD5: $sourceHash"
 $sourceDir = Split-Path (Resolve-Path $sourceFile).Path -Parent
 $sourceRepoRoot = Split-Path $sourceDir -Parent
 
+# Locate this script
+$scriptPath = $PSCommandPath
+Write-Info -Message "Script version: v$SCRIPT_VERSION"
+Write-Info -Message "Script path: $scriptPath"
+$scriptHash = (Get-FileHash $scriptPath -Algorithm MD5).Hash
+
 # Check if source file is tracked in source repo and untrack if needed
 Write-Host ""
 Write-Info -Message "Checking source repository..."
@@ -368,11 +413,22 @@ if (Test-GitTracked -RepoPath $sourceRepoRoot -File "$GITHUB_DIR/$COPILOT_FILE_N
     Write-Info -Message "Source file is not tracked (good)"
 }
 
-# Ensure source has exclusion configured
+# Check if source script is tracked and untrack if needed
+if (Test-GitTracked -RepoPath $sourceRepoRoot -File "$TOOLS_DIR/$SCRIPT_NAME") {
+    Write-Info -Message "Source script is tracked in git, removing from index..."
+    if (Remove-FromGitIndex -RepoPath $sourceRepoRoot -File "$TOOLS_DIR/$SCRIPT_NAME") {
+        Write-Success -Message "Source repo: Script untracked successfully"
+    }
+} else {
+    Write-Info -Message "Source script is not tracked (good)"
+}
+
+# Ensure source has exclusions configured
 if (-not (Test-Path (Join-Path $sourceRepoRoot ".git"))) {
     Write-Warning -Message "Source is not a git repository"
 } else {
-    Add-GitExclusion -RepoPath $sourceRepoRoot | Out-Null
+    Add-GitExclusion -RepoPath $sourceRepoRoot -Pattern "$GITHUB_DIR/$COPILOT_FILE_NAME" | Out-Null
+    Add-GitExclusion -RepoPath $sourceRepoRoot -Pattern "$TOOLS_DIR/$SCRIPT_NAME" | Out-Null
 }
 
 Write-Host ""
@@ -449,15 +505,66 @@ foreach ($targetRepo in $TARGET_REPOS) {
         }
     }
     
-    # Add exclusion
-    if (Add-GitExclusion -RepoPath $targetRepo) {
+    # Add exclusion for copilot instructions
+    if (Add-GitExclusion -RepoPath $targetRepo -Pattern "$GITHUB_DIR/$COPILOT_FILE_NAME") {
         $results.Excluded++
     }
     
     # Verify ignored
-    if (Test-GitIgnored -RepoPath $targetRepo) {
+    if (Test-GitIgnored -RepoPath $targetRepo -File "$GITHUB_DIR\$COPILOT_FILE_NAME") {
         $results.Verified++
     }
+    
+    # Sync the script itself
+    Write-Host ""
+    Write-Info -Message "Syncing script to target..."
+    
+    # Create tools directory if needed
+    $targetToolsDir = Join-Path $targetRepo $TOOLS_DIR
+    if (-not (Test-Path $targetToolsDir)) {
+        New-Item -ItemType Directory -Path $targetToolsDir -Force | Out-Null
+        Write-Success -Message "Created $TOOLS_DIR directory"
+    }
+    
+    # Check target script version
+    $targetScriptFile = Join-Path $targetToolsDir $SCRIPT_NAME
+    $targetScriptVersion = Get-ScriptVersion -FilePath $targetScriptFile
+    
+    if ($targetScriptVersion) {
+        Write-Info -Message "Target script version: v$targetScriptVersion"
+    } else {
+        Write-Info -Message "Target script version: None (will sync)"
+    }
+    
+    # Compare script versions
+    $shouldUpdateScript = Compare-CopilotVersion -SourceVersion $SCRIPT_VERSION -TargetVersion $targetScriptVersion
+    
+    if ($shouldUpdateScript) {
+        try {
+            Copy-Item -Path $scriptPath -Destination $targetScriptFile -Force
+            $targetScriptHash = (Get-FileHash $targetScriptFile -Algorithm MD5).Hash
+            
+            if ($targetScriptHash -eq $scriptHash) {
+                Write-Success -Message "Script synced successfully (MD5 verified)"
+                $results.ScriptsSynced++
+            } else {
+                Write-Warning -Message "Script synced but hash mismatch"
+            }
+        } catch {
+            Write-Error -Message "Failed to copy script: $_"
+        }
+    } else {
+        Write-Info -Message "Target script version is same or newer, skipping"
+    }
+    
+    # Check if script is tracked in git and remove if needed
+    if (Test-GitTracked -RepoPath $targetRepo -File "$TOOLS_DIR/$SCRIPT_NAME") {
+        Write-Info -Message "Script is tracked in git, removing from index..."
+        Remove-FromGitIndex -RepoPath $targetRepo -File "$TOOLS_DIR/$SCRIPT_NAME" | Out-Null
+    }
+    
+    # Add exclusion for script
+    Add-GitExclusion -RepoPath $targetRepo -Pattern "$TOOLS_DIR/$SCRIPT_NAME" | Out-Null
 }
 
 # Summary
@@ -468,8 +575,10 @@ if ($sourceVersion) {
 } else {
     Write-Host "  Source Version:     None"
 }
+Write-Host "  Script Version:     v$SCRIPT_VERSION"
 Write-Host "  Target Repos:       $($TARGET_REPOS.Count)"
 Write-Host "  Files Synced:       $($results.Synced)"
+Write-Host "  Scripts Synced:     $($results.ScriptsSynced)"
 Write-Host "  Files Skipped:      $($results.Skipped)"
 Write-Host "  Files Untracked:    $($results.Untracked)"
 Write-Host "  Exclusions Added:   $($results.Excluded)"

@@ -5,6 +5,7 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Prompt Understanding Protocol:** New Phase 1.5 in Protocol 0 that assesses user prompt clarity before execution. Uses a 4-point scoring system (Action verb, Target, Behavior, Scope) to determine if clarification is needed. Includes Fast-Path triggers to skip assessment for well-structured requests, preventing over-bureaucratization while ensuring ambiguous requests are clarified before execution.
 - **Model Pre-loading:** Phi-3 model now loads on app startup in background thread, eliminating cold start delay on first query.
 - **Loading Indicator:** Status bar now shows "Loading AI Model..." during startup, then "AI Model: Ready ✓" when complete.
 

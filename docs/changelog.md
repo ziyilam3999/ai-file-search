@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Refactoring Phase 2 (TD-020, TD-021):** Centralized configuration and eliminated code duplication:
+  - **Path Constants:** Replaced 25+ hardcoded `"meta.sqlite"` and `"index.faiss"` strings across tools/ and tests/ with `DATABASE_PATH` and `INDEX_PATH` imports from `core.config`. Improves maintainability and single source of truth compliance.
+  - **Model Caching:** Eliminated duplicate `SentenceTransformer` loading in `daemon/watch.py`. `EmbeddingAdapter` now uses `Embedder._get_model()` singleton, reducing memory footprint by ~500MB.
+- **Refactoring Phase 1 (TD-018):** Clean root directory per architecture standards:
+  - Deleted empty `src/` folder (violated standards.md)
+  - Moved `debug_retrieval.py` and `quick_test.py` to `tools/` directory
+
 ### Added
 - **Prompt Understanding Protocol:** New Phase 1.5 in Protocol 0 that assesses user prompt clarity before execution. Uses a 4-point scoring system (Action verb, Target, Behavior, Scope) to determine if clarification is needed. Includes Fast-Path triggers to skip assessment for well-structured requests, preventing over-bureaucratization while ensuring ambiguous requests are clarified before execution.
 - **Model Pre-loading:** Phi-3 model now loads on app startup in background thread, eliminating cold start delay on first query.

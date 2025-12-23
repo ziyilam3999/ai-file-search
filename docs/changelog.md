@@ -23,6 +23,11 @@ All notable changes to this project are documented in this file.
   - Prevents accidental exposure of personal AI instructions to company repos
 
 ### Changed
+- **Copilot Instructions v2.2:** Structural refactoring for improved scannability:
+  - Consolidated 10 inline ⚠️ FAILURE MODE warnings into single "Failure Modes" reference table
+  - Replaced verbose warning blocks with compact inline references (→ FM-1, FM-2, FM-3)
+  - Added 'Proceed' prompts directly to confirmation blocks for clearer flow
+  - Maintained all safety checks while reducing visual noise
 - **Major Script Refactoring:** Comprehensive refactoring of `tools/sync_copilot_instructions.ps1` for better maintainability:
   - **High Priority:** Extracted `Sync-CopilotInstructions` and `Sync-ScriptFile` functions (single responsibility)
   - **High Priority:** Simplified main loop from ~100 lines to 15 lines (80% reduction)

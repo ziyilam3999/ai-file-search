@@ -3,7 +3,6 @@ Enhanced adapter with real incremental updates to the FAISS index.
 """
 
 import os
-import sqlite3
 import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -50,20 +49,10 @@ class EmbeddingAdapter:
 
             # Check/Create SQLite DB
             # We always connect to ensure table exists even if file exists
-            conn = sqlite3.connect(self.embedder.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS meta (
-                    id INTEGER PRIMARY KEY,
-                    file TEXT,
-                    chunk TEXT,
-                    doc_chunk_id INTEGER
-                )
-            """
-            )
-            conn.commit()
-            conn.close()
+            from core.database import get_db_manager
+
+            db = get_db_manager()
+            db.ensure_table_exists()
 
         except Exception as e:
             logger.error(f"Failed to initialize index/DB: {e}")
@@ -174,10 +163,10 @@ class EmbeddingAdapter:
                 logger.info("Clearing entire index")
 
                 # Clear database
-                conn = sqlite3.connect(DATABASE_PATH)
-                conn.execute("DELETE FROM meta")
-                conn.commit()
-                conn.close()
+                from core.database import get_db_manager
+
+                db = get_db_manager()
+                db.clear_all()
 
                 # Remove index files to clear
                 if os.path.exists(self.embedder.index_path):
@@ -243,14 +232,15 @@ class EmbeddingAdapter:
     ) -> bool:
         """Add chunks and embeddings to FAISS index and metadata database."""
         try:
+            from core.database import get_db_manager
+
             # Get current index and database
             index = faiss.read_index(self.embedder.index_path)
-            conn = sqlite3.connect(self.embedder.db_path)
+            db = get_db_manager()
 
             # Get next available ID
-            cursor = conn.cursor()
-            cursor.execute("SELECT MAX(id) FROM meta")
-            max_id = cursor.fetchone()[0]
+            result = db.fetch_one("SELECT MAX(id) FROM meta")
+            max_id = result[0] if result else None
             next_id = (max_id or 0) + 1
 
             # Prepare IDs for the new chunks
@@ -273,12 +263,9 @@ class EmbeddingAdapter:
                 (next_id + i, file_path, chunk) for i, chunk in enumerate(chunks)
             ]
 
-            cursor.executemany(
+            db.execute_many(
                 "INSERT INTO meta (id, file, chunk) VALUES (?, ?, ?)", metadata_entries
             )
-
-            conn.commit()
-            conn.close()
 
             return True
 
@@ -289,11 +276,14 @@ class EmbeddingAdapter:
     def _remove_existing_document(self, file_path: str) -> bool:
         """Remove existing document chunks from index (for updates)."""
         try:
-            conn = sqlite3.connect(self.embedder.db_path)
-            cursor = conn.cursor()
+            from core.database import get_db_manager
 
-            cursor.execute("SELECT id FROM meta WHERE file = ?", (file_path,))
-            existing_ids = [row[0] for row in cursor.fetchall()]
+            db = get_db_manager()
+
+            existing_ids_result = db.fetch_all(
+                "SELECT id FROM meta WHERE file = ?", (file_path,)
+            )
+            existing_ids = [row[0] for row in existing_ids_result]
 
             if existing_ids:
                 # Remove from FAISS index first
@@ -308,15 +298,14 @@ class EmbeddingAdapter:
 
                 # Remove from database
                 placeholders = ",".join("?" for _ in existing_ids)
-                cursor.execute(
-                    f"DELETE FROM meta WHERE id IN ({placeholders})", existing_ids
+                db.execute_query(
+                    f"DELETE FROM meta WHERE id IN ({placeholders})",
+                    tuple(existing_ids),
                 )
-                conn.commit()
                 logger.debug(
                     f"Removed {len(existing_ids)} existing chunks for {file_path}"
                 )
 
-            conn.close()
             return len(existing_ids) > 0
 
         except Exception as e:

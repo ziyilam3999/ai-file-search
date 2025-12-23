@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Changed
+- **Refactoring Phase 4 (TD-017):** Centralized database operations to eliminate duplicate SQLite code:
+  - Created `core/database.py` with `DatabaseManager` class (247 lines) - context manager pattern, singleton, 15+ helper methods
+  - Refactored `core/embedding.py` - removed 3 direct sqlite3.connect() calls
+  - Refactored `daemon/embedding_adapter.py` - removed 4 direct sqlite3.connect() calls
+  - Refactored `core/config.py` - replaced direct sqlite3 connection
+  - Result: All database operations use consistent error handling, transaction management, and DRY principle
 - **Refactoring Phase 3 (TD-019):** Split 1159-line `daemon/watch.py` God file into focused modules:
   - `daemon/watch.py` (696 lines) - FileWatcher orchestration
   - `daemon/embedding_adapter.py` (358 lines) - EmbeddingAdapter class

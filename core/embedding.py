@@ -5,7 +5,6 @@ Outputs : FAISS index, SQLite metadata, search results
 Uses    : sentence-transformers/all-MiniLM-L6-v2, FAISS, SQLite
 """
 
-import sqlite3
 import time
 import unicodedata
 from difflib import SequenceMatcher
@@ -79,11 +78,12 @@ class Embedder:
         if _METADATA_CACHE is None or current_mtime > _METADATA_MTIME:
             logger.info("LOADING: metadata cache (updated)...")
             try:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute("SELECT id, file, chunk, doc_chunk_id FROM meta")
-                metadata = cursor.fetchall()
-                conn.close()
+                from core.database import get_db_manager
+
+                db = get_db_manager()
+                metadata = db.fetch_all(
+                    "SELECT id, file, chunk, doc_chunk_id FROM meta"
+                )
                 # Create lookup dictionary: id -> (file, chunk, doc_chunk_id)
                 _METADATA_CACHE = {row[0]: (row[1], row[2], row[3]) for row in metadata}
                 _METADATA_MTIME = current_mtime
@@ -100,7 +100,7 @@ class Embedder:
                 logger.success(
                     f"SUCCESS: metadata loaded ({len(_METADATA_CACHE)} entries)"
                 )
-            except sqlite3.OperationalError as e:
+            except Exception as e:
                 logger.error(f"ERROR: Database corrupted or missing table 'meta': {e}")
                 return None
         return _METADATA_CACHE
@@ -144,10 +144,11 @@ class Embedder:
         index = faiss.IndexIDMap(faiss.IndexFlatL2(384))
 
         # Initialize database
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute("DROP TABLE IF EXISTS meta")
-        cursor.execute(
+        from core.database import get_db_manager
+
+        db = get_db_manager()
+        db.execute_query("DROP TABLE IF EXISTS meta")
+        db.execute_query(
             """
             CREATE TABLE meta (
                 id INTEGER PRIMARY KEY,
@@ -188,7 +189,7 @@ class Embedder:
                             # Batch insert to keep memory usage low
                             if len(all_chunks) >= 1000:
                                 self._batch_insert(
-                                    index, model, cursor, all_chunks, chunk_metadata
+                                    index, model, db, all_chunks, chunk_metadata
                                 )
                                 all_chunks = []
                                 chunk_metadata = []
@@ -198,23 +199,21 @@ class Embedder:
 
         # Process remaining chunks
         if all_chunks:
-            self._batch_insert(index, model, cursor, all_chunks, chunk_metadata)
+            self._batch_insert(index, model, db, all_chunks, chunk_metadata)
 
         # Save index
         faiss.write_index(index, self.index_path)
-        conn.commit()
-        conn.close()
 
         elapsed = time.time() - start_time
         logger.success(f"INDEXING COMPLETE: {chunk_id} chunks in {elapsed:.2f}s")
 
-    def _batch_insert(self, index, model, cursor, chunks, metadata):
+    def _batch_insert(self, index, model, db, chunks, metadata):
         """Helper to insert a batch of chunks."""
         embeddings = model.encode(
             chunks, convert_to_numpy=True, normalize_embeddings=True
         )
         index.add(embeddings)
-        cursor.executemany(
+        db.execute_many(
             "INSERT INTO meta (id, file, chunk, doc_chunk_id) VALUES (?, ?, ?, ?)",
             metadata,
         )

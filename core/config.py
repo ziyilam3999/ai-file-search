@@ -241,14 +241,12 @@ def calculate_document_page(doc_chunk_id: int) -> int:
     Returns:
         Estimated page number within the document
     """
-    import sqlite3
+    from core.database import get_db_manager
 
-    # Get document info for this chunk
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
+    db = get_db_manager()
 
     # Find which document this chunk belongs to and get total chunks
-    cursor.execute(
+    result = db.fetch_one(
         """
         SELECT COUNT(*)
         FROM meta
@@ -256,9 +254,6 @@ def calculate_document_page(doc_chunk_id: int) -> int:
     """,
         (doc_chunk_id,),
     )
-
-    result = cursor.fetchone()
-    conn.close()
 
     if not result or not result[0]:
         return 1

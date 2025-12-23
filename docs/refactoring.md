@@ -6,7 +6,7 @@ Technical debt and cleanup tasks.
 
 | ID | Description | Priority | Effort | Status |
 |----|-------------|----------|--------|--------|
-| TD-017 | Code Duplication: SQLite/FAISS/Model loading scattered across modules | Critical | High | Not Started |
+| TD-017 | Code Duplication: SQLite/FAISS/Model loading scattered across modules | Critical | High | Completed |
 | TD-018 | Architectural Violations: Empty src/ folder, misplaced root scripts | High | Low | Completed |
 | TD-019 | Code Complexity: daemon/watch.py is 1157 lines (God file) | Medium | High | Completed |
 | TD-020 | Inconsistent Path Constants: Tools hardcode paths instead of using config | Medium | Medium | Completed |
@@ -18,8 +18,12 @@ Technical debt and cleanup tasks.
 ## Completed Refactoring
 
 | ID | Description | Completed |
-|----|-------------|-----------|| TD-021 | Model Caching: Consolidate SentenceTransformer loading via Embedder singleton | 2025-12-23 |
-| TD-020 | Path Constants: Replace 25+ hardcoded paths with DATABASE_PATH/INDEX_PATH | 2025-12-23 || TD-018 | Architectural Violations: Delete empty src/ folder, move debug/test scripts to tools/ | 2025-12-23 |
+|----|-------------|-----------|
+| TD-017 | Database Management: Create DatabaseManager class to centralize SQLite operations | 2025-12-23 |
+| TD-019 | Code Complexity: Split daemon/watch.py (1159→696 lines) into focused modules | 2025-12-23 |
+| TD-021 | Model Caching: Consolidate SentenceTransformer loading via Embedder singleton | 2025-12-23 |
+| TD-020 | Path Constants: Replace 25+ hardcoded paths with DATABASE_PATH/INDEX_PATH | 2025-12-23 |
+| TD-018 | Architectural Violations: Delete empty src/ folder, move debug/test scripts to tools/ | 2025-12-23 |
 | TD-016 | Refactor core/utils.py to decouple HTML generation from citation formatting | 2025-12-22 |
 | TD-015 | Refactor ui/app.py into modular components (styles, components) | 2025-12-22 |
 | TD-014 | Extract monitoring logic to core/monitoring.py and clean up JS | 2025-12-21 |
@@ -63,38 +67,30 @@ Technical debt and cleanup tasks.
 
 ## Refactoring Plan (2025-12-23 Review)
 
-### TD-017: Code Duplication Issues (Critical)
+### TD-017: Code Duplication Issues (Critical) - ✅ COMPLETED
 
-**Current State:**
-- SQLite connections use hardcoded `"meta.sqlite"` in 20+ locations across tools/
-- `SentenceTransformer` loaded independently in both `core/embedding.py` and `daemon/watch.py`
-- `EmbeddingAdapter` in `daemon/watch.py` reimplements FAISS operations that exist in `Embedder`
+**Previous State:**
+- SQLite connections scattered across 3 core modules with duplicate connection code
+- Each module opened/closed connections independently
+- No consistent error handling or transaction management
 
-**Affected Files:**
-- `tools/monitor_file_processing.py` - hardcoded "meta.sqlite"
-- `tools/monitor_business_rules.py` - hardcoded "meta.sqlite"
-- `tools/fix_citations.py` - 4x hardcoded "meta.sqlite"
-- `tools/debug_db.py` - hardcoded "meta.sqlite"
-- `tools/debug_database.py` - 5x hardcoded "meta.sqlite"
-- `tools/debug_citation.py` - 2x hardcoded "meta.sqlite"
-- `tools/check_paths.py` - hardcoded "meta.sqlite"
-- `tools/analyze_coverage.py` - hardcoded "meta.sqlite"
-- `quick_test.py` - hardcoded "meta.sqlite"
-- `daemon/watch.py` - duplicate SentenceTransformer, duplicate FAISS operations
+**Actions Taken:**
+1. ✅ Created `core/database.py` with `DatabaseManager` class (247 lines)
+   - Context manager pattern for safe connection handling
+   - Singleton pattern via `get_db_manager()` function
+   - 15+ helper methods: `execute_query()`, `fetch_all()`, `fetch_one()`, `ensure_table_exists()`, etc.
+2. ✅ Refactored `core/config.py` - replaced direct sqlite3 connection
+3. ✅ Refactored `core/embedding.py` - removed 3 sqlite3.connect() calls
+4. ✅ Refactored `daemon/embedding_adapter.py` - removed 4 sqlite3.connect() calls
+5. ✅ Removed unused sqlite3 imports from all refactored modules
 
-**Target State:**
-1. Create `core/database.py` with `DatabaseManager` class for all SQLite operations
-2. All modules import `DATABASE_PATH` from `core/config.py`
-3. `EmbeddingAdapter` delegates to `Embedder` methods instead of reimplementing
+**Result:**
+- All SQLite operations now centralized through DatabaseManager
+- Consistent error handling and transaction management
+- Reduced code duplication (DRY principle)
+- Easier to maintain and test database operations
 
-**Effort:** High (estimated 4-6 hours)
-
-**Steps:**
-1. [ ] Create `core/database.py` with connection context manager
-2. [ ] Update all tools to use `DATABASE_PATH` constant
-3. [ ] Refactor `EmbeddingAdapter` to use `Embedder` methods
-4. [ ] Remove duplicate `SentenceTransformer` loading in `daemon/watch.py`
-5. [ ] Add tests for new `DatabaseManager`
+**Effort:** 4 hours
 
 ---
 

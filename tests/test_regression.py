@@ -32,6 +32,7 @@ import faiss
 from loguru import logger
 
 from core.ask import answer_question
+from core.config import DATABASE_PATH, INDEX_PATH
 from core.embedding import Embedder
 
 
@@ -109,14 +110,14 @@ class RegressionTester:
 
         # Test database integrity
         try:
-            conn = sqlite3.connect(project_root / "meta.sqlite")
+            conn = sqlite3.connect(DATABASE_PATH)
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM meta")
             db_count = cursor.fetchone()[0]
             conn.close()
 
             # Test FAISS index
-            index = faiss.read_index(str(project_root / "index.faiss"))
+            index = faiss.read_index(INDEX_PATH)
             faiss_count = index.ntotal
 
             if db_count == 0 or faiss_count == 0:

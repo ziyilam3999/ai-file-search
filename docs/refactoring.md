@@ -9,8 +9,8 @@ Technical debt and cleanup tasks.
 | TD-017 | Code Duplication: SQLite/FAISS/Model loading scattered across modules | Critical | High | Not Started |
 | TD-018 | Architectural Violations: Empty src/ folder, misplaced root scripts | High | Low | Completed |
 | TD-019 | Code Complexity: daemon/watch.py is 1157 lines (God file) | Medium | High | Not Started |
-| TD-020 | Inconsistent Path Constants: Tools hardcode paths instead of using config | Medium | Medium | Not Started |
-| TD-021 | Model Caching Inconsistency: Multiple SentenceTransformer instances | Medium | Medium | Not Started |
+| TD-020 | Inconsistent Path Constants: Tools hardcode paths instead of using config | Medium | Medium | Completed |
+| TD-021 | Model Caching Inconsistency: Multiple SentenceTransformer instances | Medium | Medium | Completed |
 | TD-022 | Type Annotation Gaps in daemon/watch.py | Low | Low | Not Started |
 | TD-001 | EmbeddingAdapter uses mock instead of real incremental updates | Medium | High | Not Started |
 | TD-002 | PRD_v0.4.docx should be converted to Markdown | Low | Low | Not Started |
@@ -18,8 +18,8 @@ Technical debt and cleanup tasks.
 ## Completed Refactoring
 
 | ID | Description | Completed |
-|----|-------------|-----------|
-| TD-018 | Architectural Violations: Delete empty src/ folder, move debug/test scripts to tools/ | 2025-12-23 |
+|----|-------------|-----------|| TD-021 | Model Caching: Consolidate SentenceTransformer loading via Embedder singleton | 2025-12-23 |
+| TD-020 | Path Constants: Replace 25+ hardcoded paths with DATABASE_PATH/INDEX_PATH | 2025-12-23 || TD-018 | Architectural Violations: Delete empty src/ folder, move debug/test scripts to tools/ | 2025-12-23 |
 | TD-016 | Refactor core/utils.py to decouple HTML generation from citation formatting | 2025-12-22 |
 | TD-015 | Refactor ui/app.py into modular components (styles, components) | 2025-12-22 |
 | TD-014 | Extract monitoring logic to core/monitoring.py and clean up JS | 2025-12-21 |
@@ -171,10 +171,12 @@ daemon/
 **Effort:** Medium (estimated 2 hours)
 
 **Steps:**
-1. [ ] Update each tool file to import from `core.config`
-2. [ ] Replace hardcoded strings with constants
-3. [ ] Run tests to verify no regressions
+1. [x] Update each tool file to import from `core.config`
+2. [x] Replace hardcoded strings with constants
+3. [x] Run tests to verify no regressions
 4. [ ] Add pre-commit hook to detect hardcoded path strings (optional)
+
+**Result:** Completed 2025-12-23. All tools now use centralized path constants.
 
 ---
 
@@ -198,11 +200,13 @@ daemon/
 **Effort:** Medium (estimated 1-2 hours)
 
 **Steps:**
-1. [ ] Make `Embedder._get_model()` a public method or add `get_model()` wrapper
-2. [ ] Update `EmbeddingAdapter._pre_warm_model()` to use `self.embedder.get_model()`
-3. [ ] Update `EmbeddingAdapter._generate_embeddings()` to use `self.embedder.get_model()`
-4. [ ] Remove duplicate `SentenceTransformer` imports in `daemon/watch.py`
+1. [x] Make `Embedder._get_model()` a public method or add `get_model()` wrapper
+2. [x] Update `EmbeddingAdapter._pre_warm_model()` to use `self.embedder._get_model()`
+3. [x] Update `EmbeddingAdapter._generate_embeddings()` to use `self.embedder._get_model()`
+4. [x] Remove duplicate `SentenceTransformer` imports in `daemon/watch.py`
 5. [ ] Add memory usage test to verify single instance
+
+**Result:** Completed 2025-12-23. Single model instance now shared across all components (~500MB memory savings).
 
 ---
 

@@ -9,6 +9,8 @@ import json
 import sqlite3
 from pathlib import Path
 
+from core.config import DATABASE_PATH
+
 
 def main():
     print("PRE-TEST: System Validation")
@@ -24,7 +26,7 @@ def main():
         print("ERROR: Watcher Status UNKNOWN (check logs/watcher_status.json)")
 
     # File counts
-    base_path = Path(__file__).parent
+    base_path = Path(__file__).parent.parent
     sample_count = len(
         [f for f in (base_path / "ai_search_docs").rglob("*") if f.is_file()]
     )
@@ -38,7 +40,7 @@ def main():
 
     # Database stats
     try:
-        conn = sqlite3.connect("meta.sqlite")
+        conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(DISTINCT file) FROM meta")
         indexed_count = cursor.fetchone()[0]

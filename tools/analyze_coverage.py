@@ -13,6 +13,8 @@ import sqlite3
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from core.config import DATABASE_PATH
+
 
 def analyze_coverage():
     """Detailed coverage analysis to understand the 73.7% issue."""
@@ -22,7 +24,7 @@ def analyze_coverage():
 
     # Get indexed files from database
     print("\n📊 STEP 1: Database Analysis")
-    conn = sqlite3.connect("meta.sqlite")
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT DISTINCT file FROM meta ORDER BY file")
     indexed_files = [row[0] for row in cursor.fetchall()]

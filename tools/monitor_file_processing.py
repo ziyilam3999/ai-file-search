@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Union
 import faiss
 from loguru import logger
 
+from core.config import DATABASE_PATH, INDEX_PATH
+
 
 def get_watcher_status() -> Dict[str, Any]:
     """Get current watcher status from status file."""
@@ -77,19 +79,19 @@ def get_index_statistics() -> Dict[str, Any]:
 
     try:
         # FAISS index stats
-        if Path("index.faiss").exists():
-            index = faiss.read_index("index.faiss")
+        if Path(INDEX_PATH).exists():
+            index = faiss.read_index(INDEX_PATH)
             stats["faiss_vectors"] = index.ntotal
             stats["index_size_mb"] = float(
-                Path("index.faiss").stat().st_size / (1024 * 1024)
+                Path(INDEX_PATH).stat().st_size / (1024 * 1024)
             )
     except Exception as e:
         logger.error(f"Error reading FAISS index: {e}")
 
     try:
         # Database stats
-        if Path("meta.sqlite").exists():
-            conn = sqlite3.connect("meta.sqlite")
+        if Path(DATABASE_PATH).exists():
+            conn = sqlite3.connect(DATABASE_PATH)
             cursor = conn.cursor()
 
             # Total records
@@ -157,7 +159,7 @@ def monitor_system() -> None:
     try:
         import sqlite3
 
-        conn = sqlite3.connect("meta.sqlite")
+        conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT file FROM meta")
         indexed_files = {row[0] for row in cursor.fetchall()}

@@ -9,10 +9,12 @@ import sqlite3
 import sys
 from pathlib import Path
 
+from core.config import DATABASE_PATH
+
 
 def debug_backend_citation():
     """Debug the specific Backend System Business Rules citation issue."""
-    conn = sqlite3.connect("meta.sqlite")
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
 
     print("🔍 CITATION MAPPING DEBUG - Backend System Business Rules")
@@ -53,7 +55,7 @@ def debug_backend_citation():
 
 def debug_all_citation_mappings():
     """Debug all citation mappings to identify issues."""
-    conn = sqlite3.connect("meta.sqlite")
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
 
     print("🔍 COMPLETE CITATION MAPPING ANALYSIS")

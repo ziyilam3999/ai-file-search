@@ -8,11 +8,13 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from core.config import DATABASE_PATH
+
 
 def get_file_count(category="business_rules"):
     """Get current file count for a category."""
     try:
-        conn = sqlite3.connect("meta.sqlite")
+        conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute(
             "SELECT COUNT(DISTINCT file) FROM meta WHERE file LIKE ?",
@@ -30,7 +32,7 @@ def get_business_rules_status():
     """Get detailed business rules status from database and filesystem."""
     try:
         # Database check
-        conn = sqlite3.connect("meta.sqlite")
+        conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute(
             """

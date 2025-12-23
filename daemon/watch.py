@@ -32,7 +32,6 @@ import yaml  # type: ignore
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from loguru import logger
-from sentence_transformers import SentenceTransformer
 from watchdog.events import (
     FileCreatedEvent,
     FileDeletedEvent,
@@ -111,7 +110,8 @@ class EmbeddingAdapter:
         """Pre-warm the embedding model to avoid delays on first use."""
         try:
             logger.debug("Pre-warming embedding model...")
-            model = SentenceTransformer(self.embedder.model_name)
+            # Use the embedder's cached model instead of creating a new instance
+            model = self.embedder._get_model()
             # Generate a dummy embedding to initialize everything
             model.encode(["initialization"], show_progress_bar=False)
             logger.debug("Model pre-warming completed")
@@ -257,7 +257,8 @@ class EmbeddingAdapter:
     def _generate_embeddings(self, chunks: List[str]) -> Optional[List]:
         """Generate embeddings for a list of chunks."""
         try:
-            model = SentenceTransformer(self.embedder.model_name)
+            # Use the embedder's cached model instead of creating a new instance
+            model = self.embedder._get_model()
 
             # Truncate chunks to model's max length
             processed_chunks = [chunk[:256] for chunk in chunks]

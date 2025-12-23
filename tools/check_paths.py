@@ -4,8 +4,10 @@
 import sqlite3
 from pathlib import Path
 
+from core.config import DATABASE_PATH
+
 print("=== DATABASE PATHS (first 10) ===")
-conn = sqlite3.connect("meta.sqlite")
+conn = sqlite3.connect(DATABASE_PATH)
 cursor = conn.cursor()
 cursor.execute("SELECT DISTINCT file FROM meta ORDER BY file")
 indexed_files = [row[0] for row in cursor.fetchall()]

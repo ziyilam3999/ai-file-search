@@ -10,11 +10,13 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from core.config import DATABASE_PATH
+
 
 def get_database_stats():
     """Get overall database statistics."""
     try:
-        conn = sqlite3.connect("meta.sqlite")
+        conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
 
         cursor.execute("SELECT COUNT(*) FROM meta")
@@ -33,7 +35,7 @@ def get_database_stats():
 def analyze_business_rules():
     """Analyze business rules category in detail."""
     try:
-        conn = sqlite3.connect("meta.sqlite")
+        conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
 
         # Get all business rules entries
@@ -101,7 +103,7 @@ def check_filesystem_vs_database():
 
     # Get database files
     try:
-        conn = sqlite3.connect("meta.sqlite")
+        conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -175,7 +177,7 @@ def show_recent_entries(limit=20):
 def analyze_category_distribution():
     """Show distribution of files across categories."""
     try:
-        conn = sqlite3.connect("meta.sqlite")
+        conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
 
         cursor.execute(

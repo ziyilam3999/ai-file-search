@@ -3,8 +3,10 @@
 
 import sqlite3
 
+from core.config import DATABASE_PATH
+
 # Connect to the database
-conn = sqlite3.connect("meta.sqlite")
+conn = sqlite3.connect(DATABASE_PATH)
 cursor = conn.cursor()
 
 # Check the target IDs

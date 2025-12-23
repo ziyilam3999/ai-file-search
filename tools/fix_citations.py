@@ -11,10 +11,12 @@ import sqlite3
 import sys
 from pathlib import Path
 
+from core.config import DATABASE_PATH
+
 
 def fix_citation_mappings():
     """Fix citation mappings in the database."""
-    conn = sqlite3.connect("meta.sqlite")
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
 
     print("🔧 FIXING CITATION MAPPINGS")
@@ -111,7 +113,7 @@ def fix_citation_mappings():
 
 def preview_fixes():
     """Preview what fixes would be made without changing the database."""
-    conn = sqlite3.connect("meta.sqlite")
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
 
     print("👀 PREVIEW CITATION FIXES")
@@ -189,7 +191,7 @@ def preview_fixes():
 
 def verify_fixes():
     """Verify that citation fixes were applied correctly."""
-    conn = sqlite3.connect("meta.sqlite")
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
 
     print("✅ VERIFYING CITATION FIXES")
@@ -252,7 +254,7 @@ def verify_fixes():
 
 def show_citation_stats():
     """Show detailed citation statistics."""
-    conn = sqlite3.connect("meta.sqlite")
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
 
     print("📊 CITATION STATISTICS")

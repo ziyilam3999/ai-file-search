@@ -149,11 +149,32 @@ class SmartWatcherController:
             return False
 
     def restart_watcher(self, verbose: bool = False) -> bool:
-        """Restart the watcher."""
+        """Restart the watcher and wait for initial scan."""
         print("Restarting AI File Search Watcher...")
         self.stop_watcher()
         time.sleep(1)
-        return self.start_watcher(verbose)
+        success = self.start_watcher(verbose)
+
+        if success:
+            # Wait for initial scan to complete
+            self._wait_for_scan_completion()
+
+        return success
+
+    def _wait_for_scan_completion(self, timeout: int = 30) -> bool:
+        """Wait for watcher to complete initial scan."""
+        print("Waiting for initial scan to complete...")
+        start = time.time()
+
+        while time.time() - start < timeout:
+            status = self._get_status_info()
+            if status and status.get("initial_scan_complete"):
+                print("✓ Initial scan completed!")
+                return True
+            time.sleep(0.5)
+
+        print("⚠ Warning: Initial scan taking longer than expected")
+        return False
 
     def is_running(self) -> bool:
         """Check if the watcher is currently running."""

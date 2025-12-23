@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Immediate Indexing for New Watch Paths:** Enhanced watch path management to immediately scan and index files when adding new paths via Settings UI:
+  - **Scan Completion Tracking:** Watcher now signals when initial scan is complete via `watcher_status.json`
+  - **Synchronous Restart:** `restart_watcher()` waits for scan completion before returning
+  - **Direct Indexing:** `add_watch_path()` immediately extracts and indexes files from new path
+  - **User Feedback:** Settings UI now shows "Found N files to index" message
+  - **Problem Solved:** Files are now immediately searchable after adding a watch path (fixes DEF-019)
 - **Index Sync Verification Tool:** New `tools/verify_index_sync.py` diagnostic tool with three commands:
   - `check`: Detect orphaned vectors in FAISS that don't exist in database
   - `repair`: Automatically remove orphaned vectors to restore sync

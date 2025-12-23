@@ -89,6 +89,7 @@ class WatcherStats(TypedDict, total=False):
     is_running: bool
     progress: ProgressInfo
     uptime_seconds: float
+    initial_scan_complete: bool
 
 
 class FileWatcher:
@@ -139,6 +140,9 @@ class FileWatcher:
                 "last_updated": datetime.now().isoformat(),
                 "stats": self._stats,
                 "progress": self._progress,
+                "initial_scan_complete": self._stats.get(
+                    "initial_scan_complete", False
+                ),
             }
 
             # Atomic write
@@ -609,6 +613,11 @@ class FileWatcher:
                     self.file_queue.add_change(path_str, "created")
             else:
                 logger.info("No new files found to index")
+
+            # Mark scan as complete
+            self._stats["initial_scan_complete"] = True
+            self._save_status()
+            logger.success("Initial scan completed")
 
         except Exception as e:
             logger.error(f"Error during initial scan: {e}")

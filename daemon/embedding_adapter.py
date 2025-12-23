@@ -5,14 +5,26 @@ Enhanced adapter with real incremental updates to the FAISS index.
 import os
 import threading
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 import faiss
 import numpy as np
+import numpy.typing as npt
 from loguru import logger
 
 from core.config import DATABASE_PATH
 from core.embedding import Embedder
+
+
+class AdapterStats(TypedDict):
+    """Type-safe structure for adapter statistics."""
+
+    documents_added: int
+    documents_removed: int
+    operations_failed: int
+    last_operation_time: float
+    index_size: int
+    pending_operations: int
 
 
 class EmbeddingAdapter:
@@ -20,12 +32,13 @@ class EmbeddingAdapter:
 
     def __init__(self) -> None:
         self.embedder = Embedder()
-        self._stats: Dict[str, Any] = {
+        self._stats: AdapterStats = {
             "documents_added": 0,
             "documents_removed": 0,
             "operations_failed": 0,
-            "last_operation_time": 0,
+            "last_operation_time": 0.0,
             "index_size": 0,
+            "pending_operations": 0,
         }
         self._pending_operations: List[Tuple[str, str, Optional[str]]] = []
         self._operation_lock = threading.Lock()
@@ -188,7 +201,7 @@ class EmbeddingAdapter:
         """Delegate to the underlying Embedder's build_index method."""
         self.embedder.build_index(watch_paths=watch_paths)
 
-    def get_adapter_stats(self) -> Dict[str, Any]:
+    def get_adapter_stats(self) -> AdapterStats:
         """Get detailed statistics about adapter operations."""
         stats = self._stats.copy()
         stats["pending_operations"] = len(self._pending_operations)
@@ -205,7 +218,9 @@ class EmbeddingAdapter:
             logger.error(f"Error chunking text: {e}")
             return []
 
-    def _generate_embeddings(self, chunks: List[str]) -> Optional[List]:
+    def _generate_embeddings(
+        self, chunks: List[str]
+    ) -> Optional[npt.NDArray[np.float32]]:
         """Generate embeddings for a list of chunks."""
         try:
             # Use the embedder's cached model instead of creating a new instance
@@ -221,14 +236,14 @@ class EmbeddingAdapter:
                 show_progress_bar=False,
             )
 
-            return embeddings.tolist()
+            return embeddings
 
         except Exception as e:
             logger.error(f"Error generating embeddings: {e}")
             return None
 
     def _add_to_faiss_and_db(
-        self, file_path: str, chunks: List[str], embeddings: List
+        self, file_path: str, chunks: List[str], embeddings: npt.NDArray[np.float32]
     ) -> bool:
         """Add chunks and embeddings to FAISS index and metadata database."""
         try:

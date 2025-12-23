@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Changed
+- **Refactoring Phase 5 (TD-022):** Improved type annotations across daemon modules for better IDE support and type safety:
+  - Added `numpy.typing` with `npt.NDArray[np.float32]` for precise embedding array types
+  - Created 4 TypedDict classes: `AdapterStats`, `WatcherStats`, `ProgressInfo`, `WatchConfig`
+  - Updated `_generate_embeddings()` return type from `Optional[List]` to `Optional[npt.NDArray[np.float32]]`
+  - Replaced generic `Dict[str, Any]` with type-safe TypedDict throughout daemon modules
+  - Result: Enhanced IDE autocomplete, early type error detection, improved code maintainability
 - **Refactoring Phase 4 (TD-017):** Centralized database operations to eliminate duplicate SQLite code:
   - Created `core/database.py` with `DatabaseManager` class (247 lines) - context manager pattern, singleton, 15+ helper methods
   - Refactored `core/embedding.py` - removed 3 direct sqlite3.connect() calls

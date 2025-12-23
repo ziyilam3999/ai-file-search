@@ -24,7 +24,7 @@ import traceback
 from collections import defaultdict, deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, TypedDict
 
 import faiss
 import numpy as np
@@ -56,7 +56,39 @@ from core.path_utils import get_supported_files, validate_watch_path
 # Import daemon modules
 # Import daemon modules
 from daemon.embedding_adapter import EmbeddingAdapter
-from daemon.file_queue import FileChangeHandler, FileChangeQueue
+from daemon.file_queue import FileChangeHandler, FileChangeQueue, WatchConfig
+
+
+class ProgressInfo(TypedDict):
+    """Type-safe structure for indexing progress."""
+
+    is_indexing: bool
+    current_file: Optional[str]
+    processed_count: int
+    total_files: int
+    percent_complete: float
+
+
+class WatcherStats(TypedDict, total=False):
+    """Type-safe structure for watcher statistics.
+
+    Note: total=False allows optional fields for dynamic stats.
+    """
+
+    files_processed: int
+    files_added: int
+    files_updated: int
+    files_deleted: int
+    last_full_reindex: Optional[str]
+    start_time: Optional[float]
+    errors: int
+    processing_time_seconds: float
+    total_size_bytes: int
+    last_processed_time: float
+    queue_size: int
+    is_running: bool
+    progress: ProgressInfo
+    uptime_seconds: float
 
 
 class FileWatcher:
@@ -77,7 +109,7 @@ class FileWatcher:
         self._running = False
         self._shutdown_event = threading.Event()
         self._worker_thread: Optional[threading.Thread] = None
-        self._stats: Dict[str, Any] = {
+        self._stats: WatcherStats = {
             "files_processed": 0,
             "files_added": 0,
             "files_updated": 0,
@@ -85,16 +117,16 @@ class FileWatcher:
             "last_full_reindex": None,
             "start_time": None,
             "errors": 0,
-            "processing_time_seconds": 0,
+            "processing_time_seconds": 0.0,
             "total_size_bytes": 0,
-            "last_processed_time": 0,
+            "last_processed_time": 0.0,
         }
-        self._progress: Dict[str, Any] = {
+        self._progress: ProgressInfo = {
             "is_indexing": False,
             "current_file": None,
             "processed_count": 0,
             "total_files": 0,
-            "percent_complete": 0,
+            "percent_complete": 0.0,
         }
 
         logger.info("FileWatcher initialized")
@@ -254,7 +286,7 @@ class FileWatcher:
 
     def _setup_file_watching(self) -> None:
         """Set up file system watching."""
-        handler = FileChangeHandler(self.file_queue, self.config)
+        handler = FileChangeHandler(self.file_queue, self.config)  # type: ignore[arg-type]
 
         watch_paths = self.config.get("watch_paths", [])
         for watch_path in watch_paths:
@@ -525,10 +557,10 @@ class FileWatcher:
 
     def get_statistics(self) -> Dict[str, Any]:
         """Get current statistics."""
-        stats = self._stats.copy()
+        stats: Dict[str, Any] = dict(self._stats)
         stats["queue_size"] = self.file_queue.size()
         stats["is_running"] = self._running
-        stats["progress"] = self._progress.copy()
+        stats["progress"] = dict(self._progress)
         if stats["start_time"]:
             stats["uptime_seconds"] = time.time() - (stats["start_time"] or 0)
         return stats

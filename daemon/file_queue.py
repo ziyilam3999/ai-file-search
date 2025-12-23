@@ -7,9 +7,17 @@ import os
 import threading
 import time
 from collections import deque
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, TypedDict
 
 from watchdog.events import FileSystemEventHandler
+
+
+class WatchConfig(TypedDict, total=False):
+    """Type-safe structure for file watcher configuration."""
+
+    watch_paths: List[str]
+    debounce_seconds: float
+    file_patterns: Dict[str, List[str]]
 
 
 class FileChangeQueue:
@@ -93,7 +101,7 @@ class FileChangeQueue:
 class FileChangeHandler(FileSystemEventHandler):
     """Handles file system events and queues them for processing."""
 
-    def __init__(self, file_queue: FileChangeQueue, config: Dict[str, Any]) -> None:
+    def __init__(self, file_queue: FileChangeQueue, config: WatchConfig) -> None:
         self.file_queue = file_queue
         self.config = config
         self.include_patterns = config.get("file_patterns", {}).get("include", [])

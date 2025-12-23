@@ -101,7 +101,7 @@ class EmbeddingAdapter:
 
                 # Step 3: Generate embeddings for chunks
                 embeddings = self._generate_embeddings(chunks)
-                if not embeddings:
+                if embeddings is None:
                     logger.error(f"Failed to generate embeddings for {file_path}")
                     self._stats["operations_failed"] += 1
                     return False

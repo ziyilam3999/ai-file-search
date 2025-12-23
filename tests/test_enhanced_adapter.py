@@ -51,10 +51,8 @@ def test_enhanced_embedding_adapter():
         success = adapter.add_document("test_document.txt", test_content)
         add_time = time.time() - start_time
 
-        if success:
-            print(f"   ✅ Document added successfully in {add_time:.3f} seconds")
-        else:
-            print(f"   ❌ Document addition failed after {add_time:.3f} seconds")
+        assert success, f"Document addition failed after {add_time:.3f} seconds"
+        print(f"   ✅ Document added successfully in {add_time:.3f} seconds")
 
         # Test 3: Check statistics after addition
         print("\n📊 Test 3: Statistics After Addition")
@@ -67,6 +65,9 @@ def test_enhanced_embedding_adapter():
             print("   ✅ Document count increased correctly")
         else:
             print("   ❌ Document count did not increase")
+        assert (
+            post_add_stats["documents_added"] > initial_stats["documents_added"]
+        ), "Document count should increase after add"
 
         # Test 4: Update an existing document
         print("\n🔄 Test 4: Updating Existing Document")
@@ -78,10 +79,8 @@ def test_enhanced_embedding_adapter():
         success = adapter.add_document("test_document.txt", updated_content)
         update_time = time.time() - start_time
 
-        if success:
-            print(f"   ✅ Document updated successfully in {update_time:.3f} seconds")
-        else:
-            print(f"   ❌ Document update failed after {update_time:.3f} seconds")
+        assert success, f"Document update failed after {update_time:.3f} seconds"
+        print(f"   ✅ Document updated successfully in {update_time:.3f} seconds")
 
         # Test 5: Add multiple documents
         print("\n📚 Test 5: Adding Multiple Documents")
@@ -111,6 +110,9 @@ def test_enhanced_embedding_adapter():
             f"   📈 {successful_adds}/{len(test_documents)} documents added successfully"
         )
         print(f"   ⏱️ Average time per document: {avg_time:.3f} seconds")
+        assert successful_adds == len(
+            test_documents
+        ), f"Expected all {len(test_documents)} docs to succeed, only {successful_adds} did"
 
         # Test 6: Check final statistics
         print("\n📊 Test 6: Final Statistics")
@@ -238,6 +240,9 @@ def test_adapter_vs_original():
         success = adapter.add_document("perf_test.txt", test_content)
         enhanced_time = time.time() - start_time
 
+        assert (
+            success
+        ), f"Enhanced adapter add_document failed after {enhanced_time:.3f}s"
         stats = adapter.get_adapter_stats()
 
         print(f"   Enhanced Adapter Results:")

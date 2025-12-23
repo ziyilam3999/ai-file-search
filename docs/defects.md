@@ -11,7 +11,10 @@ Known bugs, issues, and their resolution status.
 ## Resolved Defects
 
 | ID | Description | Severity | Resolution | Resolved |
-|----|-------------|----------|------------|----------|| DEF-020 | Immediate indexing calls non-existent Embedder.add_document() | Critical | Changed to use EmbeddingAdapter.add_document() which has the method | 2025-12-23 |
+|----|-------------|----------|------------|----------|
+| DEF-022 | test_enhanced_adapter.py never asserts - always returns True | High | Added proper assert statements to validate operations | 2025-12-23 |
+| DEF-021 | Numpy array boolean check causes ValueError in add_document() | Critical | Changed `if not embeddings:` to `if embeddings is None:` | 2025-12-23 |
+| DEF-020 | Immediate indexing calls non-existent Embedder.add_document() | Critical | Changed to use EmbeddingAdapter.add_document() which has the method | 2025-12-23 |
 | DEF-019 | Files not searchable after adding watch path (regression from DEF-018 fix) | High | Root cause was DEF-020, fixed by using correct API | 2025-12-23 || DEF-018 | Index/DB desync when removing watch paths (orphaned FAISS vectors) | Critical | Added FAISS vector removal to remove_watch_path() + verification tool | 2025-12-23 |
 | DEF-017 | Model singleton not persisting between requests (~85-90s reload on each query) | High | Confirmed working - singleton reuses model, timing variations due to inference complexity | 2025-12-22 |
 | DEF-016 | Watcher crash loop when index files missing | High | Added `_ensure_index_exists` to initialize empty index/DB | 2025-12-22 |

@@ -13,6 +13,14 @@ All notable changes to this project are documented in this file.
   - **Problem Solved:** Files are now immediately searchable after adding a watch path (fixes DEF-019)
 
 ### Fixed
+- **DEF-021: Numpy Array Boolean Ambiguity:** Fixed critical bug in `EmbeddingAdapter.add_document()`:
+  - **Root Cause:** Line 104 used `if not embeddings:` which fails on numpy arrays with "ambiguous truth value" error
+  - **Solution:** Changed to `if embeddings is None:` for explicit None check
+  - **Why Tests Missed It:** `test_enhanced_adapter.py` never asserted - just printed results and returned True (DEF-022)
+- **DEF-022: Broken Test Suite:** Fixed `test_enhanced_adapter.py` to use proper assertions:
+  - **Root Cause:** Tests used print statements + `return True` instead of `assert` statements
+  - **Solution:** Added `assert` statements to validate each operation
+  - **Lesson Learned:** Added FM-5 (Test Assertion Verification) rule to copilot-instructions.md
 - **DEF-020: Immediate Indexing API Error:** Fixed critical bug where `_scan_new_path()` called non-existent `Embedder.add_document()` method:
   - **Root Cause:** DEF-019 fix incorrectly assumed `Embedder` class had `add_document()` method (only `EmbeddingAdapter` has it)
   - **Solution:** Changed to use `EmbeddingAdapter` which provides the incremental `add_document()` method

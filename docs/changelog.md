@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Citation Display:** Removed redundant plain-text citations section from answer text:
+  - **Before:** Answer ended with "\n\nCitations:\n[1] file, page X" + separate HTML citation cards
+  - **After:** Only interactive HTML citation cards displayed (with Open buttons & expandable context)
+  - **Benefits:** Cleaner UI, no duplicate information, consistent interaction pattern
+  - **Impact:** Removed citation formatting from 4 functions in core/ask.py and simplified JS formatText()
+
 ### Added
 - **Startup Progress UI:** Added visual feedback during model preloading:
   - **Banner:** Blue gradient loading banner shows current stage and progress bar

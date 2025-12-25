@@ -45,8 +45,9 @@ A zero-configuration smart document search system with automatic discovery and r
 |----|-------------|--------|
 | FR-005.1 | Command-line interface for queries | Done |
 | FR-005.2 | Web UI with Flask | Done |
-| FR-005.3 | Display citations with file references | Done |
-| FR-005.4 | Show performance metrics | Done |
+| FR-005.6 | Display citations with file references | Done |
+| FR-005.7 | Interactive citations with Open buttons | Done |
+| FR-005.8 | Show performance metrics | Done |
 | FR-005.5 | Standalone Desktop App (PyWebview) | Pending |
 | FR-005.6 | Live Activity Log Viewer | Done |
 
@@ -57,11 +58,15 @@ A zero-configuration smart document search system with automatic discovery and r
 | FR-006.2 | Configure watch paths via UI | Done |
 | FR-006.3 | Validate paths (security check) | Done |
 | FR-006.4 | Remove intermediate extracts folder | Done |
-| FR-005.6 | Interactive citations (open file) | Pending |
-| FR-005.6 | Unified Launcher (Auto-start watcher) | Pending |
-| FR-005.7 | Embedded System Status Panel | Pending |
 
-### FR-007: Developer Tools
+### FR-007: Future Enhancements
+| ID | Requirement | Status |
+|----|-------------|--------|
+| FR-007.1 | Standalone Desktop App (PyWebview) | Pending |
+| FR-007.2 | Unified Launcher (Auto-start watcher) | Pending |
+| FR-007.3 | Embedded System Status Panel | Pending |
+
+### FR-008: Developer Tools
 | ID | Requirement | Status |
 |----|-------------|--------|
 | FR-007.1 | Sync copilot-instructions.md across repos | Done |

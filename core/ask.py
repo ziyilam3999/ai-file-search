@@ -226,18 +226,8 @@ def _generate_answer_with_phi3(prompt: str, citations: List[Dict]) -> str:
             stop_sequences=["<|im_end|>", "\n\nQuestion:", "\n\nContext:"],
         )
 
-        # Clean up the answer and ensure citations are properly formatted
+        # Clean up the answer
         answer = raw_answer.strip()
-
-        # Add citations section if not already present
-        if "Citations:" not in answer and citations:
-            citations_text = "\n\nCitations:"
-            for citation in citations:
-                citations_text += "\n[{}] {}, page {}".format(
-                    citation["id"], citation["file"], citation["page"]
-                )
-            answer += citations_text
-
         return answer
 
     except Exception as e:
@@ -262,15 +252,6 @@ def _generate_context_based_answer(citations: List[Dict]) -> str:
 
     # Add citation reference
     answer += f" [1]"
-
-    # Add citations section
-    citations_text = "\n\nCitations:"
-    for citation in citations:
-        citations_text += (
-            f"\n[{citation['id']}] {citation['file']}, page {citation['page']}"
-        )
-
-    answer += citations_text
     answer += "\n\n(Note: Generated using context extraction - Phi-3 unavailable)"
 
     return answer
@@ -284,14 +265,10 @@ def _generate_fallback_answer(query: str, results: List, citations: List[Dict]) 
         return "I couldn't find relevant information to answer your question."
 
     best_chunk, best_file, _, _, best_score = results[0]  # Fixed for 5-tuple
-    best_citation = citations[0]
 
     answer = (
         f"I found relevant information about your question: "
         f"{best_chunk[:300]}... [1]"
-    )
-    answer += (
-        f"\n\nCitations:\n[1] {best_citation['file']}, " f"page {best_citation['page']}"
     )
 
     return answer
@@ -337,18 +314,6 @@ def _generate_streaming_answer_with_phi3(
                     )
                 full_answer += token
                 yield token
-
-        # Add citations at the end if not already present
-        if "Citations:" not in full_answer and citations:
-            citations_text = "\n\nCitations:"
-            for citation in citations:
-                citations_text += "\n[{}] {}, page {}".format(
-                    citation["id"], citation["file"], citation["page"]
-                )
-
-            # Stream the citations section
-            for char in citations_text:
-                yield char
 
         # Log total generation time (streaming)
         total_generation_time = time.time() - generation_start

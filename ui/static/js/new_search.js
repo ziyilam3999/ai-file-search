@@ -743,21 +743,6 @@ class AIFileSearchUI {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
         
-        // Handle citations - put Citations section on a new line, but keep [1], [2] etc. inline
-        if (formattedText.includes('Citations:')) {
-            // Find the position of "Citations:"
-            const citationsIndex = formattedText.indexOf('Citations:');
-            if (citationsIndex > 0) {
-                // Main answer text (everything before Citations)
-                let mainText = formattedText.substring(0, citationsIndex).trim();
-                // Citations section (everything from Citations: onwards)
-                let citationsText = formattedText.substring(citationsIndex);
-                
-                // Ensure main text is one continuous paragraph, citations section on new line
-                formattedText = mainText + '\n' + citationsText;
-            }
-        }
-        
         // Convert line breaks to HTML
         return formattedText.replace(/\n/g, '<br>');
     }

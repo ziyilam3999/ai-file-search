@@ -68,6 +68,9 @@ A zero-configuration smart document search system with automatic discovery and r
 | FR-007.2 | Auto-detect source file in current repo | Done |
 | FR-007.3 | Configure .git/info/exclude automatically | Done |
 | FR-007.4 | Verify git exclusion with status check | Done |
+| FR-007.5 | Find highest version across all repos | Done |
+| FR-007.6 | Reverse sync from targets if newer | Done |
+| FR-007.7 | Session startup sync reminder | Done |
 
 ## Non-Functional Requirements
 

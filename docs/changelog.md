@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Version Discovery Sync:** Enhanced `sync_copilot_instructions.ps1` to automatically find highest version across all repos:
+  - **Step 0:** Scans source + all targets to find newest version
+  - **Reverse Sync:** If target has newer version, fetches it to source first
+  - **Broadcast:** Then syncs updated source to all targets
+  - **Result:** Ensures all repos converge to highest version regardless of which repo runs the script
+- **Session Startup Reminder:** Added directive in copilot-instructions v2.5 to remind users to run sync script at session start
+  - **Step 1.5:** First interaction now includes reminder with current version number
+  - **Ensures:** Both instructions and sync script are latest before work begins
+
 ### Fixed
 - **Test Suite Hanging:** Fixed pytest hanging indefinitely on tests that load heavy AI models:
   - **Root Cause:** Tests in `test_ask.py`, `test_quick.py`, `test_regression.py`, and `test_embedding.py` loaded Phi-3 LLM and embedding models without being marked as slow

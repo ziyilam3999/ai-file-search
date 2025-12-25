@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Streaming Cold Start:** Fixed 15+ second delay on first query by preloading ALL models:
+  - **Root Cause:** First query loaded both embedding model (~4s) and LLM (~3s) synchronously
+  - **Solution:** Extended `preload_models()` to load embedding model + FAISS index + LLM at startup
+  - **Before:** First query: 16+ seconds, subsequent: 2-4 seconds
+  - **After:** First query: 2-4 seconds (models already warm)
+
 ### Changed
 - **LLM Upgrade:** Upgraded from Phi-3-mini-4k to Phi-3.5-mini-instruct:
   - **Model:** `Phi-3.5-mini-instruct-Q4_K_M.gguf` (2.39 GB)

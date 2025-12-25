@@ -29,12 +29,32 @@ def configure_app_logging() -> None:
         print(f"Launcher: Logging configuration failed: {e}")
 
 
-def preload_model():
-    """Pre-load the Phi-3 model in the background."""
+def preload_models():
+    """Pre-load AI models (LLM + embeddings) in the background.
+
+    This eliminates cold-start delays on the first query by loading:
+    1. Phi-3.5 LLM (~3s cold load)
+    2. Sentence transformer embedding model (~4s cold load)
+    3. FAISS index and metadata cache (~1s cold load)
+    """
     try:
+        # 1. Pre-load embedding model and caches
+        print("Launcher: Pre-loading embedding model...")
+        from core.embedding import Embedder
+
+        embedder = Embedder()
+        embedder._get_model()  # Load sentence transformer
+        embedder._get_index()  # Load FAISS index
+        embedder._get_metadata()  # Load metadata cache
+        print("Launcher: Embedding model ready.")
+
+        # 2. Pre-load Phi-3 LLM
+        print("Launcher: Pre-loading Phi-3 LLM...")
         from core.llm import preload_phi3_llm
 
         preload_phi3_llm()
+        print("Launcher: All AI models ready for queries!")
+
     except Exception as e:
         print(f"Launcher: Model pre-load failed (will load on first query): {e}")
 
@@ -89,9 +109,9 @@ def start_app():
     if wait_for_server():
         print("Launcher: Server ready. Opening window...")
 
-        # 4. Pre-load AI model in background AFTER Flask is ready
-        print("Launcher: Pre-loading AI model in background...")
-        preload_thread = threading.Thread(target=preload_model, daemon=True)
+        # 4. Pre-load AI models in background AFTER Flask is ready
+        print("Launcher: Pre-loading AI models in background...")
+        preload_thread = threading.Thread(target=preload_models, daemon=True)
         preload_thread.start()
 
         # 5. Create the native window

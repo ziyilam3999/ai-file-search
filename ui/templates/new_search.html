@@ -22,7 +22,7 @@
             <!-- Settings Button Footer -->
             <div class="panel-footer" style="padding: 15px; border-top: 1px solid #333; margin-top: auto; display: flex; gap: 10px;">
                 <button id="logs-btn" class="new-chat-btn" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; background-color: #2d2d2d;">
-                    <span>📋</span> Logs
+                    <span>📋</span> Activity
                 </button>
                 <button id="settings-btn" class="new-chat-btn" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <span>⚙️</span> Settings
@@ -52,6 +52,17 @@
                 </div>
             </div>
 
+            <!-- Activity Strip (always visible) -->
+            <div class="activity-strip" id="activity-strip">
+                <div class="activity-latest" id="activity-latest">Activity: Idle</div>
+                <button id="activity-toggle" class="activity-toggle" type="button">Details</button>
+            </div>
+
+            <!-- Activity Panel (non-blocking) -->
+            <div class="activity-panel" id="activity-panel" style="display: none;">
+                <div class="activity-list" id="activity-list"></div>
+            </div>
+
             <!-- Answer Area (70% of main content) -->
             <div class="answer-area">
                 <div class="answer-header">
@@ -77,21 +88,6 @@
                         rows="3"
                     ></textarea>
                     <button id="search-btn" class="search-btn">Search</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Log Viewer Modal -->
-    <div id="log-modal" class="modal" style="display: none;">
-        <div class="modal-content log-modal-content">
-            <div class="modal-header">
-                <h3>Live System Activity</h3>
-                <span class="close-modal" id="close-log-modal">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div id="log-container" class="log-container">
-                    <div class="log-entry">Waiting for logs...</div>
                 </div>
             </div>
         </div>

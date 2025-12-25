@@ -6,6 +6,9 @@ class AIFileSearchUI {
         this.isSearching = false; // Track if there's an active search
         this.wasIndexing = false; // Track indexing state for UI transitions
         this.modelLoaded = false; // Track if AI model is loaded
+        this.activityPollInterval = null;
+        this.activityExpanded = false;
+        this.searchElapsedInterval = null;
         this.initializeElements();
         this.bindEvents();
         this.loadChatHistory();
@@ -21,12 +24,13 @@ class AIFileSearchUI {
         this.settingsBtn = document.getElementById('settings-btn');
         this.logsBtn = document.getElementById('logs-btn');
         this.chatList = document.getElementById('chat-list');
-        
-        // Log Modal elements
-        this.logModal = document.getElementById('log-modal');
-        this.closeLogModalBtn = document.getElementById('close-log-modal');
-        this.logContainer = document.getElementById('log-container');
-        this.logPollInterval = null;
+
+        // Activity elements
+        this.activityStrip = document.getElementById('activity-strip');
+        this.activityLatest = document.getElementById('activity-latest');
+        this.activityToggle = document.getElementById('activity-toggle');
+        this.activityPanel = document.getElementById('activity-panel');
+        this.activityList = document.getElementById('activity-list');
 
         // Status elements
         this.watcherIndicator = document.getElementById('watcher-indicator');
@@ -64,20 +68,12 @@ class AIFileSearchUI {
 
         // Logs button
         if (this.logsBtn) {
-            this.logsBtn.addEventListener('click', () => this.toggleLogs(true));
+            this.logsBtn.addEventListener('click', () => this.setActivityExpanded(!this.activityExpanded));
         }
 
-        // Close Log Modal
-        if (this.closeLogModalBtn) {
-            this.closeLogModalBtn.addEventListener('click', () => this.toggleLogs(false));
+        if (this.activityToggle) {
+            this.activityToggle.addEventListener('click', () => this.setActivityExpanded(!this.activityExpanded));
         }
-
-        // Close modal on outside click
-        window.addEventListener('click', (e) => {
-            if (e.target === this.logModal) {
-                this.toggleLogs(false);
-            }
-        });
 
         // Chat item selection and deletion
         this.chatList.addEventListener('click', (e) => {
@@ -142,6 +138,26 @@ class AIFileSearchUI {
         const contentDiv = document.createElement('div');
         contentDiv.className = 'answer-text';
         answerDiv.appendChild(contentDiv);
+
+        // Show a non-blocking “still working” indicator until first token arrives.
+        const waitId = `wait-${Date.now()}`;
+        contentDiv.innerHTML = `<div class="answer-waiting" id="${waitId}">Thinking… (0s)</div>`;
+        const startTimeMs = Date.now();
+        let hasFirstToken = false;
+
+        if (this.searchElapsedInterval) {
+            clearInterval(this.searchElapsedInterval);
+        }
+        this.searchElapsedInterval = setInterval(() => {
+            if (hasFirstToken) return;
+            const waitEl = document.getElementById(waitId);
+            if (!waitEl) return;
+            const elapsedSec = Math.floor((Date.now() - startTimeMs) / 1000);
+            waitEl.textContent = `Thinking… (${elapsedSec}s)`;
+        }, 1000);
+
+        // Update activity strip immediately.
+        this.setActivityLatest('AI: Processing your question…');
         
         // Replace loading indicator with answer div
         if (loadingDiv) {
@@ -187,6 +203,16 @@ class AIFileSearchUI {
                             const data = JSON.parse(line.slice(6));
                             
                             if (data.type === 'token') {
+                                if (!hasFirstToken && data.content) {
+                                    hasFirstToken = true;
+                                    const waitEl = document.getElementById(waitId);
+                                    if (waitEl) waitEl.remove();
+                                    if (this.searchElapsedInterval) {
+                                        clearInterval(this.searchElapsedInterval);
+                                        this.searchElapsedInterval = null;
+                                    }
+                                    this.setActivityLatest('AI: Generating answer…');
+                                }
                                 fullAnswer += data.content;
                                 contentDiv.innerHTML = this.formatText(fullAnswer);
                                 this.scrollToBottom();
@@ -223,6 +249,10 @@ class AIFileSearchUI {
         } finally {
             this.setLoadingState(false);
             this.isSearching = false;
+            if (this.searchElapsedInterval) {
+                clearInterval(this.searchElapsedInterval);
+                this.searchElapsedInterval = null;
+            }
             this.scrollToBottom();
         }
     }
@@ -290,67 +320,62 @@ class AIFileSearchUI {
         answerParagraph.classList.remove('typing-cursor');
     }
 
-    toggleLogs(show) {
-        if (show) {
-            this.logModal.style.display = 'block';
-            this.fetchLogs(); // Fetch immediately
-            // Poll every 2 seconds
-            if (!this.logPollInterval) {
-                this.logPollInterval = setInterval(() => this.fetchLogs(), 2000);
-            }
-        } else {
-            this.logModal.style.display = 'none';
-            if (this.logPollInterval) {
-                clearInterval(this.logPollInterval);
-                this.logPollInterval = null;
-            }
+    setActivityExpanded(expanded) {
+        this.activityExpanded = expanded;
+        if (!this.activityPanel || !this.activityToggle) return;
+
+        this.activityPanel.style.display = expanded ? 'block' : 'none';
+        this.activityToggle.textContent = expanded ? 'Hide' : 'Details';
+        if (expanded) {
+            this.fetchActivity();
         }
     }
 
-    async fetchLogs() {
+    setActivityLatest(text) {
+        if (this.activityLatest) {
+            this.activityLatest.textContent = text;
+        }
+    }
+
+    async fetchActivity() {
         try {
-            const response = await fetch('/api/logs');
-            if (response.ok) {
-                const data = await response.json();
-                if (data.logs) {
-                    this.renderLogs(data.logs);
-                }
+            const response = await fetch('/api/activity');
+            if (!response.ok) return;
+            const data = await response.json();
+            if (data.events && Array.isArray(data.events)) {
+                this.renderActivity(data.events);
             }
         } catch (error) {
-            console.error('Error fetching logs:', error);
+            console.error('Error fetching activity:', error);
         }
     }
 
-    renderLogs(logs) {
-        if (!this.logContainer) return;
-        
-        const wasScrolledToBottom = this.logContainer.scrollHeight - this.logContainer.scrollTop === this.logContainer.clientHeight;
+    renderActivity(events) {
+        if (!this.activityList) return;
 
-        this.logContainer.innerHTML = logs.map(line => {
-            let className = 'log-entry';
-            if (line.includes('ERROR')) className += ' log-error';
-            else if (line.includes('WARNING')) className += ' log-warning';
-            else if (line.includes('SUCCESS')) className += ' log-success';
-            else if (line.includes('INFO')) className += ' log-info';
-            
-            // Highlight timestamps
-            const formattedLine = line.replace(/^(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})/, '<span class="log-time">$1</span>');
-            
-            return `<div class="${className}">${formattedLine}</div>`;
-        }).join('');
+        const latest = events.length ? events[events.length - 1] : 'Activity: Idle';
+        this.setActivityLatest(latest);
 
-        // Auto-scroll if was at bottom
-        if (wasScrolledToBottom) {
-            this.logContainer.scrollTop = this.logContainer.scrollHeight;
-        }
+        if (!this.activityExpanded) return;
+
+        this.activityList.innerHTML = events
+            .map((e) => `<div class="activity-item">${this.formatText(e)}</div>`)
+            .join('');
     }
 
     startStatusPolling() {
-        // Check status immediately on page load to catch loading state
+        // Check status + activity immediately on page load.
         this.checkStatus();
-        
-        // Poll status every 2000ms (reduced to minimize log noise)
-        setInterval(() => this.checkStatus(), 2000);
+        this.fetchActivity();
+
+        // Poll every 2000ms (reduced to minimize log noise)
+        if (this.activityPollInterval) {
+            clearInterval(this.activityPollInterval);
+        }
+        this.activityPollInterval = setInterval(() => {
+            this.checkStatus();
+            this.fetchActivity();
+        }, 2000);
     }
 
     async checkStatus() {

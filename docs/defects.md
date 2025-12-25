@@ -6,7 +6,9 @@ Known bugs, issues, and their resolution status.
 
 | ID | Description | Severity | Status | Reported |
 |----|-------------|----------|--------|----------|
-| - | No active defects | - | - | - |
+| DEF-023 | test_ui_backend.py leaks mocked modules into other tests via sys.modules | High | Open | 2025-12-23 |
+| DEF-024 | tests expect ui.components but module is missing | Medium | Open | 2025-12-23 |
+| DEF-025 | tests expect daemon.watch.ExtractorAdapter but symbol is missing | Medium | Open | 2025-12-23 |
 
 ## Resolved Defects
 
@@ -68,4 +70,4 @@ Known bugs, issues, and their resolution status.
 
 ---
 
-*Last Updated: 2025-12-21*
+*Last Updated: 2025-12-23*

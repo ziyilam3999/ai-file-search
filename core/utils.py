@@ -30,7 +30,9 @@ def open_local_file(file_path: str) -> None:
         logger.error(f"Failed to open file: {e}")
 
 
-def format_citations(citations: List[Dict[str, Any]], as_html: bool = True) -> str:
+def format_citations(
+    citations: List[Dict[str, Any]] | None, as_html: bool = True
+) -> str:
     """
     Format citations for display with clean, professional formatting.
     Shared between Streamlit and Flask UIs.
@@ -43,9 +45,20 @@ def format_citations(citations: List[Dict[str, Any]], as_html: bool = True) -> s
     if not citations:
         return "No citations available."
 
+    # Assign deterministic fallback IDs when missing.
+    # Some tests provide citations without an "id" field.
+    normalized: List[Dict[str, Any]] = []
+    next_id = 1
+    for cite in citations:
+        if "id" not in cite:
+            normalized.append({**cite, "id": next_id})
+            next_id += 1
+        else:
+            normalized.append(cite)
+
     # Group citations by file path
     grouped_citations: Dict[str, List[Dict[str, Any]]] = {}
-    for cite in citations:
+    for cite in normalized:
         file_path = cite.get("file", "Unknown File")
         if file_path not in grouped_citations:
             grouped_citations[file_path] = []
@@ -62,8 +75,8 @@ def format_citations(citations: List[Dict[str, Any]], as_html: bool = True) -> s
         filename = os.path.basename(file_path)
         file_display = file_path.replace("\\", "/")
 
-        # Collect all content chunks (as plain text paragraphs)
-        all_paragraphs = []
+        # Collect all content chunks (as bullet items when appropriate)
+        all_items: List[str] = []
 
         for cite in cites:
             content = cite.get("chunk", "")
@@ -81,33 +94,58 @@ def format_citations(citations: List[Dict[str, Any]], as_html: bool = True) -> s
                     continue
                 cleaned_lines.append(line)
 
-            # Join cleaned lines into a single paragraph
-            if cleaned_lines:
-                paragraph = " ".join(cleaned_lines)
+            if not cleaned_lines:
+                continue
+
+            paragraph = " ".join(cleaned_lines)
+            paragraph = re.sub(r"\s+", " ", paragraph).strip()
+            if not paragraph:
+                continue
+
+            # Bullet rendering rules expected by tests:
+            # - sentence splitting: "A. B. C." -> bullets
+            # - dash splitting: "A - B - C" -> bullets
+            bullet_items: List[str] = []
+            if " - " in paragraph and paragraph.count(" - ") >= 1:
+                bullet_items = [p.strip() for p in paragraph.split(" - ") if p.strip()]
+            else:
+                parts = [
+                    p.strip()
+                    for p in re.split(r"(?<=[.!?])\s+", paragraph)
+                    if p.strip()
+                ]
+                if len(parts) >= 2:
+                    bullet_items = parts
+
+            if bullet_items:
+                for item in bullet_items:
+                    all_items.append(f"• {item}")
+            else:
                 # Truncate if too long (max 300 chars for preview)
                 if len(paragraph) > 300:
                     paragraph = paragraph[:300] + "..."
-                all_paragraphs.append(paragraph)
+                all_items.append(paragraph)
 
-        # Remove duplicate paragraphs (if chunks overlap)
-        unique_paragraphs = []
-        seen_paragraphs = set()
-        for para in all_paragraphs:
-            if para not in seen_paragraphs:
-                unique_paragraphs.append(para)
-                seen_paragraphs.add(para)
+        # Remove duplicate items (if chunks overlap)
+        unique_items: List[str] = []
+        seen_items: set[str] = set()
+        for item in all_items:
+            if item not in seen_items:
+                unique_items.append(item)
+                seen_items.add(item)
 
         if as_html:
             # Convert to HTML with collapsible details
             paragraphs_html = "".join(
                 [
-                    f'<p style="margin: 8px 0; line-height: 1.6;">{html.escape(para)}</p>'
-                    for para in unique_paragraphs
+                    f'<p style="margin: 8px 0; line-height: 1.6;">{html.escape(item)}</p>'
+                    for item in unique_items
                 ]
             )
 
-            # Escape file path for HTML attribute
-            safe_file_path = html.escape(file_path)
+            # Escape normalized file path for HTML attributes
+            # Tests expect backslashes to be converted to forward slashes.
+            safe_file_path = html.escape(file_display)
             safe_filename = html.escape(filename)
 
             formatted_output.append(
@@ -132,7 +170,7 @@ def format_citations(citations: List[Dict[str, Any]], as_html: bool = True) -> s
             )
         else:
             # Plain text formatting
-            paragraphs_text = "\n".join([f"  {para}" for para in unique_paragraphs])
+            paragraphs_text = "\n".join([f"  {item}" for item in unique_items])
             formatted_output.append(
                 f"SOURCE {id_str}: {file_display}\n{paragraphs_text}\n"
             )

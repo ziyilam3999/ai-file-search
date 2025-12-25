@@ -96,24 +96,128 @@ def get_status():
 
 @app.route("/api/logs")
 def get_logs():
-    """Get the last 50 lines of the watcher log."""
-    try:
-        log_file = Path("logs/watcher.log")
-        if not log_file.exists():
-            return jsonify({"logs": ["Log file not found."]})
+    """Get the last 80 lines of combined logs (app + watcher).
 
-        lines = []
-        # Read last 50 lines efficiently
-        try:
-            with open(log_file, "r", encoding="utf-8", errors="replace") as f:
-                # Simple approach for now: read all lines and slice
-                # For very large logs, we might want to seek from end
-                all_lines = f.readlines()
-                lines = all_lines[-50:]
-        except Exception as e:
-            lines = [f"Error reading logs: {str(e)}"]
+    This is intended for debugging; the UI should prefer `/api/activity`.
+    """
+    try:
+
+        def read_tail(path: Path, limit: int) -> list[str]:
+            if not path.exists():
+                return []
+            try:
+                with open(path, "r", encoding="utf-8", errors="replace") as f:
+                    return f.readlines()[-limit:]
+            except Exception as e:
+                return [f"Error reading {path}: {e}\n"]
+
+        app_lines = read_tail(Path("logs/app.log"), 80)
+        watcher_lines = read_tail(Path("logs/watcher.log"), 80)
+        lines = (app_lines + watcher_lines)[-80:]
+        if not lines:
+            return jsonify({"logs": ["No logs available yet.\n"]})
 
         return jsonify({"logs": lines})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/activity")
+def get_activity():
+    """Get user-meaningful activity events derived from logs.
+
+    Returns a list of short, curated strings suitable for always-on UI display.
+    """
+    try:
+
+        def read_tail(path: Path, limit: int) -> list[str]:
+            if not path.exists():
+                return []
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                return f.readlines()[-limit:]
+
+        # Prefer app runtime logs for meaningful milestones.
+        lines = read_tail(Path("logs/app.log"), 250)
+        if not lines:
+            # Fall back to watcher log if app log isn't present yet.
+            lines = read_tail(Path("logs/watcher.log"), 250)
+
+        noise_substrings = [
+            "GET /api/status",
+            "GET /api/logs",
+            "GET /api/activity",
+            "GET /static/",
+            "GET /favicon.ico",
+            "Ensured meta table exists",
+            "WARNING: This is a development server",
+        ]
+
+        def is_noise(line: str) -> bool:
+            return any(s in line for s in noise_substrings)
+
+        def to_activity(line: str) -> str | None:
+            # Map known log lines to user-friendly milestones.
+            if "PRELOAD: Pre-loading Phi-3 model" in line:
+                return "AI Model: Loading…"
+            if "SUCCESS: Phi-3 model loaded successfully" in line:
+                return "AI Model: Loaded"
+            if "PRELOAD: Phi-3 model ready for queries" in line:
+                return "AI Model: Ready"
+            if "THINKING: Answering question:" in line:
+                return "AI: Processing your question…"
+            if "LOADING: FAISS index" in line:
+                return "Search: Loading index…"
+            if "SUCCESS: FAISS index loaded" in line:
+                return "Search: Index ready"
+            if "FOUND:" in line and "relevant chunks" in line:
+                return line.split(" - ")[-1].strip()
+            if "STREAMING: Starting generation" in line:
+                return "AI: Generating answer…"
+            if "FIRST TOKEN" in line:
+                # Keep the timing info.
+                return line.split(" - ")[-1].strip()
+            if "TOTAL TIME" in line:
+                return line.split(" - ")[-1].strip()
+
+            # Watcher milestones (fallback)
+            if "File watcher started successfully" in line:
+                return "Watcher: Running"
+            if "Processing" in line and "added/modified files" in line:
+                return line.split(" - ")[-1].strip()
+            if "Successfully added document:" in line:
+                # Shorten a bit for UI.
+                tail = line.split("Successfully added document:")[-1].strip()
+                return f"Indexed: {tail}"
+            if "Failed to add to index:" in line:
+                tail = line.split("Failed to add to index:")[-1].strip()
+                return f"Indexing failed: {tail}"
+
+            return None
+
+        events: list[str] = []
+        for raw in lines:
+            if is_noise(raw):
+                continue
+            event = to_activity(raw)
+            if event:
+                events.append(event)
+
+        # Keep the most recent events, de-duplicated while preserving order.
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for event in reversed(events):
+            if event in seen:
+                continue
+            seen.add(event)
+            deduped.append(event)
+            if len(deduped) >= 12:
+                break
+        deduped.reverse()
+
+        if not deduped:
+            deduped = ["Activity: Idle"]
+
+        return jsonify({"events": deduped})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

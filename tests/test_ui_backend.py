@@ -3,20 +3,38 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-# Mock dependencies
-sys.modules["smart_watcher"] = MagicMock()
-sys.modules["core.ask"] = MagicMock()
-sys.modules["core.monitoring"] = MagicMock()
-sys.modules["core.utils"] = MagicMock()
-sys.modules["core.index_manager"] = MagicMock()
+_MOCK_MODULE_NAMES = [
+    "smart_watcher",
+    "core.ask",
+    "core.monitoring",
+    "core.utils",
+    "core.index_manager",
+]
 
-# Mock IndexManager class
-MockIndexManager = MagicMock()
-sys.modules["core.index_manager"].IndexManager = MockIndexManager  # type: ignore
+_ORIGINAL_MODULES = {name: sys.modules.get(name) for name in _MOCK_MODULE_NAMES}
 
-# We need to import app AFTER mocking
-# But ui.flask_app imports core.index_manager, so our mock in sys.modules should work
-from ui.flask_app import app
+try:
+    # Mock dependencies (only for importing ui.flask_app)
+    sys.modules["smart_watcher"] = MagicMock()
+    sys.modules["core.ask"] = MagicMock()
+    sys.modules["core.monitoring"] = MagicMock()
+    sys.modules["core.utils"] = MagicMock()
+    sys.modules["core.index_manager"] = MagicMock()
+
+    # Mock IndexManager class
+    MockIndexManager = MagicMock()
+    sys.modules["core.index_manager"].IndexManager = MockIndexManager  # type: ignore
+
+    # We need to import app AFTER mocking
+    # But ui.flask_app imports core.index_manager, so our mock in sys.modules should work
+    from ui.flask_app import app
+finally:
+    # IMPORTANT: Restore sys.modules to avoid leaking mocks to other tests.
+    for name, original in _ORIGINAL_MODULES.items():
+        if original is None:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = original
 
 
 class TestUIBackend(unittest.TestCase):

@@ -22,8 +22,16 @@ Test plans, coverage reports, and quality assurance documentation.
 ## Running Tests
 
 ```bash
-# Run all tests
-pytest tests/ -v
+# Run fast tests only (default, skips model loading)
+pytest -q
+
+# Run all tests (including slow model-loading tests)
+pytest -q -m ""
+# or
+pytest -q --slow
+
+# Run only slow tests
+pytest -q -m slow
 
 # Run quick smoke tests (recommended before commits)
 python tests/test_quick.py
@@ -39,6 +47,15 @@ python tools/verify_index_sync.py check      # Check for sync issues
 python tools/verify_index_sync.py repair     # Fix orphaned vectors
 python tools/verify_index_sync.py stats      # Show detailed statistics
 ```
+
+### Test Markers
+
+- **`@pytest.mark.slow`**: Tests that load models or build large indexes (excluded by default)
+  - `test_phi3_integration.py`: Phi-3 model loading
+  - `test_integration.py`: Full system integration
+  - `bench_phi3_performance.py`: Performance benchmarks
+  - `test_query_performance.py`: Query benchmarks
+  - `test_embedding_watch_integration.py`: Embedding system integration
 
 ## Test Categories
 

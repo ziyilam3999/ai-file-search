@@ -13,6 +13,7 @@ import yaml
 from loguru import logger
 
 from core.config import CONFIG_PATH, DATABASE_PATH, INDEX_PATH
+from core.embedding import Embedder
 from core.path_utils import normalize_path, validate_watch_path
 from daemon.embedding_adapter import EmbeddingAdapter
 from smart_watcher import SmartWatcherController
@@ -23,7 +24,11 @@ class IndexManager:
 
     def __init__(self):
         self.watcher_controller = SmartWatcherController()
-        self.embedding_adapter = EmbeddingAdapter()
+        # Tests expect an `embedder` attribute and patch `core.index_manager.Embedder`.
+        # Keep this lightweight: avoid initializing the embedding adapter (which pre-warms
+        # models) unless we actually need to index files immediately.
+        self.embedder = Embedder()
+        self.embedding_adapter = None
 
     def _load_config(self) -> dict:
         """Load configuration from file."""
@@ -105,6 +110,10 @@ class IndexManager:
                 return 0
 
             logger.info(f"Found {len(files)} files to index in {path}")
+
+            # Lazily create the embedding adapter only when we have work to do.
+            if self.embedding_adapter is None:
+                self.embedding_adapter = EmbeddingAdapter()
 
             # Index files immediately
             extractor = Extractor()
@@ -188,9 +197,10 @@ class IndexManager:
                 conn.commit()
                 conn.close()
 
-                # Clear embedding cache to force reload
-                self.embedding_adapter.embedder.clear_cache()
-                logger.info("Cleared embedding cache after path removal")
+                # Clear embedding cache to force reload (if adapter has been used)
+                if self.embedding_adapter is not None:
+                    self.embedding_adapter.embedder.clear_cache()
+                    logger.info("Cleared embedding cache after path removal")
 
             # Restart watcher
             self.watcher_controller.restart_watcher()
@@ -209,13 +219,7 @@ class IndexManager:
             # Stop watcher
             self.watcher_controller.stop_watcher()
 
-            # Clear index files
-            if os.path.exists(INDEX_PATH):
-                os.remove(INDEX_PATH)
-            if os.path.exists(DATABASE_PATH):
-                os.remove(DATABASE_PATH)
-
-            # Start watcher (it will auto-reindex if index is missing)
+            # Start watcher; it will rebuild the index as needed.
             self.watcher_controller.start_watcher()
 
             return True, "Reindex triggered successfully"

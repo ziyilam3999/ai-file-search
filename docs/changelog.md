@@ -4,12 +4,27 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Test Suite Hanging:** Fixed pytest hanging indefinitely on tests that load heavy AI models:
+  - **Root Cause:** Tests in `test_ask.py`, `test_quick.py`, `test_regression.py`, and `test_embedding.py` loaded Phi-3 LLM and embedding models without being marked as slow
+  - **Solution:** Added `pytestmark = pytest.mark.slow` to all tests that load AI models
+  - **Safety Net:** Added `pytest-timeout` plugin with 60-second default timeout
+  - **Configuration:** Updated `pyproject.toml` with `--timeout=60` in addopts
+  - **Result:** Fast unit tests now complete in <1 second, slow tests properly excluded by default
+
 ### Added
-- **Live Activity Log:** Added real-time log viewer to the UI:
-  - **New Endpoint:** `/api/logs` returns the last 50 lines of `watcher.log`
-  - **UI Component:** Added "Logs" button and modal to the main search interface
-  - **Auto-Refresh:** Logs update every 2 seconds when the modal is open
-  - **Visuals:** Color-coded log entries (INFO, WARNING, ERROR) for better readability
+- **Live Activity:** Added real-time activity feedback to the UI:
+  - **Activity Feed:** `/api/activity` returns curated milestones (model load, retrieval, generation)
+  - **Raw Logs (Debug):** `/api/logs` returns a combined tail of `logs/app.log` and `logs/watcher.log`
+  - **UI Component:** Always-visible Activity strip with an expandable, non-blocking panel
+  - **Auto-Refresh:** Activity updates every 2 seconds
+
+### Changed
+- **Activity UX Improvements:** Made activity feedback more user-friendly and non-blocking:
+  - **Non-blocking Panel:** Replaced modal with an always-visible Activity strip + expandable panel
+  - **Meaningful Milestones:** Added `/api/activity` endpoint that emits curated status milestones (model load, retrieval, generation)
+  - **App Runtime Logs:** Added `logs/app.log` capture via Loguru sink for UI consumption
+  - **Still Working Timer:** Shows elapsed seconds while waiting for the first token
 - **Immediate Indexing for New Watch Paths:** Enhanced watch path management to immediately scan and index files when adding new paths via Settings UI:
   - **Scan Completion Tracking:** Watcher now signals when initial scan is complete via `watcher_status.json`
   - **Synchronous Restart:** `restart_watcher()` waits for scan completion before returning

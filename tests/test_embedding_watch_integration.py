@@ -13,6 +13,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+pytestmark = pytest.mark.slow  # Mark all tests in this module as slow
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.embedding import Embedder

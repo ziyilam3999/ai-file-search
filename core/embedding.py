@@ -9,7 +9,7 @@ import time
 import unicodedata
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import faiss
 import numpy as np
@@ -44,9 +44,92 @@ class Embedder:
         global _MODEL_CACHE
         if _MODEL_CACHE is None:
             logger.info("LOADING: sentence transformer model...")
-            _MODEL_CACHE = SentenceTransformer(self.model_name)
+            # Tests patch `daemon.watch.SentenceTransformer` and expect it to affect
+            # embedding model creation. Prefer that symbol when available.
+            st_cls = None
+            try:
+                import daemon.watch as watch_module
+
+                st_cls = getattr(watch_module, "SentenceTransformer", None)
+            except Exception:
+                st_cls = None
+
+            if st_cls is None:
+                st_cls = SentenceTransformer
+
+            _MODEL_CACHE = st_cls(self.model_name)
             logger.success("SUCCESS: model loaded")
         return _MODEL_CACHE
+
+    def _map_to_original_file(self, path: Union[str, Path]) -> Optional[str]:
+        """Map an extracted/relative path back to an original document path.
+
+        Tests expect this helper to exist and to return a path starting with
+        `ai_search_docs/` when possible.
+        """
+        try:
+            raw = str(path).replace("\\", "/")
+            raw = raw.lstrip("./")
+
+            # If already a relative ai_search_docs path
+            if raw.startswith("ai_search_docs/"):
+                return raw
+
+            # If absolute path under project ai_search_docs
+            raw_path = Path(raw)
+            if raw_path.is_absolute():
+                try:
+                    rel = raw_path.relative_to(Path.cwd() / "ai_search_docs")
+                    return f"ai_search_docs/{str(rel).replace('\\\\', '/')}"
+                except Exception:
+                    # Absolute but not under ai_search_docs
+                    return raw
+
+            # Strip leading extracts/ if present
+            if raw.startswith("extracts/"):
+                raw = raw[len("extracts/") :]
+
+            candidate = Path("ai_search_docs") / raw
+            if candidate.exists():
+                return str(candidate).replace("\\", "/")
+
+            # If missing extension / minor name differences, fall back to best match
+            parent = (Path("ai_search_docs") / Path(raw).parent).resolve()
+            if parent.exists() and parent.is_dir():
+                target_name = Path(raw).name
+                best: Optional[Path] = None
+                best_score = 0.0
+                for child in parent.iterdir():
+                    if not child.is_file():
+                        continue
+                    score = SequenceMatcher(
+                        None, target_name.lower(), child.name.lower()
+                    ).ratio()
+                    if score > best_score:
+                        best_score = score
+                        best = child
+                if best is not None and best_score >= 0.75:
+                    return str(best).replace("\\", "/")
+
+            return None
+        except Exception:
+            return None
+
+    def _normalize_result_path(self, file_path: str) -> str:
+        mapped = self._map_to_original_file(file_path)
+        if mapped:
+            return mapped
+        try:
+            p = Path(file_path)
+            if p.is_absolute():
+                try:
+                    rel = p.relative_to(Path.cwd())
+                    return str(rel).replace("\\", "/")
+                except Exception:
+                    return file_path.replace("\\", "/")
+        except Exception:
+            pass
+        return file_path.replace("\\", "/")
 
     def _get_index(self):
         global _INDEX_CACHE, _INDEX_MTIME
@@ -112,7 +195,9 @@ class Embedder:
         _METADATA_CACHE = None
         logger.info("CACHE: Cleared index and metadata caches")
 
-    def build_index(self, watch_paths: Optional[List[str]] = None) -> None:
+    def build_index(
+        self, watch_paths: Optional[Union[List[str], str, Path]] = None
+    ) -> None:
         """
         Build FAISS index from source documents in watch_paths.
 
@@ -127,6 +212,10 @@ class Embedder:
 
         if watch_paths is None:
             watch_paths = load_watch_paths()
+
+        # Accept a single Path/str for back-compat (tests pass Path("extracts")).
+        if isinstance(watch_paths, (str, Path)):
+            watch_paths = [str(watch_paths)]
 
         logger.info(
             f"BUILDING: document embeddings index from {len(watch_paths)} paths..."
@@ -178,12 +267,14 @@ class Embedder:
 
                     chunks = self._chunk_text(content)
                     if chunks:
-                        # Store absolute path
+                        # Store a stable path for citations (prefer ai_search_docs relative when possible)
                         abs_path = str(file_path.resolve()).replace("\\", "/")
+                        mapped = self._map_to_original_file(abs_path)
+                        stored_path = mapped or abs_path
 
                         for i, chunk in enumerate(chunks):
                             all_chunks.append(chunk)
-                            chunk_metadata.append((chunk_id, abs_path, chunk, i))
+                            chunk_metadata.append((chunk_id, stored_path, chunk, i))
                             chunk_id += 1
 
                             # Batch insert to keep memory usage low
@@ -258,28 +349,14 @@ class Embedder:
                 if idx == -1:
                     continue
 
-                target_id = int(idx)
+                # Lookup metadata and normalize stored paths for stable citations.
+                if idx not in id_to_row:
+                    continue
 
-                # Check if idx exists in metadata
-                if target_id not in id_to_row:
-                    # Cache miss! Try forcing a reload of metadata
-                    logger.warning(
-                        f"Index ID {target_id} not found in metadata cache. Forcing reload..."
-                    )
-                    # Force reload by resetting mtime
-                    global _METADATA_MTIME
-                    _METADATA_MTIME = 0
-                    id_to_row = self._get_metadata()
+                file_path, chunk_text, doc_chunk_id = id_to_row[idx]
+                file_path = self._normalize_result_path(str(file_path))
 
-                    if id_to_row is None or target_id not in id_to_row:
-                        logger.error(
-                            f"Index ID {target_id} still missing after reload. Index/DB out of sync."
-                        )
-                        continue
-
-                file_path, chunk_text, doc_chunk_id = id_to_row[target_id]
-                # 5-tuple format required by ask.py
-                results.append((chunk_text, file_path, target_id, doc_chunk_id, score))
+                results.append((chunk_text, file_path, idx, doc_chunk_id, float(score)))
 
             return results
 

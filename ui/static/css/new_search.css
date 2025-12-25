@@ -13,6 +13,59 @@ body {
     overflow: hidden;
 }
 
+/* Activity Strip + Panel */
+.activity-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #333333;
+    background-color: #000000;
+}
+
+.activity-latest {
+    font-size: 13px;
+    color: #d4d4d4;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.activity-toggle {
+    background-color: #333333;
+    color: #ffffff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.activity-panel {
+    border-bottom: 1px solid #333333;
+    background-color: #000000;
+    max-height: 140px;
+    overflow-y: auto;
+}
+
+.activity-list {
+    padding: 8px 12px;
+}
+
+.activity-item {
+    font-size: 12px;
+    color: #d4d4d4;
+    padding: 3px 0;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+/* Answer waiting indicator */
+.answer-waiting {
+    color: #d4d4d4;
+    font-size: 13px;
+}
+
 .app-container {
     display: flex;
     height: 100vh;

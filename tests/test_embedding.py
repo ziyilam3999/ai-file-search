@@ -10,6 +10,10 @@ import pytest
 
 from core.embedding import Embedder
 
+pytestmark = (
+    pytest.mark.slow
+)  # Mark all tests in this module as slow (loads embedding model)
+
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_index():

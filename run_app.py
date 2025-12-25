@@ -9,6 +9,26 @@ import webview
 from smart_watcher import SmartWatcherController
 
 
+def configure_app_logging() -> None:
+    """Configure Loguru to also write app runtime logs to logs/app.log."""
+    try:
+        from loguru import logger
+
+        os.makedirs("logs", exist_ok=True)
+
+        # Avoid duplicate sinks if run_app is restarted in the same interpreter.
+        logger.add(
+            "logs/app.log",
+            rotation="5 MB",
+            retention=10,
+            enqueue=True,
+            backtrace=False,
+            diagnose=False,
+        )
+    except Exception as e:
+        print(f"Launcher: Logging configuration failed: {e}")
+
+
 def preload_model():
     """Pre-load the Phi-3 model in the background."""
     try:
@@ -53,6 +73,9 @@ def wait_for_server(port=5001, timeout=10):
 
 def start_app():
     print("Launcher: Initializing AI File Search...")
+
+    # Configure app logging before starting threads.
+    configure_app_logging()
 
     # 1. Ensure Watcher is running
     ensure_watcher_running()

@@ -13,6 +13,7 @@ import numpy.typing as npt
 from loguru import logger
 
 from core.config import DATABASE_PATH
+from core.database import DatabaseManager
 from core.embedding import Embedder
 
 
@@ -62,10 +63,8 @@ class EmbeddingAdapter:
 
             # Check/Create SQLite DB
             # We always connect to ensure table exists even if file exists
-            from core.database import get_db_manager
-
-            db = get_db_manager()
-            db.ensure_table_exists()
+            # IMPORTANT: honor the embedder's db_path (tests override this).
+            DatabaseManager(self.embedder.db_path).ensure_table_exists()
 
         except Exception as e:
             logger.error(f"Failed to initialize index/DB: {e}")
@@ -176,10 +175,7 @@ class EmbeddingAdapter:
                 logger.info("Clearing entire index")
 
                 # Clear database
-                from core.database import get_db_manager
-
-                db = get_db_manager()
-                db.clear_all()
+                DatabaseManager(self.embedder.db_path).clear_all()
 
                 # Remove index files to clear
                 if os.path.exists(self.embedder.index_path):
@@ -197,8 +193,19 @@ class EmbeddingAdapter:
             self._stats["operations_failed"] += 1
             return False
 
-    def build_index(self, watch_paths: List[str]) -> None:
-        """Delegate to the underlying Embedder's build_index method."""
+    def build_index(
+        self,
+        watch_paths: Optional[List[str]] = None,
+        extracts_path: Optional[os.PathLike[str] | str] = None,
+    ) -> None:
+        """Delegate to the underlying Embedder's build_index method.
+
+        Back-compat: some tests call `build_index(extracts_path=Path(...))`.
+        """
+        if extracts_path is not None:
+            self.embedder.build_index(watch_paths=str(extracts_path))
+            return
+
         self.embedder.build_index(watch_paths=watch_paths)
 
     def get_adapter_stats(self) -> AdapterStats:
@@ -247,11 +254,9 @@ class EmbeddingAdapter:
     ) -> bool:
         """Add chunks and embeddings to FAISS index and metadata database."""
         try:
-            from core.database import get_db_manager
-
             # Get current index and database
             index = faiss.read_index(self.embedder.index_path)
-            db = get_db_manager()
+            db = DatabaseManager(self.embedder.db_path)
 
             # Get next available ID
             result = db.fetch_one("SELECT MAX(id) FROM meta")
@@ -291,9 +296,7 @@ class EmbeddingAdapter:
     def _remove_existing_document(self, file_path: str) -> bool:
         """Remove existing document chunks from index (for updates)."""
         try:
-            from core.database import get_db_manager
-
-            db = get_db_manager()
+            db = DatabaseManager(self.embedder.db_path)
 
             existing_ids_result = db.fetch_all(
                 "SELECT id FROM meta WHERE file = ?", (file_path,)

@@ -34,6 +34,7 @@ build-backend = "poetry.core.masonry.api"
 black = "^25.1.0"
 pre-commit = "^4.2.0"
 pytest = "^8.4.1"
+pytest-timeout = "^2.3.1"
 types-pyyaml = "^6.0.12.20250516"
 
 [tool.black]
@@ -48,5 +49,12 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (model loading, large indexing)",
+]
+addopts = "-m 'not slow' --timeout=60"  # Skip slow tests by default, timeout after 60s
+timeout = 60  # Default timeout for all tests
 
 

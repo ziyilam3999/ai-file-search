@@ -29,11 +29,14 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import faiss
+import pytest
 from loguru import logger
 
 from core.ask import answer_question
 from core.config import DATABASE_PATH, INDEX_PATH
 from core.embedding import Embedder
+
+pytestmark = pytest.mark.slow  # Mark all tests in this module as slow
 
 
 class RegressionTester:

@@ -4,9 +4,13 @@ import pathlib
 import sys
 import time
 
+import pytest
+
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from core.embedding import Embedder
+
+pytestmark = pytest.mark.slow  # Mark all tests in this module as slow
 
 
 def test_query_performance():

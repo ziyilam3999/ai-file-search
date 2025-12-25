@@ -11,8 +11,12 @@ import time
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+pytestmark = pytest.mark.slow  # Mark all tests in this module as slow
 
 from daemon.watch import FileWatcher
 

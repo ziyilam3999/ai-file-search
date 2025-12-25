@@ -11,9 +11,11 @@ from typing import Any, Dict, Iterator, List, Tuple, Union
 
 from loguru import logger
 
-from .config import LLM_CONFIG, calculate_document_page
+from .config import EXTRACTS_DIR, LLM_CONFIG, calculate_document_page
 from .embedding import Embedder
 from .llm import get_phi3_llm
+
+_INDEX_BOOTSTRAPPED = False
 
 
 def answer_question(
@@ -42,6 +44,54 @@ def answer_question(
     results = embedder.query(query, k=top_k)
     retrieval_time = time.time() - retrieval_start
     logger.info(f"⏱️ RETRIEVAL TIME: {retrieval_time:.2f}s")
+
+    # If the index/DB isn't ready yet (common in fresh test/dev environments),
+    # bootstrap once from extracts and retry.
+    global _INDEX_BOOTSTRAPPED
+    if (not results) and (not _INDEX_BOOTSTRAPPED):
+        try:
+            index_exists = Path(embedder.index_path).exists()
+            db_exists = Path(embedder.db_path).exists()
+
+            needs_bootstrap = (not index_exists) or (not db_exists)
+
+            # If files exist, also ensure they contain usable data.
+            if not needs_bootstrap:
+                try:
+                    # If the FAISS index is empty (ntotal==0), retrieval will always fail.
+                    index_obj = embedder._get_index()
+                    if index_obj is None or getattr(index_obj, "ntotal", 0) == 0:
+                        needs_bootstrap = True
+
+                    # If metadata is empty or clearly out of sync with the index, rebuild.
+                    from core.database import DatabaseManager
+
+                    meta_count = DatabaseManager(embedder.db_path).get_record_count()
+                    if meta_count == 0:
+                        needs_bootstrap = True
+                    elif (
+                        index_obj is not None
+                        and getattr(index_obj, "ntotal", 0) != meta_count
+                    ):
+                        needs_bootstrap = True
+                except Exception:
+                    needs_bootstrap = True
+
+            if needs_bootstrap and Path(EXTRACTS_DIR).exists():
+                logger.warning(
+                    "Index/metadata missing or empty; bootstrapping index from extracts..."
+                )
+                embedder.build_index(watch_paths=EXTRACTS_DIR)
+                _INDEX_BOOTSTRAPPED = True
+
+                retrieval_start = time.time()
+                results = embedder.query(query, k=top_k)
+                retrieval_time = time.time() - retrieval_start
+                logger.info(
+                    f"⏱️ RETRIEVAL TIME (after bootstrap): {retrieval_time:.2f}s"
+                )
+        except Exception as e:
+            logger.warning(f"Index bootstrap failed: {e}")
 
     if not results:
         empty_answer = (

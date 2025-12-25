@@ -1,14 +1,7 @@
-import sys
-from unittest.mock import MagicMock
-
-# Mock dependencies before importing core modules
-sys.modules["faiss"] = MagicMock()
-sys.modules["sentence_transformers"] = MagicMock()
-sys.modules["llama_cpp"] = MagicMock()
-
 import os
+import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import yaml
 
@@ -17,6 +10,18 @@ from core.index_manager import IndexManager
 
 class TestIndexManager(unittest.TestCase):
     def setUp(self):
+        # Scope third-party module mocks to this test case only.
+        self._sys_modules_patcher = patch.dict(
+            sys.modules,
+            {
+                "faiss": MagicMock(),
+                "sentence_transformers": MagicMock(),
+                "llama_cpp": MagicMock(),
+            },
+            clear=False,
+        )
+        self._sys_modules_patcher.start()
+
         self.config_path = "tests/test_config_manager.yaml"
         self.db_path = "tests/test_meta_manager.sqlite"
 
@@ -49,6 +54,7 @@ class TestIndexManager(unittest.TestCase):
     def tearDown(self):
         self.patcher1.stop()
         self.patcher2.stop()
+        self._sys_modules_patcher.stop()
         if os.path.exists(self.config_path):
             os.remove(self.config_path)
 

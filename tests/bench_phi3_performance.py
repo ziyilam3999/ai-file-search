@@ -9,10 +9,14 @@ from pathlib import Path
 from statistics import mean, median
 from typing import List
 
+import pytest
+
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.ask import answer_question
+
+pytestmark = pytest.mark.slow  # Mark all tests in this module as slow
 from core.llm import get_phi3_llm
 
 
@@ -57,7 +61,7 @@ def benchmark_generation_speed(num_tests: int = 5):
             query_time = (time.time() - start_time) * 1000
             times.append(query_time)
             print(
-                f"   ⚡ {query_time:.1f}ms ({len(answer)} chars, {len(citations)} citations)"
+                f"   ⚡ {query_time:.1f}ms ({len(answer)} chars, {len(citations)} citations)"  # type: ignore[arg-type]
             )
         except Exception as e:
             print(f"   ❌ Failed: {e}")

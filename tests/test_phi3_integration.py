@@ -7,11 +7,15 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
+
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.ask import answer_question
 from core.llm import get_phi3_llm
+
+pytestmark = pytest.mark.slow  # Mark all tests in this module as slow
 
 
 def test_model_loading():

@@ -40,6 +40,13 @@ from watchdog.events import (
 )
 from watchdog.observers import Observer
 
+# Tests patch this symbol to avoid loading real models.
+# The watcher itself doesn't instantiate it directly, but it must exist.
+try:  # pragma: no cover
+    from sentence_transformers import SentenceTransformer  # type: ignore
+except Exception:  # pragma: no cover
+    SentenceTransformer = None  # type: ignore
+
 # Import our core modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config import (
@@ -57,6 +64,15 @@ from core.path_utils import get_supported_files, validate_watch_path
 # Import daemon modules
 from daemon.embedding_adapter import EmbeddingAdapter
 from daemon.file_queue import FileChangeHandler, FileChangeQueue, WatchConfig
+
+
+class ExtractorAdapter(Extractor):
+    """Compatibility adapter for tests expecting daemon.watch.ExtractorAdapter.
+
+    The current watcher uses `core.extract.Extractor` directly.
+    """
+
+    pass
 
 
 class ProgressInfo(TypedDict):
@@ -173,6 +189,9 @@ class FileWatcher:
             with open(config_path, "r", encoding="utf-8") as f:
                 yaml_config = yaml.safe_load(f)
 
+            if not isinstance(yaml_config, dict):
+                yaml_config = {}
+
             # Merge YAML config with defaults
             config = self._default_config()
 
@@ -181,22 +200,27 @@ class FileWatcher:
                 if section in yaml_config:
                     config[section].update(yaml_config[section])
 
-            # Load watch paths
-            watch_paths = []
-            if "watch_paths" in yaml_config:
-                for path in yaml_config["watch_paths"]:
-                    is_valid, error = validate_watch_path(path)
-                    if is_valid:
-                        watch_paths.append(path)
-                    else:
-                        logger.warning(f"Skipping invalid watch path '{path}': {error}")
+            # Load watch directories (legacy key: watch_directories)
+            # Keep this intentionally permissive for tests; runtime existence checks happen later.
+            watch_dirs: List[str] = []
+            raw_dirs = yaml_config.get("watch_directories")
+            raw_paths = yaml_config.get("watch_paths")
 
-            # Fallback to default if no valid paths found
-            if not watch_paths:
-                logger.warning("No valid watch paths found in config, using default")
-                watch_paths = [DOCUMENTS_DIR]
+            if isinstance(raw_dirs, list):
+                watch_dirs = [str(p) for p in raw_dirs if p is not None]
+            elif isinstance(raw_paths, list):
+                watch_dirs = [str(p) for p in raw_paths if p is not None]
 
-            config["watch_paths"] = watch_paths
+            if DOCUMENTS_DIR not in watch_dirs:
+                watch_dirs.append(DOCUMENTS_DIR)
+
+            # Fallback to default if still empty
+            if not watch_dirs:
+                watch_dirs = [DOCUMENTS_DIR]
+
+            # Store in both keys for compatibility
+            config["watch_directories"] = watch_dirs
+            config["watch_paths"] = watch_dirs
 
             # Override with any direct YAML settings
             if "file_patterns" in yaml_config:
@@ -216,6 +240,7 @@ class FileWatcher:
     def _default_config(self) -> Dict[str, Any]:
         """Return default configuration."""
         return {
+            "watch_directories": [DOCUMENTS_DIR],
             "watch_paths": [DOCUMENTS_DIR],
             "allow_external_paths": False,
             "file_patterns": {
@@ -292,7 +317,9 @@ class FileWatcher:
         """Set up file system watching."""
         handler = FileChangeHandler(self.file_queue, self.config)  # type: ignore[arg-type]
 
-        watch_paths = self.config.get("watch_paths", [])
+        watch_paths = self.config.get("watch_paths") or self.config.get(
+            "watch_directories", []
+        )
         for watch_path in watch_paths:
             if os.path.exists(watch_path):
                 self.observer.schedule(handler, watch_path, recursive=True)

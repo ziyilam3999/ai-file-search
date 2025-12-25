@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **UI Layout Stability:** Fixed layout instability issues where answer panel and activity log would cause content shifts:
+  - **Root Cause:** Activity panel was inline in document flow, causing layout shifts when toggled. Answer content used a static `max-height: calc(100vh - 200px)` that didn't adapt to dynamic elements.
+  - **Solution 1 - Activity Sidebar:** Moved activity log to a dedicated right-side collapsible sidebar (320px) that slides in/out without affecting main content layout.
+  - **Solution 2 - Flexbox Fix:** Replaced brittle `max-height` calculation with proper flexbox layout using `min-height: 0` pattern for nested scroll containers.
+  - **Key CSS Changes:** Added `min-height: 0; overflow: hidden` to `.main-content` and `.answer-area`; removed `max-height: calc(...)` from `.answer-content`.
+  - **Result:** Answer panel and question input now have stable positions regardless of activity sidebar state or conversation length.
+
 ### Added
 - **Version Discovery Sync:** Enhanced `sync_copilot_instructions.ps1` to automatically find highest version across all repos:
   - **Step 0:** Scans source + all targets to find newest version

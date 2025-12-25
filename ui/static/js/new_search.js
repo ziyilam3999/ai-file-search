@@ -29,7 +29,8 @@ class AIFileSearchUI {
         this.activityStrip = document.getElementById('activity-strip');
         this.activityLatest = document.getElementById('activity-latest');
         this.activityToggle = document.getElementById('activity-toggle');
-        this.activityPanel = document.getElementById('activity-panel');
+        this.activitySidebar = document.getElementById('activity-sidebar');
+        this.activityClose = document.getElementById('activity-close');
         this.activityList = document.getElementById('activity-list');
 
         // Status elements
@@ -73,6 +74,11 @@ class AIFileSearchUI {
 
         if (this.activityToggle) {
             this.activityToggle.addEventListener('click', () => this.setActivityExpanded(!this.activityExpanded));
+        }
+
+        // Activity sidebar close button
+        if (this.activityClose) {
+            this.activityClose.addEventListener('click', () => this.setActivityExpanded(false));
         }
 
         // Chat item selection and deletion
@@ -322,12 +328,19 @@ class AIFileSearchUI {
 
     setActivityExpanded(expanded) {
         this.activityExpanded = expanded;
-        if (!this.activityPanel || !this.activityToggle) return;
+        if (!this.activitySidebar) return;
 
-        this.activityPanel.style.display = expanded ? 'block' : 'none';
-        this.activityToggle.textContent = expanded ? 'Hide' : 'Details';
+        // Toggle sidebar visibility via CSS class
         if (expanded) {
+            this.activitySidebar.classList.add('open');
             this.fetchActivity();
+        } else {
+            this.activitySidebar.classList.remove('open');
+        }
+
+        // Update toggle button text
+        if (this.activityToggle) {
+            this.activityToggle.textContent = expanded ? 'Hide' : 'Details';
         }
     }
 

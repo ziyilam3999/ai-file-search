@@ -13,8 +13,9 @@ body {
     overflow: hidden;
 }
 
-/* Activity Strip + Panel */
+/* Activity Strip */
 .activity-strip {
+    flex-shrink: 0;       /* Fixed height, don't shrink */
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -42,22 +43,81 @@ body {
     font-size: 12px;
 }
 
-.activity-panel {
+.activity-toggle:hover {
+    background-color: #444444;
+}
+
+/* Activity Sidebar (Right Panel) */
+.activity-sidebar {
+    width: 0;
+    min-width: 0;
+    background-color: #0a0a0a;
+    border-left: 1px solid #333333;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.2s ease, min-width 0.2s ease;
+}
+
+.activity-sidebar.open {
+    width: 320px;
+    min-width: 320px;
+}
+
+.activity-sidebar-header {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
     border-bottom: 1px solid #333333;
-    background-color: #000000;
-    max-height: 140px;
+    background-color: #1a1a1a;
+}
+
+.activity-sidebar-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+}
+
+.activity-close-btn {
+    background: none;
+    border: none;
+    color: #888888;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.activity-close-btn:hover {
+    background-color: #333333;
+    color: #ffffff;
+}
+
+.activity-sidebar-content {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    padding: 12px;
 }
 
 .activity-list {
-    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .activity-item {
     font-size: 12px;
     color: #d4d4d4;
-    padding: 3px 0;
-    border-bottom: 1px solid #1a1a1a;
+    padding: 8px 10px;
+    background-color: #1a1a1a;
+    border-radius: 4px;
+    border-left: 3px solid #333333;
 }
 
 /* Answer waiting indicator */
@@ -70,6 +130,7 @@ body {
     display: flex;
     height: 100vh;
     width: 100vw;
+    overflow: hidden;
 }
 
 /* Left Panel - Chat History */
@@ -188,17 +249,21 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;        /* Critical: allows flex children to shrink */
+    overflow: hidden;     /* Prevent main-content overflow */
 }
 
 /* Answer Area */
 .answer-area {
-    flex: 1; /* Allow answer area to grow and fill available space */
+    flex: 1;              /* Grow to fill ALL remaining space */
+    min-height: 0;        /* Critical: allow shrinking below content size */
     display: flex;
     flex-direction: column;
-    border-bottom: 1px solid #333333;
+    overflow: hidden;     /* Contain the scrollable content */
 }
 
 .answer-header {
+    flex-shrink: 0;       /* Fixed height, don't shrink */
     padding: 20px;
     border-bottom: 1px solid #333333;
     background-color: #1a1a1a;
@@ -212,12 +277,11 @@ body {
 
 .answer-content {
     flex: 1;
+    min-height: 0;        /* Critical for nested flex scroll */
     padding: 20px;
     overflow-y: auto;
     overflow-x: hidden;
     background-color: #000000;
-    max-height: calc(100vh - 200px); /* Set max-height to enable scrolling */
-    min-height: 200px; /* Minimum height for scrolling */
 }
 
 .placeholder-text {

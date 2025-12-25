@@ -58,12 +58,7 @@
                 <button id="activity-toggle" class="activity-toggle" type="button">Details</button>
             </div>
 
-            <!-- Activity Panel (non-blocking) -->
-            <div class="activity-panel" id="activity-panel" style="display: none;">
-                <div class="activity-list" id="activity-list"></div>
-            </div>
-
-            <!-- Answer Area (70% of main content) -->
+            <!-- Answer Area -->
             <div class="answer-area">
                 <div class="answer-header">
                     <h3>Answer</h3>
@@ -75,10 +70,7 @@
                 </div>
             </div>
 
-            <!-- Empty Space (10% of main content) -->
-            <div class="spacing-area"></div>
-
-            <!-- Question Area (20% of main content) -->
+            <!-- Question Area -->
             <div class="question-area">
                 <div class="question-input-container">
                     <textarea 
@@ -91,8 +83,19 @@
                 </div>
             </div>
         </div>
+
+        <!-- Activity Sidebar (Right) -->
+        <div class="activity-sidebar" id="activity-sidebar">
+            <div class="activity-sidebar-header">
+                <h3>Activity Log</h3>
+                <button id="activity-close" class="activity-close-btn" type="button">&times;</button>
+            </div>
+            <div class="activity-sidebar-content">
+                <div class="activity-list" id="activity-list"></div>
+            </div>
+        </div>
     </div>
 
-    <script src="static/js/new_search.js?v=1"></script>
+    <script src="static/js/new_search.js?v=2"></script>
 </body>
 </html>

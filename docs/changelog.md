@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **DEF-027:** Settings UI now handles async responses correctly - accepts both "success" and "accepted" status to prevent duplicate operation errors
+
 ### Added
 - **Async Watch Path Operations:** Add/remove watch paths now execute in background:
   - **API Change:** `add_watch_path()` and `remove_watch_path()` now return 3-tuple: `(success, message, job_id)`

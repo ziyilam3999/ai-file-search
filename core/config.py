@@ -12,7 +12,7 @@ EXTRACTS_DIR = "extracts"  # Deprecated
 LOGS_DIR = "logs"
 BACKUPS_DIR = "backups"
 AI_MODELS_DIR = "ai_models"
-DEFAULT_MODEL_NAME = "Phi-3-mini-4k-instruct-q4.gguf"
+DEFAULT_MODEL_NAME = "Phi-3.5-mini-instruct-Q4_K_M.gguf"
 CONFIG_PATH = "prompts/watcher_config.yaml"
 
 
@@ -33,13 +33,14 @@ def load_watch_paths() -> list[str]:
     return [DOCUMENTS_DIR]
 
 
-# LLM Generation Settings - OPTIMIZED FOR SPEED (105s → ~70-80s target)
+# LLM Generation Settings - OPTIMIZED FOR SPEED
 LLM_CONFIG = {
-    "max_tokens": 30,  # Reduced for faster responses (30 words)
+    "max_tokens": 50,  # Increased for better responses (~50 words)
     "temperature": 0.1,  # Keep deterministic
     "n_ctx": 2048,  # Context window (must fit prompt + retrieved chunks + output)
     "n_threads": 8,  # CPU threads for inference
     "n_batch": 384,  # Larger batch for higher throughput (watch RAM)
+    "n_gpu_layers": 0,  # GPU layers to offload (0=CPU only, 35=full GPU)
 }
 
 # Performance Presets for easy speed vs quality tuning

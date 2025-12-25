@@ -10,8 +10,8 @@ High-level design and technology stack decisions for the AI File Search system.
 | **Package Manager** | Poetry | 2.0+ | Dependency management |
 | **Embedding Model** | all-MiniLM-L6-v2 | - | Sentence embeddings (384-dim) |
 | **Vector Store** | FAISS | 1.11+ | Semantic search index |
-| **LLM** | Phi-3-mini-4k-instruct | q4 quantized | Local AI answer generation |
-| **LLM Binding** | llama-cpp-python | 0.3.12+ | LLM inference |
+| **LLM** | Phi-3.5-mini-instruct | Q4_K_M quantized | Local AI answer generation |
+| **LLM Binding** | llama-cpp-python | 0.3.12+ | LLM inference (GPU optional) |
 | **UI Framework** | Streamlit | 1.35+ | Web interface |
 | **File Watcher** | watchdog | 6.0+ | Real-time file monitoring |
 | **Scheduler** | APScheduler | 3.11+ | Nightly reindexing |

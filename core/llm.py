@@ -51,6 +51,7 @@ class Phi3LLM:
             n_ctx=LLM_CONFIG["n_ctx"],  # Use config value
             n_threads=LLM_CONFIG["n_threads"],  # Use config value
             n_batch=LLM_CONFIG["n_batch"],  # Use config value
+            n_gpu_layers=LLM_CONFIG.get("n_gpu_layers", 0),  # GPU offload (0=CPU)
             use_mmap=True,  # Memory-mapped file for faster access
             use_mlock=True,  # Lock model in RAM to prevent swapping
             verbose=verbose,

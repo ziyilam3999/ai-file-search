@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **LLM Upgrade:** Upgraded from Phi-3-mini-4k to Phi-3.5-mini-instruct:
+  - **Model:** `Phi-3.5-mini-instruct-Q4_K_M.gguf` (2.39 GB)
+  - **Benefits:** Better instruction following, improved reasoning, 128K native context
+  - **Compatibility:** Same prompt format, same resource requirements
+- **GPU Acceleration:** Added optional GPU offloading via `n_gpu_layers` config:
+  - **Default:** 0 (CPU-only for compatibility)
+  - **GPU Mode:** Set to 35 for full GPU offload (10x faster inference)
+  - **Location:** `core/config.py` → `LLM_CONFIG["n_gpu_layers"]`
+- **Answer Quality:** Increased max_tokens from 30 to 50 for better responses:
+  - Updated `core/config.py` and `prompts/retrieval_prompt.md`
+  - Allows more complete answers without significant latency increase
+
 ### Fixed
 - **UI Layout Stability:** Fixed layout instability issues where answer panel and activity log would cause content shifts:
   - **Root Cause:** Activity panel was inline in document flow, causing layout shifts when toggled. Answer content used a static `max-height: calc(100vh - 200px)` that didn't adapt to dynamic elements.

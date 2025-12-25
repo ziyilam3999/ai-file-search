@@ -122,15 +122,12 @@ body {
 
 /* Model Loading Banner */
 .model-loading-banner {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    position: relative;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     border-bottom: 2px solid #0066ff;
     padding: 12px 20px;
-    z-index: 1000;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
 }
 
 .loading-content {

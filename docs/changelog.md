@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **UI Layout:** Model loading banner no longer overlays status panel:
+  - **Issue:** Loading banner used absolute positioning, covering status bar completely
+  - **Fix:** Changed to relative positioning for natural document flow
+  - **Impact:** Status panel remains visible when loading banner appears
+
 ### Changed
 - **Citation Display:** Removed redundant plain-text citations section from answer text:
   - **Before:** Answer ended with "\n\nCitations:\n[1] file, page X" + separate HTML citation cards

@@ -9,11 +9,13 @@ Known bugs, issues, and their resolution status.
 | DEF-023 | test_ui_backend.py leaks mocked modules into other tests via sys.modules | High | Open | 2025-12-23 |
 | DEF-024 | tests expect ui.components but module is missing | Medium | Open | 2025-12-23 |
 | DEF-025 | tests expect daemon.watch.ExtractorAdapter but symbol is missing | Medium | Open | 2025-12-23 |
+| DEF-026 | Model loading banner overlays and blocks status panel | Medium | Fixed | 2025-12-25 |
 
 ## Resolved Defects
 
 | ID | Description | Severity | Resolution | Resolved |
 |----|-------------|----------|------------|----------|
+| DEF-026 | Model loading banner overlays and blocks status panel | Medium | Changed position from absolute to relative for natural document flow | 2025-12-25 |
 | DEF-022 | test_enhanced_adapter.py never asserts - always returns True | High | Added proper assert statements to validate operations | 2025-12-23 |
 | DEF-021 | Numpy array boolean check causes ValueError in add_document() | Critical | Changed `if not embeddings:` to `if embeddings is None:` | 2025-12-23 |
 | DEF-020 | Immediate indexing calls non-existent Embedder.add_document() | Critical | Changed to use EmbeddingAdapter.add_document() which has the method | 2025-12-23 |

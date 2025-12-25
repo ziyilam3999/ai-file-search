@@ -152,6 +152,162 @@ class EmbeddingAdapter:
             logger.error(f"Error removing document {file_path}: {e}")
             return False
 
+    def add_documents_batch(
+        self, documents: List[Tuple[str, str]], progress_callback=None
+    ) -> Tuple[int, int]:
+        """
+        Add multiple documents in a single batch operation for better performance.
+
+        This method optimizes performance by:
+        1. Collecting all chunks from all documents
+        2. Generating embeddings in a single model.encode() call
+        3. Writing all vectors to FAISS in one operation
+        4. Batching database inserts
+
+        Args:
+            documents: List of (file_path, text) tuples
+            progress_callback: Optional callback(current, total, file_path) for progress updates
+
+        Returns:
+            Tuple of (successful_count, failed_count)
+        """
+        if not documents:
+            return (0, 0)
+
+        operation_start = time.time()
+        successful = 0
+        failed = 0
+
+        try:
+            with self._operation_lock:
+                logger.info(f"Batch indexing {len(documents)} documents...")
+
+                # Step 1: Remove existing documents and collect all chunks
+                all_chunks: List[str] = []
+                chunk_metadata: List[Tuple[str, int, int]] = (
+                    []
+                )  # (file_path, start_idx, end_idx)
+
+                for i, (file_path, text) in enumerate(documents):
+                    if progress_callback:
+                        progress_callback(i, len(documents), file_path)
+
+                    # Remove existing document if it exists
+                    self._remove_existing_document(file_path)
+
+                    # Process text into chunks
+                    chunks = self._process_text_to_chunks(text)
+                    if chunks:
+                        start_idx = len(all_chunks)
+                        all_chunks.extend(chunks)
+                        end_idx = len(all_chunks)
+                        chunk_metadata.append((file_path, start_idx, end_idx))
+
+                if not all_chunks:
+                    logger.warning("No valid chunks generated from any document")
+                    return (0, len(documents))
+
+                logger.info(
+                    f"Generated {len(all_chunks)} chunks from {len(chunk_metadata)} documents"
+                )
+
+                # Step 2: Generate embeddings for ALL chunks in one call
+                embeddings = self._generate_embeddings(all_chunks)
+                if embeddings is None:
+                    logger.error("Failed to generate embeddings for batch")
+                    self._stats["operations_failed"] += len(documents)
+                    return (0, len(documents))
+
+                # Step 3: Add all to FAISS and DB in batch
+                success = self._add_batch_to_faiss_and_db(
+                    all_chunks, embeddings, chunk_metadata
+                )
+
+                if success:
+                    successful = len(chunk_metadata)
+                    self._stats["documents_added"] += successful
+                else:
+                    failed = len(documents)
+                    self._stats["operations_failed"] += failed
+
+                self._stats["index_size"] = self._get_current_index_size()
+                self._stats["last_operation_time"] = time.time()
+
+                processing_time = time.time() - operation_start
+                logger.info(
+                    f"Batch indexing completed: {successful} succeeded, {failed} failed "
+                    f"in {processing_time:.2f}s ({len(all_chunks)} total chunks)"
+                )
+
+                return (successful, failed)
+
+        except Exception as e:
+            self._stats["operations_failed"] += len(documents)
+            logger.error(f"Error in batch document indexing: {e}")
+            return (0, len(documents))
+
+    def _add_batch_to_faiss_and_db(
+        self,
+        chunks: List[str],
+        embeddings: npt.NDArray[np.float32],
+        chunk_metadata: List[Tuple[str, int, int]],
+    ) -> bool:
+        """
+        Add all chunks and embeddings to FAISS and DB in a single batch operation.
+
+        Args:
+            chunks: All text chunks
+            embeddings: Corresponding embeddings array
+            chunk_metadata: List of (file_path, start_idx, end_idx) tuples
+
+        Returns:
+            True if successful
+        """
+        try:
+            # Get current index and database
+            index = faiss.read_index(self.embedder.index_path)
+            db = DatabaseManager(self.embedder.db_path)
+
+            # Get next available ID
+            result = db.fetch_one("SELECT MAX(id) FROM meta")
+            max_id = result[0] if result else None
+            next_id = (max_id or 0) + 1
+
+            # Prepare IDs for all chunks
+            num_chunks = len(chunks)
+            ids = np.arange(next_id, next_id + num_chunks, dtype=np.int64)
+
+            # Add ALL embeddings to FAISS in one operation
+            embeddings_array = np.array(embeddings, dtype=np.float32)
+            index.add_with_ids(embeddings_array, ids)
+
+            # Save updated index to disk (single write)
+            faiss.write_index(index, self.embedder.index_path)
+
+            # Invalidate Embedder cache
+            if hasattr(self.embedder, "clear_cache"):
+                self.embedder.clear_cache()
+
+            # Build metadata entries for all chunks
+            metadata_entries = []
+            for file_path, start_idx, end_idx in chunk_metadata:
+                for i in range(start_idx, end_idx):
+                    metadata_entries.append((next_id + i, file_path, chunks[i]))
+
+            # Batch insert all metadata
+            db.execute_many(
+                "INSERT INTO meta (id, file, chunk) VALUES (?, ?, ?)", metadata_entries
+            )
+
+            logger.debug(
+                f"Batch added {num_chunks} chunks from {len(chunk_metadata)} files"
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Error in batch add to FAISS and DB: {e}")
+            return False
+
     def save_index(self) -> bool:
         """Save the current index state to disk."""
         try:

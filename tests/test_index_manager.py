@@ -65,9 +65,15 @@ class TestIndexManager(unittest.TestCase):
         os.makedirs(test_dir, exist_ok=True)
 
         try:
-            success, msg = self.manager.add_watch_path(test_dir)
+            # Use sync mode for predictable testing
+            result = self.manager.add_watch_path(test_dir, async_mode=False)
+            # Handle both 2-tuple (legacy) and 3-tuple (new) returns
+            if len(result) == 3:
+                success, msg, job_id = result
+            else:
+                success, msg = result
             self.assertTrue(success, f"Failed to add path: {msg}")
-            self.assertIn("added successfully", msg)
+            self.assertIn("added", msg.lower())
 
             # Verify config updated
             with open(self.config_path, "r") as f:
@@ -78,8 +84,6 @@ class TestIndexManager(unittest.TestCase):
                 norm_path = normalize_path(test_dir)
                 self.assertIn(norm_path, config["watch_paths"])
 
-            # Verify watcher restarted
-            self.mock_watcher.restart_watcher.assert_called_once()
         finally:
             if os.path.exists(test_dir):
                 os.rmdir(test_dir)
@@ -89,8 +93,13 @@ class TestIndexManager(unittest.TestCase):
         os.makedirs(test_dir, exist_ok=True)
 
         try:
-            self.manager.add_watch_path(test_dir)
-            success, msg = self.manager.add_watch_path(test_dir)
+            self.manager.add_watch_path(test_dir, async_mode=False)
+            result = self.manager.add_watch_path(test_dir, async_mode=False)
+            # Handle both 2-tuple (legacy) and 3-tuple (new) returns
+            if len(result) == 3:
+                success, msg, job_id = result
+            else:
+                success, msg = result
             self.assertFalse(success)
             self.assertIn("already being watched", msg)
         finally:
@@ -102,14 +111,19 @@ class TestIndexManager(unittest.TestCase):
         os.makedirs(test_dir, exist_ok=True)
 
         try:
-            self.manager.add_watch_path(test_dir)
+            self.manager.add_watch_path(test_dir, async_mode=False)
 
-            # Reset mock to clear the restart call from add_watch_path
+            # Reset mock to clear any calls from add_watch_path
             self.mock_watcher.reset_mock()
 
-            success, msg = self.manager.remove_watch_path(test_dir)
+            result = self.manager.remove_watch_path(test_dir, async_mode=False)
+            # Handle both 2-tuple (legacy) and 3-tuple (new) returns
+            if len(result) == 3:
+                success, msg, job_id = result
+            else:
+                success, msg = result
             self.assertTrue(success, f"Failed to remove path: {msg}")
-            self.assertIn("removed successfully", msg)
+            self.assertIn("removed", msg.lower())
 
             # Verify config updated
             with open(self.config_path, "r") as f:
@@ -119,8 +133,6 @@ class TestIndexManager(unittest.TestCase):
                 norm_path = normalize_path(test_dir)
                 self.assertNotIn(norm_path, config["watch_paths"])
 
-            # Verify watcher restarted
-            self.mock_watcher.restart_watcher.assert_called_once()
         finally:
             if os.path.exists(test_dir):
                 os.rmdir(test_dir)

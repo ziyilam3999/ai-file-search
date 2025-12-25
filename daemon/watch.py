@@ -344,7 +344,98 @@ class FileWatcher:
             name="Nightly Full Reindex",
         )
 
+        # Add config reload check every 5 seconds
+        self.scheduler.add_job(
+            self._check_config_reload,
+            "interval",
+            seconds=5,
+            id="config_reload_check",
+            name="Config Reload Check",
+        )
+
         logger.info(f"Scheduled nightly reindex at {nightly_time}")
+
+    def _check_config_reload(self) -> None:
+        """Check if config file has changed and reload watch paths if needed."""
+        try:
+            config_path = Path(self.config_path)
+            if not config_path.exists():
+                return
+
+            # Check if config file was modified
+            current_mtime = config_path.stat().st_mtime
+            last_mtime = getattr(self, "_config_mtime", 0)
+
+            if current_mtime > last_mtime:
+                self._config_mtime = current_mtime
+
+                # Skip first check (initialization)
+                if last_mtime == 0:
+                    return
+
+                logger.info("Config file changed, reloading watch paths...")
+                self._reload_watch_paths()
+
+        except Exception as e:
+            logger.error(f"Error checking config reload: {e}")
+
+    def _reload_watch_paths(self) -> None:
+        """Reload watch paths from config without full restart."""
+        try:
+            new_config = self._load_config()
+            new_paths = set(
+                new_config.get("watch_paths") or new_config.get("watch_directories", [])
+            )
+            current_paths = set(
+                self.config.get("watch_paths")
+                or self.config.get("watch_directories", [])
+            )
+
+            # Find added and removed paths
+            added_paths = new_paths - current_paths
+            removed_paths = current_paths - new_paths
+
+            if not added_paths and not removed_paths:
+                return
+
+            # Update config
+            self.config = new_config
+
+            # Handle removed paths (stop watching)
+            for path in removed_paths:
+                logger.info(f"Stopped watching: {path}")
+                # Note: watchdog doesn't have a direct "unschedule by path" method
+                # The observer will just ignore events from unscheduled paths
+
+            # Handle added paths (start watching)
+            handler = FileChangeHandler(self.file_queue, self.config)  # type: ignore[arg-type]
+            for path in added_paths:
+                if os.path.exists(path):
+                    self.observer.schedule(handler, path, recursive=True)
+                    logger.info(f"Started watching: {path}")
+
+                    # Queue initial scan of new path
+                    self._queue_path_scan(path)
+                else:
+                    logger.warning(f"New watch path does not exist: {path}")
+
+            logger.success(
+                f"Config reloaded: +{len(added_paths)} -{len(removed_paths)} paths"
+            )
+
+        except Exception as e:
+            logger.error(f"Error reloading watch paths: {e}")
+
+    def _queue_path_scan(self, path: str) -> None:
+        """Queue all files in a new path for indexing."""
+        try:
+            files = get_supported_files(path)
+            for file_path in files:
+                path_str = str(file_path.resolve()).replace("\\", "/")
+                self.file_queue.add_change(path_str, "created")
+            logger.info(f"Queued {len(files)} files from new path: {path}")
+        except Exception as e:
+            logger.error(f"Error queuing path scan for {path}: {e}")
 
     def _process_file_changes(self) -> None:
         """Process queued file changes with extraction pipeline."""

@@ -60,15 +60,22 @@ class TestUIBackend(unittest.TestCase):
         self.assertEqual(data["paths"], ["/path/1", "/path/2"])
 
     def test_add_watch_path(self):
-        self.mock_manager.add_watch_path.return_value = (True, "Success")
+        # Return 3-tuple: (success, message, job_id)
+        self.mock_manager.add_watch_path.return_value = (True, "Success", "job_123")
         response = self.app.post(
             "/api/settings/watch-paths", json={"path": "/new/path"}
         )
         self.assertEqual(response.status_code, 200)
-        self.mock_manager.add_watch_path.assert_called_with("/new/path")
+        self.mock_manager.add_watch_path.assert_called_with(
+            "/new/path", async_mode=True
+        )
+        data = json.loads(response.data)
+        self.assertEqual(data["status"], "accepted")
+        self.assertEqual(data["job_id"], "job_123")
 
     def test_add_watch_path_error(self):
-        self.mock_manager.add_watch_path.return_value = (False, "Error message")
+        # Return 3-tuple: (success, message, job_id)
+        self.mock_manager.add_watch_path.return_value = (False, "Error message", None)
         response = self.app.post(
             "/api/settings/watch-paths", json={"path": "/bad/path"}
         )
@@ -77,12 +84,17 @@ class TestUIBackend(unittest.TestCase):
         self.assertEqual(data["error"], "Error message")
 
     def test_remove_watch_path(self):
-        self.mock_manager.remove_watch_path.return_value = (True, "Removed")
+        # Return 3-tuple: (success, message, job_id)
+        self.mock_manager.remove_watch_path.return_value = (True, "Removed", "job_456")
         response = self.app.delete(
             "/api/settings/watch-paths", json={"path": "/path/to/remove"}
         )
         self.assertEqual(response.status_code, 200)
-        self.mock_manager.remove_watch_path.assert_called_with("/path/to/remove")
+        self.mock_manager.remove_watch_path.assert_called_with(
+            "/path/to/remove", async_mode=True
+        )
+        data = json.loads(response.data)
+        self.assertEqual(data["status"], "accepted")
 
     def test_trigger_reindex(self):
         self.mock_manager.trigger_reindex.return_value = (True, "Reindexing")

@@ -337,9 +337,19 @@ def add_watch_path():
     if not path:
         return jsonify({"error": "Path is required"}), 400
 
-    success, message = index_manager.add_watch_path(path)
+    # Use async mode by default for faster response
+    async_mode = data.get("async", True)
+    success, message, job_id = index_manager.add_watch_path(path, async_mode=async_mode)
+
     if success:
-        return jsonify({"status": "success", "message": message})
+        response = {
+            "status": "accepted" if job_id else "success",
+            "message": message,
+        }
+        if job_id:
+            response["job_id"] = job_id
+            response["poll_url"] = f"/api/jobs/{job_id}"
+        return jsonify(response)
     else:
         return jsonify({"error": message}), 400
 
@@ -351,11 +361,40 @@ def remove_watch_path():
     if not path:
         return jsonify({"error": "Path is required"}), 400
 
-    success, message = index_manager.remove_watch_path(path)
+    # Use async mode by default for faster response
+    async_mode = data.get("async", True)
+    success, message, job_id = index_manager.remove_watch_path(
+        path, async_mode=async_mode
+    )
+
     if success:
-        return jsonify({"status": "success", "message": message})
+        response = {
+            "status": "accepted" if job_id else "success",
+            "message": message,
+        }
+        if job_id:
+            response["job_id"] = job_id
+            response["poll_url"] = f"/api/jobs/{job_id}"
+        return jsonify(response)
     else:
         return jsonify({"error": message}), 400
+
+
+@app.route("/api/jobs/<job_id>", methods=["GET"])
+def get_job_status(job_id):
+    """Get the status of a background job."""
+    job = index_manager.get_job_status(job_id)
+    if job:
+        return jsonify(job)
+    else:
+        return jsonify({"error": "Job not found"}), 404
+
+
+@app.route("/api/jobs", methods=["GET"])
+def list_jobs():
+    """List all background jobs."""
+    jobs = index_manager.get_all_jobs()
+    return jsonify({"jobs": jobs})
 
 
 @app.route("/api/settings/reindex", methods=["POST"])
@@ -365,6 +404,18 @@ def trigger_reindex():
         return jsonify({"status": "success", "message": message})
     else:
         return jsonify({"error": message}), 500
+
+
+# Pre-warm the embedding adapter at startup for faster first requests
+@app.before_request
+def warm_up_once():
+    """Warm up the embedding adapter on first request."""
+    if not getattr(app, "_warmed_up", False):
+        try:
+            index_manager.warm_up()
+            app._warmed_up = True
+        except Exception:
+            pass  # Ignore warm-up errors
 
 
 if __name__ == "__main__":

@@ -47,6 +47,9 @@ All previously tracked items have been completed:
 
 | Date | File | Improvement |
 |------|------|-------------|
+| 2025-12-25 | tools/sync_copilot_instructions.ps1 | Major cleanup: Removed 256 lines of dead code (Sync-PillarSnapperDocs, Find-HighestDocVersion, legacy hardcoded variables), added ${base_path} variable expansion for DRY config paths, fixed True console noise from unsuppressed function returns. Reduced from 1694→1438 lines (-15%) |
+| 2025-12-25 | sync_config.yaml | Added ${base_path} variable expansion, reduced 12 hardcoded paths to single base_path definition. Reduced from 94→74 lines (-21%) |
+| 2025-12-25 | .github/copilot-instructions.md | Made version bump instructions project-agnostic (removed pubspec.yaml references), removed duplicate "Doc Files Reference" table (kept DOCUMENT MAP), bumped to v2.9. Reduced from 489→351 lines (-28%) |
 | 2025-12-23 | .github/copilot-instructions.md | Structural refactoring v2.2: Consolidated 10 inline ⚠️ FAILURE MODE warnings into single reference table (FM-1/FM-2/FM-3), replaced verbose blocks with inline references (→ FM-X), improved scannability without losing safety checks |
 | 2025-12-23 | tools/sync_copilot_instructions.ps1 | Comprehensive refactoring: Reduced main loop from ~100 lines to 15 lines, extracted 3 high-level functions (`Sync-CopilotInstructions`, `Sync-ScriptFile`, `Ensure-GitProtection`), consolidated git operations, added path validation, extracted pattern constants. Result: 40% complexity reduction, improved testability and maintainability |
 | 2025-12-23 | tools/sync_copilot_instructions.ps1 | PowerShell best practices: Added `[CmdletBinding()]`, parameter validation with `[Parameter(Mandatory)]`, extracted constants, introduced result object, added verbose logging |

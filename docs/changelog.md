@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Sync Infrastructure Refactoring:** Major cleanup of sync_copilot_instructions.ps1:
+  - Removed 256 lines of dead code (legacy Sync-PillarSnapperDocs function)
+  - Added `${base_path}` variable expansion for DRY config paths in sync_config.yaml
+  - Fixed console noise from unsuppressed function return values
+  - Made copilot-instructions.md project-agnostic (removed pillar_snapper-specific references)
+  - Overall reduction: 2277→1863 lines across 3 files (-18%)
+
 ### Fixed
 - **DEF-027:** Settings UI now handles async responses correctly - accepts both "success" and "accepted" status to prevent duplicate operation errors
 

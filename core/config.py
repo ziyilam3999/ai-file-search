@@ -40,7 +40,7 @@ LLM_CONFIG = {
     "n_ctx": 2048,  # Context window (must fit prompt + retrieved chunks + output)
     "n_threads": 8,  # CPU threads for inference
     "n_batch": 384,  # Larger batch for higher throughput (watch RAM)
-    "n_gpu_layers": 0,  # GPU layers to offload (0=CPU only, 35=full GPU)
+    "n_gpu_layers": 35,  # GPU layers to offload (0=CPU only, 35=full GPU)
 }
 
 # Performance Presets for easy speed vs quality tuning

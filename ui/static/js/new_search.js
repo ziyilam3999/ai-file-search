@@ -40,6 +40,11 @@ class AIFileSearchUI {
         this.indexCount = document.getElementById('index-count');
         this.indexingProgress = document.getElementById('indexing-progress');
         this.progressText = document.getElementById('progress-text');
+        
+        // Model loading elements
+        this.modelLoadingBanner = document.getElementById('model-loading-banner');
+        this.loadingStage = document.getElementById('loading-stage');
+        this.progressFill = document.getElementById('progress-fill');
     }
 
     bindEvents() {
@@ -377,6 +382,9 @@ class AIFileSearchUI {
     }
 
     startStatusPolling() {
+        // Check preload status immediately
+        this.checkPreloadStatus();
+        
         // Check status + activity immediately on page load.
         this.checkStatus();
         this.fetchActivity();
@@ -389,6 +397,50 @@ class AIFileSearchUI {
             this.checkStatus();
             this.fetchActivity();
         }, 2000);
+    }
+    
+    async checkPreloadStatus() {
+        try {
+            const response = await fetch('/api/preload-status');
+            if (response.ok) {
+                const status = await response.json();
+                
+                if (!status.ready) {
+                    // Show loading banner
+                    if (this.modelLoadingBanner) {
+                        this.modelLoadingBanner.style.display = 'block';
+                        if (this.loadingStage) {
+                            this.loadingStage.textContent = status.stage || 'Loading AI models...';
+                        }
+                        if (this.progressFill) {
+                            this.progressFill.style.width = `${status.progress || 0}%`;
+                        }
+                    }
+                    
+                    // Disable search button
+                    if (this.searchBtn) {
+                        this.searchBtn.disabled = true;
+                        this.searchBtn.style.opacity = '0.5';
+                    }
+                    
+                    // Check again in 500ms
+                    setTimeout(() => this.checkPreloadStatus(), 500);
+                } else {
+                    // Models ready - hide banner
+                    if (this.modelLoadingBanner) {
+                        this.modelLoadingBanner.style.display = 'none';
+                    }
+                    
+                    // Enable search button
+                    if (this.searchBtn) {
+                        this.searchBtn.disabled = false;
+                        this.searchBtn.style.opacity = '1';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error checking preload status:', error);
+        }
     }
 
     async checkStatus() {

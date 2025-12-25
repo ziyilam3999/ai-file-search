@@ -94,6 +94,30 @@ def get_status():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/preload-status")
+def get_preload_status_endpoint():
+    """Get AI model preload status."""
+    try:
+        # Try to import preload status from run_app
+        import run_app
+
+        status = run_app.get_preload_status()
+        return jsonify(status)
+    except Exception:
+        # If not available, check if models are loaded directly
+        from core.embedding import _MODEL_CACHE
+        from core.llm import _phi3_instance
+
+        models_ready = _phi3_instance is not None and _MODEL_CACHE is not None
+        return jsonify(
+            {
+                "ready": models_ready,
+                "stage": "Ready" if models_ready else "Loading...",
+                "progress": 100 if models_ready else 50,
+            }
+        )
+
+
 @app.route("/api/logs")
 def get_logs():
     """Get the last 80 lines of combined logs (app + watcher).
@@ -284,7 +308,15 @@ def search_stream():
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
 
-    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # Disable nginx/proxy buffering
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @app.route("/settings")

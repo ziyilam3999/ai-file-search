@@ -8,6 +8,18 @@ import webview
 
 from smart_watcher import SmartWatcherController
 
+# Shared preload status for UI
+_PRELOAD_STATUS = {
+    "ready": False,
+    "stage": "Starting...",
+    "progress": 0,
+}
+
+
+def get_preload_status():
+    """Get current preload status (called by Flask endpoint)."""
+    return _PRELOAD_STATUS.copy()
+
 
 def configure_app_logging() -> None:
     """Configure Loguru to also write app runtime logs to logs/app.log."""
@@ -37,25 +49,33 @@ def preload_models():
     2. Sentence transformer embedding model (~4s cold load)
     3. FAISS index and metadata cache (~1s cold load)
     """
+    global _PRELOAD_STATUS
     try:
         # 1. Pre-load embedding model and caches
+        _PRELOAD_STATUS.update({"stage": "Loading embedding model...", "progress": 20})
         print("Launcher: Pre-loading embedding model...")
         from core.embedding import Embedder
 
         embedder = Embedder()
         embedder._get_model()  # Load sentence transformer
+
+        _PRELOAD_STATUS.update({"stage": "Loading FAISS index...", "progress": 50})
         embedder._get_index()  # Load FAISS index
         embedder._get_metadata()  # Load metadata cache
         print("Launcher: Embedding model ready.")
 
         # 2. Pre-load Phi-3 LLM
+        _PRELOAD_STATUS.update({"stage": "Loading Phi-3 LLM...", "progress": 75})
         print("Launcher: Pre-loading Phi-3 LLM...")
         from core.llm import preload_phi3_llm
 
         preload_phi3_llm()
+
+        _PRELOAD_STATUS.update({"ready": True, "stage": "Ready", "progress": 100})
         print("Launcher: All AI models ready for queries!")
 
     except Exception as e:
+        _PRELOAD_STATUS.update({"ready": False, "stage": f"Error: {e}", "progress": 0})
         print(f"Launcher: Model pre-load failed (will load on first query): {e}")
 
 

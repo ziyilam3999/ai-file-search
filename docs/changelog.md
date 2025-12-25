@@ -4,12 +4,30 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Startup Progress UI:** Added visual feedback during model preloading:
+  - **Banner:** Blue gradient loading banner shows current stage and progress bar
+  - **API Endpoint:** `/api/preload-status` returns `{ready, stage, progress}` status
+  - **UX:** Search button disabled until models ready, auto-hides when complete
+  - **Polling:** Frontend checks status every 500ms during preload
+- **Performance Diagnostics:** Added accurate test tools using raw sockets:
+  - **tools/test_flask_streaming.py:** Direct SSE streaming test without buffering
+  - **tools/test_timing_breakdown.py:** Precise phase-by-phase timing breakdown
+  - **Finding:** Python `requests` library adds ~2s buffering; raw sockets show true performance
+
+### Changed
+- **Prompt Template Caching:** Moved prompt template loading from per-query to module-level:
+  - **Before:** Read `retrieval_prompt.md` on every query (~5ms overhead)
+  - **After:** Cached in `_PROMPT_TEMPLATE` at module import (~5ms saved per query)
+  - **Implementation:** New `_get_prompt_template()` function in core/ask.py
+
 ### Fixed
 - **Streaming Cold Start:** Fixed 15+ second delay on first query by preloading ALL models:
   - **Root Cause:** First query loaded both embedding model (~4s) and LLM (~3s) synchronously
   - **Solution:** Extended `preload_models()` to load embedding model + FAISS index + LLM at startup
   - **Before:** First query: 16+ seconds, subsequent: 2-4 seconds
   - **After:** First query: 2-4 seconds (models already warm)
+  - **Progress Updates:** Preload now reports stage completion (20% → 50% → 75% → 100%)
 
 ### Changed
 - **LLM Upgrade:** Upgraded from Phi-3-mini-4k to Phi-3.5-mini-instruct:

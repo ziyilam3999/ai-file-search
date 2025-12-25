@@ -16,6 +16,34 @@ from .embedding import Embedder
 from .llm import get_phi3_llm
 
 _INDEX_BOOTSTRAPPED = False
+_PROMPT_TEMPLATE = None
+
+
+def _get_prompt_template() -> str:
+    """Load and cache the prompt template from disk.
+
+    Returns:
+        Cached prompt template string
+    """
+    global _PROMPT_TEMPLATE
+    if _PROMPT_TEMPLATE is None:
+        prompt_path = Path(__file__).parent.parent / "prompts" / "retrieval_prompt.md"
+        try:
+            with open(prompt_path, "r", encoding="utf-8") as f:
+                _PROMPT_TEMPLATE = f.read()
+            logger.debug("CACHE: Loaded and cached prompt template")
+        except FileNotFoundError:
+            # Fallback template if file doesn't exist
+            _PROMPT_TEMPLATE = """
+Context: {context}
+
+Question: {question}
+
+Please provide a comprehensive answer based on the context above. Include specific details and cite your sources using [1], [2], etc.
+
+Answer:"""
+            logger.warning("CACHE: Using fallback prompt template (file not found)")
+    return _PROMPT_TEMPLATE
 
 
 def answer_question(
@@ -121,20 +149,8 @@ def answer_question(
     results = relevant_results
     logger.info(f"RELEVANT: {len(results)} chunks passed relevance threshold")
 
-    # 3. Load prompt template
-    prompt_path = Path(__file__).parent.parent / "prompts" / "retrieval_prompt.md"
-    try:
-        with open(prompt_path, "r", encoding="utf-8") as f:
-            prompt_template = f.read()
-    except FileNotFoundError:
-        prompt_template = """
-Context: {context}
-
-Question: {question}
-
-Please provide a comprehensive answer based on the context above. Include specific details and cite your sources using [1], [2], etc.
-
-Answer:"""
+    # 3. Get cached prompt template
+    prompt_template = _get_prompt_template()
 
     # 4. Build citations first (needed for both streaming and non-streaming)
     citations = []

@@ -12,6 +12,10 @@ All notable changes to this project are documented in this file.
   - Made copilot-instructions.md project-agnostic (removed pillar_snapper-specific references)
   - Overall reduction: 2277→1863 lines across 3 files (-18%)
 
+- **Activity Log Filtering:** Added `/api/preload-status` to noise filter:
+  - Removes transient startup polling requests from activity feed
+  - Keeps logs clean while preserving progress bar UX during model loading
+
 ### Fixed
 - **DEF-027:** Settings UI now handles async responses correctly - accepts both "success" and "accepted" status to prevent duplicate operation errors
 

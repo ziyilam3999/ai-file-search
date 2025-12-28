@@ -170,6 +170,7 @@ def get_activity():
             "GET /api/status",
             "GET /api/logs",
             "GET /api/activity",
+            "GET /api/preload-status",
             "GET /static/",
             "GET /favicon.ico",
             "Ensured meta table exists",

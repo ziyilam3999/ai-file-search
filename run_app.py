@@ -98,7 +98,7 @@ def ensure_watcher_running():
         print("Launcher: File watcher is already running.")
 
 
-def wait_for_server(port=5001, timeout=10):
+def wait_for_server(port=5001, timeout=30):
     """Waits for the Flask server to be ready."""
     start_time = time.time()
     url = f"http://localhost:{port}/"

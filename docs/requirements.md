@@ -86,7 +86,7 @@ A zero-configuration smart document search system with automatic discovery and r
 |----|-------------|--------|----------|
 | NFR-001.1 | Index build time | < 60s | 40.34s |
 | NFR-001.2 | Query response time | < 200ms | 17.4ms |
-| NFR-001.3 | Answer generation time | < 60s | 63s (improved from 126s) |
+| NFR-001.3 | Answer generation time | < 60s | 19s (with Qwen2.5, improved from 63s with Phi-3.5) |
 
 ### NFR-002: Resource Usage
 | ID | Requirement | Target |

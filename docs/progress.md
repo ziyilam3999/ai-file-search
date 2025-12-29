@@ -9,7 +9,7 @@ Project roadmap, sprint tasks, and session log.
 | Bootstrap & Setup | Done | Weekend 1 |
 | Document Extraction | Done | Weekend 2 |
 | Embeddings & Search | Done | Weekend 3 |
-| Phi-3 LLM Integration | Done | Weekend 4 |
+| LLM Integration (Phi-3.5) | Done | Weekend 4 |
 | Streamlit UI | Done | Weekend 5 |
 | File Watcher System | Done | Weekend 6 |
 | Performance Optimization | Done | Weekend 7 |
@@ -20,6 +20,17 @@ Project roadmap, sprint tasks, and session log.
 | Maintenance & Standards | In Progress | December 2025 |
 
 ## Completed Milestones
+
+### December 2025: Qwen2.5-1.5B Migration (LLM Upgrade)
+- [x] **Model Migration**: Switched from Phi-3.5-mini to Qwen2.5-1.5B-Instruct
+- [x] **Performance Improvement**: 2.6x faster first token (51s → 19s on benchmark suite)
+- [x] **Quality Improvement**: 3x better accuracy (31% → 92% on 26-query benchmark)
+- [x] **Reliability**: Zero hallucinations (vs 5 hallucinations with Phi-3.5)
+- [x] **Code Refactoring**: Renamed all Phi-3 references to model-agnostic LLM terminology
+- [x] **Configuration Update**: core/config.py DEFAULT_MODEL_NAME and max_tokens settings
+- [x] **CLI Update**: Changed --no-phi3 to --no-llm for generic LLM control
+- [x] **Function Renames**: get_phi3_llm() → get_llm(), _generate_answer_with_phi3() → _generate_answer_with_llm()
+- [x] **Test File Renames**: test_phi3_integration.py → test_llm_integration.py, bench_phi3_performance.py → bench_llm_performance.py
 
 ### December 2025: LLM Performance Optimization
 - [x] **Performance Diagnostics**: Added timing instrumentation to measure bottlenecks

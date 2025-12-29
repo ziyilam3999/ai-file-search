@@ -51,9 +51,9 @@ python tools/verify_index_sync.py stats      # Show detailed statistics
 ### Test Markers
 
 - **`@pytest.mark.slow`**: Tests that load models or build large indexes (excluded by default)
-  - `test_phi3_integration.py`: Phi-3 model loading
+  - `test_llm_integration.py`: LLM model loading
   - `test_integration.py`: Full system integration
-  - `bench_phi3_performance.py`: Performance benchmarks
+  - `bench_llm_performance.py`: Performance benchmarks
   - `test_query_performance.py`: Query benchmarks
   - `test_embedding_watch_integration.py`: Embedding system integration
 
@@ -67,6 +67,8 @@ python tools/verify_index_sync.py stats      # Show detailed statistics
 - **test_core_utils.py**: Utility functions (citation formatting, file opening)
 - **test_core_config.py**: Configuration management
 - **test_ui_components.py**: UI rendering logic and components
+- **test_llm_integration.py**: LLM model loading and generation (renamed from test_phi3_integration.py)
+- **bench_llm_performance.py**: Performance benchmarks (renamed from bench_phi3_performance.py)
 
 ### 2. Integration Tests
 - **test_ui.py**: Streamlit UI components

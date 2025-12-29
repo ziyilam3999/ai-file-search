@@ -9,14 +9,14 @@ from pathlib import Path
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from core.llm import get_phi3_llm
+from core.llm import get_llm
 
 
 def test_simple_generation():
     """Test very simple generation."""
-    print("🧪 Testing simple Phi-3 generation...")
+    print("🧪 Testing simple LLM generation...")
 
-    llm = get_phi3_llm()
+    llm = get_llm()
 
     # Very simple prompt
     simple_prompt = "The capital of France is"
@@ -37,7 +37,7 @@ def test_chat_format():
     """Test with explicit chat format."""
     print("\n🧪 Testing chat format...")
 
-    llm = get_phi3_llm()
+    llm = get_llm()
 
     # Test the raw llama.cpp chat completion
     try:
@@ -65,7 +65,7 @@ def test_without_chat_format():
     """Test direct text completion."""
     print("\n🧪 Testing direct completion...")
 
-    llm = get_phi3_llm()
+    llm = get_llm()
 
     try:
         response = llm.llm.create_completion(
@@ -88,7 +88,7 @@ def test_rag_context():
     """Test with a shorter RAG-style prompt."""
     print("\n🧪 Testing RAG-style prompt...")
 
-    llm = get_phi3_llm()
+    llm = get_llm()
 
     short_prompt = """Answer this question based on the context:
 

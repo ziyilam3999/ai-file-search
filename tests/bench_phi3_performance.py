@@ -15,22 +15,22 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.ask import answer_question
+from core.llm import get_llm
 
 pytestmark = pytest.mark.slow  # Mark all tests in this module as slow
-from core.llm import get_phi3_llm
 
 
 def benchmark_phi3_loading():
-    """Benchmark Phi-3 model loading time."""
-    print("🤖 Benchmarking Phi-3 model loading...")
+    """Benchmark LLM model loading time."""
+    print("🤖 Benchmarking LLM model loading...")
 
     # Clear any existing instance
     from core import llm
 
-    llm._phi3_instance = None
+    llm._llm_instance = None
 
     start_time = time.time()
-    get_phi3_llm()
+    get_llm()
     load_time = time.time() - start_time
 
     print(f"⚡ Model loading time: {load_time:.2f}s")
@@ -81,7 +81,7 @@ def benchmark_token_generation():
     print("\n🔤 Benchmarking token generation...")
 
     try:
-        llm = get_phi3_llm()
+        llm = get_llm()
 
         test_prompt = """Answer the following question in detail:
 

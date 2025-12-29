@@ -51,9 +51,9 @@ print(f"✓ Progress: {final_status['progress']}%")
 print("\n[TEST 3] Model Loading Verification")
 print("-" * 60)
 from core.embedding import _MODEL_CACHE
-from core.llm import _phi3_instance
+from core.llm import _llm_instance
 
-print(f"✓ LLM loaded: {_phi3_instance is not None}")
+print(f"✓ LLM loaded: {_llm_instance is not None}")
 print(f"✓ Embedding model loaded: {_MODEL_CACHE is not None}")
 
 # Test 4: Quick query to test cached prompt
@@ -68,7 +68,7 @@ answer, citations = answer_question(
 t1 = time.time()
 
 print(f"✓ Query completed in {t1-t0:.2f}s")
-print(f"✓ Answer length: {len(answer)} chars")
+print(f"✓ Answer length: {len(str(answer))} chars")
 print(f"✓ Citations: {len(citations)}")
 
 print("\n" + "=" * 60)

@@ -119,8 +119,10 @@ def ask_question(
         answer, citations = answer_question(question)
         query_time = (time.time() - start_time) * 1000
 
-        # Display results
-        formatted_output = format_answer(answer, citations, show_citations, verbose)
+        # Display results (answer is always str when not streaming)
+        formatted_output = format_answer(
+            str(answer), citations, show_citations, verbose
+        )
         print(formatted_output)
 
         # Performance info

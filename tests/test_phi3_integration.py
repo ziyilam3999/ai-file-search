@@ -13,19 +13,19 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.ask import answer_question
-from core.llm import get_phi3_llm
+from core.llm import get_llm
 
 pytestmark = pytest.mark.slow  # Mark all tests in this module as slow
 
 
 def test_model_loading():
-    """Test Phi-3 model loading"""
-    print("AI: Testing Phi-3 model loading...")
+    """Test LLM model loading"""
+    print("AI: Testing LLM model loading...")
 
     try:
-        llm = get_phi3_llm()
+        llm = get_llm()
 
-        print(f"SUCCESS: Phi-3 model loaded: {llm.model_path.name}")
+        print(f"SUCCESS: LLM model loaded: {llm.model_path.name}")
 
         print(f"SUCCESS: Model available: {llm.is_available()}")
         return True
@@ -40,7 +40,7 @@ def test_basic_generation():
     print("\nTEST: Testing basic generation...")
 
     try:
-        llm = get_phi3_llm()
+        llm = get_llm()
 
         # Simple test prompt
         test_prompt = "The capital of France is"

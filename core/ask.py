@@ -323,7 +323,9 @@ def _generate_streaming_answer_with_phi3(
 
         # Log total generation time (streaming) with detailed breakdown
         total_generation_time = time.time() - generation_start
-        tokens_per_sec = token_count / total_generation_time if total_generation_time > 0 else 0
+        tokens_per_sec = (
+            token_count / total_generation_time if total_generation_time > 0 else 0
+        )
         logger.info(
             f"⏱️ GENERATION TIME (stream): {total_generation_time:.2f}s "
             f"(tokens={token_count}, rate={tokens_per_sec:.2f} tok/s)"

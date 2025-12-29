@@ -25,7 +25,54 @@ watcher = SmartWatcherController()
 index_manager = IndexManager()
 
 
-@app.route("/")
+def to_activity(line: str) -> str | None:
+    """Map log lines to user-friendly activity events.
+
+    Args:
+        line: A log line from app.log or watcher.log
+
+    Returns:
+        A user-friendly activity event string, or None if line is not a milestone
+    """
+    # Map known log lines to user-friendly milestones.
+    if "PRELOAD: Pre-loading LLM model" in line:
+        return "AI Model: Loading…"
+    if "SUCCESS: LLM model loaded successfully" in line:
+        return "AI Model: Loaded"
+    if "PRELOAD: LLM model ready for queries" in line:
+        return "AI Model: Ready"
+    if "THINKING: Answering question:" in line:
+        return "AI: Processing your question…"
+    if "LOADING: FAISS index" in line:
+        return "Search: Loading index…"
+    if "SUCCESS: FAISS index loaded" in line:
+        return "Search: Index ready"
+    if "FOUND:" in line and "relevant chunks" in line:
+        return line.split(" - ")[-1].strip()
+    if "STREAMING: Starting generation" in line:
+        return "AI: Generating answer…"
+    if "FIRST TOKEN" in line:
+        # Keep the timing info.
+        return line.split(" - ")[-1].strip()
+    if "TOTAL TIME" in line:
+        return line.split(" - ")[-1].strip()
+
+    # Watcher milestones (fallback)
+    if "File watcher started successfully" in line:
+        return "Watcher: Running"
+    if "Processing" in line and "added/modified files" in line:
+        return line.split(" - ")[-1].strip()
+    if "Successfully added document:" in line:
+        # Shorten a bit for UI.
+        tail = line.split("Successfully added document:")[-1].strip()
+        return f"Indexed: {tail}"
+    if "Failed to add to index:" in line:
+        tail = line.split("Failed to add to index:")[-1].strip()
+        return f"Indexing failed: {tail}"
+
+    return None
+
+
 def home():
     return render_template("new_search.html")
 
@@ -180,46 +227,8 @@ def get_activity():
         def is_noise(line: str) -> bool:
             return any(s in line for s in noise_substrings)
 
-        def to_activity(line: str) -> str | None:
-            # Map known log lines to user-friendly milestones.
-            if "PRELOAD: Pre-loading LLM model" in line:
-                return "AI Model: Loading…"
-            if "SUCCESS: LLM model loaded successfully" in line:
-                return "AI Model: Loaded"
-            if "PRELOAD: LLM model ready for queries" in line:
-                return "AI Model: Ready"
-            if "THINKING: Answering question:" in line:
-                return "AI: Processing your question…"
-            if "LOADING: FAISS index" in line:
-                return "Search: Loading index…"
-            if "SUCCESS: FAISS index loaded" in line:
-                return "Search: Index ready"
-            if "FOUND:" in line and "relevant chunks" in line:
-                return line.split(" - ")[-1].strip()
-            if "STREAMING: Starting generation" in line:
-                return "AI: Generating answer…"
-            if "FIRST TOKEN" in line:
-                # Keep the timing info.
-                return line.split(" - ")[-1].strip()
-            if "TOTAL TIME" in line:
-                return line.split(" - ")[-1].strip()
-
-            # Watcher milestones (fallback)
-            if "File watcher started successfully" in line:
-                return "Watcher: Running"
-            if "Processing" in line and "added/modified files" in line:
-                return line.split(" - ")[-1].strip()
-            if "Successfully added document:" in line:
-                # Shorten a bit for UI.
-                tail = line.split("Successfully added document:")[-1].strip()
-                return f"Indexed: {tail}"
-            if "Failed to add to index:" in line:
-                tail = line.split("Failed to add to index:")[-1].strip()
-                return f"Indexing failed: {tail}"
-
-            return None
-
         events: list[str] = []
+
         for raw in lines:
             if is_noise(raw):
                 continue

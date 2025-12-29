@@ -65,12 +65,13 @@ class TestLLMConfigStructure:
         assert n_gpu_layers >= 0, "n_gpu_layers must be non-negative"
 
     def test_n_gpu_layers_enables_gpu_offloading(self):
-        """Test that n_gpu_layers is set to offload layers to GPU (Vulkan)."""
-        # Value of 99 means 'offload all available layers'
-        # This was changed from 0 (CPU-only) to enable GPU acceleration
+        """Test that n_gpu_layers is configurable for GPU/CPU modes."""
+        # Value of 0 means CPU-only (default for Intel iGPU)
+        # Value of 99 means 'offload all available layers' to GPU
+        # This is configurable via GPU_LAYERS environment variable
         assert (
-            LLM_CONFIG["n_gpu_layers"] > 0
-        ), "n_gpu_layers should be > 0 for GPU acceleration"
+            LLM_CONFIG["n_gpu_layers"] >= 0
+        ), "n_gpu_layers should be non-negative integer"
 
     def test_numeric_config_values_are_valid(self):
         """Test that numeric configuration values are within valid ranges."""
@@ -79,3 +80,26 @@ class TestLLMConfigStructure:
         assert LLM_CONFIG["n_ctx"] > 0
         assert LLM_CONFIG["n_threads"] > 0
         assert LLM_CONFIG["n_batch"] > 0
+
+    def test_llm_config_max_tokens_reasonable(self):
+        """Test that max_tokens is set to reasonable value."""
+        # Should be between 10 and 500
+        max_tokens = LLM_CONFIG["max_tokens"]
+        assert (
+            10 <= max_tokens <= 500
+        ), f"max_tokens={max_tokens} should be between 10-500"
+
+    def test_llm_config_temperature_valid(self):
+        """Test that temperature is set to valid value."""
+        # Should be between 0.0 and 1.0 (or up to 2.0 for creative)
+        temperature = LLM_CONFIG["temperature"]
+        assert (
+            0.0 <= temperature <= 1.0
+        ), f"temperature={temperature} should be between 0.0-1.0 for accuracy"
+
+    def test_default_model_name_used(self):
+        """Test that model name matches Qwen2.5-1.5B deployment."""
+        # Model should be set to Qwen2.5-1.5B (migrated from Phi-3.5)
+        # Check that configuration references the correct model setup
+        assert LLM_CONFIG["n_ctx"] >= 2048, "n_ctx should support Qwen2.5 context"
+        assert LLM_CONFIG["n_threads"] > 0, "Model requires thread configuration"

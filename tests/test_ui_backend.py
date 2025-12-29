@@ -102,6 +102,40 @@ class TestUIBackend(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.mock_manager.trigger_reindex.assert_called_once()
 
+    def test_to_activity_llm_loading(self):
+        """Test activity log mapping for LLM loading."""
+        # Import to_activity from flask_app
+        import ui.flask_app
+
+        to_activity = ui.flask_app.to_activity
+
+        line = "PRELOAD: Pre-loading LLM model"
+        result = to_activity(line)
+
+        self.assertEqual(result, "AI Model: Loading…")
+
+    def test_to_activity_llm_loaded(self):
+        """Test activity log mapping for LLM loaded successfully."""
+        import ui.flask_app
+
+        to_activity = ui.flask_app.to_activity
+
+        line = "SUCCESS: LLM model loaded successfully"
+        result = to_activity(line)
+
+        self.assertEqual(result, "AI Model: Loaded")
+
+    def test_to_activity_llm_ready(self):
+        """Test activity log mapping for LLM ready for queries."""
+        import ui.flask_app
+
+        to_activity = ui.flask_app.to_activity
+
+        line = "PRELOAD: LLM model ready for queries"
+        result = to_activity(line)
+
+        self.assertEqual(result, "AI Model: Ready")
+
 
 if __name__ == "__main__":
     unittest.main()

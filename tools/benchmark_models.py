@@ -21,16 +21,18 @@ Requirements:
 import argparse
 import json
 import os
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
-import sys
+
+import requests
 
 # Add project root to path for imports
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from core.embedding import DocumentEmbedder
+from core.embedding import Embedder
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 BENCHMARK_OUTPUT_DIR = project_root / "benchmark_results"
@@ -163,14 +165,14 @@ def get_memory_usage() -> dict:
 def get_real_context(query: str, top_k: int = 3) -> str:
     """Fetch real context chunks from the project's database."""
     try:
-        embedder = DocumentEmbedder()
+        embedder = Embedder()
         results = embedder.query(query, k=top_k)
         
         context_parts = []
+        # Results are 5-tuples: (chunk_text, file_path, chunk_id, doc_chunk_id, score)
         for i, result in enumerate(results, 1):
-            source = result.get("source", "Unknown")
-            text = result.get("text", "")
-            context_parts.append(f"[Document {i}: {source}]\n{text}")
+            chunk_text, file_path, chunk_id, doc_chunk_id, score = result
+            context_parts.append(f"[Document {i}: {file_path}]\n{chunk_text}")
         
         return "\n\n".join(context_parts)
     except Exception as e:
@@ -562,8 +564,6 @@ def save_results(results: list, output_path: str):
 
 
 def main():
-    import requests  # Import here to avoid issues if not installed
-    
     args = parse_args()
     
     print("="*80)

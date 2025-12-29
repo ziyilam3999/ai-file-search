@@ -12,7 +12,7 @@ EXTRACTS_DIR = "extracts"  # Deprecated
 LOGS_DIR = "logs"
 BACKUPS_DIR = "backups"
 AI_MODELS_DIR = "ai_models"
-DEFAULT_MODEL_NAME = "Phi-3.5-mini-instruct-Q4_K_M.gguf"
+DEFAULT_MODEL_NAME = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
 CONFIG_PATH = "prompts/watcher_config.yaml"
 
 
@@ -44,7 +44,7 @@ _gpu_layers_env = os.environ.get("GPU_LAYERS")
 _gpu_layers = int(_gpu_layers_env) if _gpu_layers_env is not None else 0  # CPU default
 
 LLM_CONFIG = {
-    "max_tokens": 50,  # Increased for better responses (~50 words)
+    "max_tokens": 100,  # Increased for Qwen2.5-1.5B (faster model, better responses)
     "temperature": 0.1,  # Keep deterministic
     "n_ctx": 2048,  # Context window (needs 1776+ for 5 chunks; reduced from original would break)
     "n_threads": 8,  # CPU threads for inference

@@ -13,7 +13,7 @@ from loguru import logger
 
 from .config import EXTRACTS_DIR, LLM_CONFIG, calculate_document_page
 from .embedding import Embedder
-from .llm import get_phi3_llm
+from .llm import get_llm
 
 _INDEX_BOOTSTRAPPED = False
 _PROMPT_TEMPLATE = None
@@ -215,8 +215,8 @@ def _generate_answer_with_phi3(prompt: str, citations: List[Dict]) -> str:
         AI-generated answer with citations
     """
     try:
-        # Get Phi-3 instance
-        llm = get_phi3_llm()
+        # Get LLM instance
+        llm = get_llm()
 
         # Generate answer using Phi-3 with config settings (single source of truth)
         raw_answer = llm.generate_answer(
@@ -291,9 +291,9 @@ def _generate_streaming_answer_with_phi3(
         Partial answer strings as they are generated
     """
     try:
-        # Get Phi-3 instance with timing diagnostic
+        # Get LLM instance with timing diagnostic
         pre_get_llm = time.time()
-        llm = get_phi3_llm()
+        llm = get_llm()
         llm_get_time = time.time() - pre_get_llm
         logger.info(f"⏱️ LLM GET: {llm_get_time:.2f}s (singleton lookup)")
 

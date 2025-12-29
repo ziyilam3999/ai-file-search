@@ -1,8 +1,8 @@
 """LLM: llm.py
-Purpose : Phi-3 Local LLM integration for answer generation
+Purpose : Local LLM integration for answer generation (currently Qwen2.5-1.5B)
 Inputs  : question + context chunks
 Outputs : AI-generated answer with citations
-Uses    : llama-cpp-python, Phi-3-mini-4k-instruct-q4.gguf
+Uses    : llama-cpp-python, GGUF model files
 """
 
 import os
@@ -14,15 +14,15 @@ from loguru import logger
 from .config import AI_MODELS_DIR, DEFAULT_MODEL_NAME, LLM_CONFIG
 
 
-class Phi3LLM:
-    """Phi-3 Local LLM for answer generation."""
+class LocalLLM:
+    """Local LLM for answer generation (currently Qwen2.5-1.5B)."""
 
     def __init__(self, model_path: Optional[str] = None, verbose: bool = False):
         """
-        Initialize Phi-3 model.
+        Initialize Local LLM.
 
         Args:
-            model_path: Path to the Phi-3 GGUF model file
+            model_path: Path to the GGUF model file
             verbose: Enable verbose llama.cpp logging
         """
         try:
@@ -33,7 +33,7 @@ class Phi3LLM:
             )
 
         if model_path is None:
-            # Default path to Phi-3 model
+            # Default path to model from config
             model_path = str(
                 Path(__file__).parent.parent / AI_MODELS_DIR / DEFAULT_MODEL_NAME
             )
@@ -41,9 +41,9 @@ class Phi3LLM:
         self.model_path = Path(model_path)
 
         if not self.model_path.exists():
-            raise FileNotFoundError(f"Phi-3 model not found: {self.model_path}")
+            raise FileNotFoundError(f"Model not found: {self.model_path}")
 
-        logger.info(f"LOADING: Phi-3 model: {self.model_path.name}")
+        logger.info(f"LOADING: LLM model: {self.model_path.name}")
 
         # Initialize llama.cpp model using config settings
         self.llm = Llama(
@@ -58,7 +58,7 @@ class Phi3LLM:
             # No chat_format - use raw completion
         )
 
-        logger.success("SUCCESS: Phi-3 model loaded successfully")
+        logger.success("SUCCESS: LLM model loaded successfully")
 
         # Warm-start: run a tiny completion to prime the model/cache
         self._warm_start()
@@ -71,7 +71,7 @@ class Phi3LLM:
         stop_sequences: Optional[list] = None,
     ) -> str:
         """
-        Generate an answer using Phi-3.
+        Generate an answer using the local LLM.
 
         Args:
             prompt: The formatted prompt with question and context
@@ -113,7 +113,7 @@ class Phi3LLM:
             return answer
 
         except Exception as e:
-            logger.error(f"ERROR: Phi-3 generation failed: {e}")
+            logger.error(f"ERROR: LLM generation failed: {e}")
             raise
 
     def generate_streaming_answer(
@@ -190,39 +190,39 @@ class Phi3LLM:
 
 
 # Global instance for reuse (avoid reloading the model)
-_phi3_instance: Optional[Phi3LLM] = None
+_llm_instance: Optional[LocalLLM] = None
 
 
-def get_phi3_llm(model_path: Optional[str] = None, verbose: bool = False) -> Phi3LLM:
+def get_llm(model_path: Optional[str] = None, verbose: bool = False) -> LocalLLM:
     """
-    Get or create a Phi-3 LLM instance (singleton pattern).
+    Get or create a Local LLM instance (singleton pattern).
 
     Args:
         model_path: Path to model file (only used on first call)
         verbose: Enable verbose logging (only used on first call)
 
     Returns:
-        Phi3LLM instance
+        LocalLLM instance
     """
-    global _phi3_instance
+    global _llm_instance
 
-    if _phi3_instance is None:
-        logger.info("SINGLETON: Creating NEW Phi-3 instance (first time)")
-        _phi3_instance = Phi3LLM(model_path, verbose)
+    if _llm_instance is None:
+        logger.info("SINGLETON: Creating NEW LLM instance (first time)")
+        _llm_instance = LocalLLM(model_path, verbose)
     else:
-        logger.info("SINGLETON: Reusing EXISTING Phi-3 instance (model already loaded)")
+        logger.info("SINGLETON: Reusing EXISTING LLM instance (model already loaded)")
 
-    return _phi3_instance
+    return _llm_instance
 
 
-def preload_phi3_llm(model_path: Optional[str] = None, verbose: bool = False) -> None:
+def preload_llm(model_path: Optional[str] = None, verbose: bool = False) -> None:
     """
-    Pre-load the Phi-3 model on application startup to avoid cold start on first query.
+    Pre-load the LLM model on application startup to avoid cold start on first query.
 
     Args:
         model_path: Path to model file
         verbose: Enable verbose logging
     """
-    logger.info("PRELOAD: Pre-loading Phi-3 model on app startup...")
-    get_phi3_llm(model_path, verbose)
-    logger.success("PRELOAD: Phi-3 model ready for queries")
+    logger.info("PRELOAD: Pre-loading LLM model on app startup...")
+    get_llm(model_path, verbose)
+    logger.success("PRELOAD: LLM model ready for queries")

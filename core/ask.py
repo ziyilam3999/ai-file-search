@@ -205,7 +205,7 @@ def answer_question(
 
 def _generate_answer_with_llm(prompt: str, citations: List[Dict]) -> str:
     """
-    Generate an answer using Phi-3 LLM with config settings.
+    Generate an answer using the configured LLM with settings.
 
     Args:
         prompt: The formatted prompt with question and context
@@ -218,7 +218,7 @@ def _generate_answer_with_llm(prompt: str, citations: List[Dict]) -> str:
         # Get LLM instance
         llm = get_llm()
 
-        # Generate answer using Phi-3 with config settings (single source of truth)
+        # Generate answer using LLM with config settings (single source of truth)
         raw_answer = llm.generate_answer(
             prompt=prompt,
             max_tokens=int(LLM_CONFIG["max_tokens"]),  # Ensure int type
@@ -231,14 +231,14 @@ def _generate_answer_with_llm(prompt: str, citations: List[Dict]) -> str:
         return answer
 
     except Exception as e:
-        logger.error(f"ERROR: Phi-3 generation error: {e}")
-        # Fall back to context-based answer if Phi-3 fails
+        logger.error(f"ERROR: LLM generation error: {e}")
+        # Fall back to context-based answer if LLM fails
         return _generate_context_based_answer(citations)
 
 
 def _generate_context_based_answer(citations: List[Dict]) -> str:
     """
-    Generate a simple answer based on context when Phi-3 is unavailable.
+    Generate a simple answer based on context when LLM is unavailable.
     """
     if not citations:
         return "I couldn't find relevant information to answer your question."
@@ -252,7 +252,7 @@ def _generate_context_based_answer(citations: List[Dict]) -> str:
 
     # Add citation reference
     answer += f" [1]"
-    answer += "\n\n(Note: Generated using context extraction - Phi-3 unavailable)"
+    answer += "\n\n(Note: Generated using context extraction - LLM unavailable)"
 
     return answer
 
@@ -281,7 +281,7 @@ def _generate_streaming_answer_with_llm(
     retrieval_time: float,
 ):
     """
-    Generate a streaming answer using Phi-3 LLM with config settings.
+    Generate a streaming answer using the configured LLM with settings.
 
     Args:
         prompt: The formatted prompt with question and context
@@ -297,7 +297,7 @@ def _generate_streaming_answer_with_llm(
         llm_get_time = time.time() - pre_get_llm
         logger.info(f"⏱️ LLM GET: {llm_get_time:.2f}s (singleton lookup)")
 
-        # Generate streaming answer using Phi-3 with timing
+        # Generate streaming answer using LLM with timing
         full_answer = ""
         token_count = 0
         first_token_time: float | None = None
@@ -335,7 +335,7 @@ def _generate_streaming_answer_with_llm(
         )
 
     except Exception as e:
-        logger.error(f"ERROR: Phi-3 streaming generation error: {e}")
+        logger.error(f"ERROR: LLM streaming generation error: {e}")
         # Fall back to context-based answer
         fallback_answer = _generate_context_based_answer(citations)
         for char in fallback_answer:

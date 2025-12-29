@@ -42,7 +42,7 @@ def main():
     """Run tests with both models."""
     print("Testing LLM refactoring...")
 
-    # Test with Phi-3.5 first (verify no regression)
+    # Test with legacy Phi-3.5 first (verify no regression)
     phi_ok = test_with_model("Phi-3.5-mini-instruct-Q4_K_M.gguf")
 
     # Test with Qwen2.5 (new model)
@@ -50,8 +50,8 @@ def main():
 
     print("\n" + "=" * 60)
     print("RESULTS:")
-    print(f"  Phi-3.5:  {'✓ PASS' if phi_ok else '✗ FAIL'}")
-    print(f"  Qwen2.5:  {'✓ PASS' if qwen_ok else '✗ FAIL'}")
+    print(f"  Phi-3.5 (legacy):  {'✓ PASS' if phi_ok else '✗ FAIL'}")
+    print(f"  Qwen2.5 (current): {'✓ PASS' if qwen_ok else '✗ FAIL'}")
     print("=" * 60)
 
     if phi_ok and qwen_ok:

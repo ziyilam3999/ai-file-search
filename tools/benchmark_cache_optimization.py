@@ -155,7 +155,7 @@ class CacheBenchmark:
 
         if not self.model_path.exists():
             print(f"❌ Model not found: {self.model_path}")
-            print("Please ensure the Phi-3 model is downloaded.")
+            print("Please ensure the LLM model is downloaded.")
             return []
 
         # Test configurations

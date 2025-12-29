@@ -20,7 +20,7 @@ from core.llm import get_llm
 pytestmark = pytest.mark.slow  # Mark all tests in this module as slow
 
 
-def benchmark_phi3_loading():
+def benchmark_llm_loading():
     """Benchmark LLM model loading time."""
     print("🤖 Benchmarking LLM model loading...")
 
@@ -110,11 +110,11 @@ Answer:"""
 
 def main():
     """Run performance benchmarks."""
-    print("⚡ Phi-3 Performance Benchmark")
+    print("⚡ LLM Performance Benchmark")
     print("=" * 50)
 
     # 1. Model loading
-    load_time = benchmark_phi3_loading()
+    load_time = benchmark_llm_loading()
 
     # 2. Generation speed
     generation_times = benchmark_generation_speed(3)

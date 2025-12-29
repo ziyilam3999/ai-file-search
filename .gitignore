@@ -42,5 +42,8 @@ meta.sqlite
 backups/
 index_backup_*.faiss
 
+# Benchmark Results (local testing only)
+benchmark_results/
+
 # Temporary Status Files
 _TASK_STATUS.md

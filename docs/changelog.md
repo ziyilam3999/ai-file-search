@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Performance
+- **LLM Inference Optimization:** Response time improved by 42% through diagnostic analysis:
+  - **Diagnostic Logging:** Added detailed timing metrics in `core/ask.py` (LLM lookup, first token, generation rate)
+  - **GPU Toggle:** Added `GPU_LAYERS` environment variable for easy CPU vs GPU testing
+  - **Context Reduction:** Reduced retrieval chunks from 5→3 in `ui/flask_app.py`
+  - **Results:** First token time: 126s → 63s (42% faster), with Intel Core i5-1340P + Iris Xe
+  - **Benchmark Tool:** Created `tools/benchmark_models.py` for Ollama-based model comparison
+  - **Finding:** CPU and Intel iGPU perform identically due to shared memory architecture (UMA)
+  - **Recommendation:** Keep CPU-only mode as default (`n_gpu_layers=0`)
+
 ### Changed
 - **Sync Infrastructure Refactoring:** Major cleanup of sync_copilot_instructions.ps1:
   - Removed 256 lines of dead code (legacy Sync-PillarSnapperDocs function)

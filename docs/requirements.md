@@ -31,6 +31,7 @@ A zero-configuration smart document search system with automatic discovery and r
 | FR-003.2 | Include citations to source documents | Done |
 | FR-003.3 | Stream responses in real-time | Done |
 | FR-003.4 | Support CPU-only inference | Done |
+| FR-003.5 | Optimize context processing for <60s first token | Done |
 
 ### FR-004: File Watching
 | ID | Requirement | Status |
@@ -69,13 +70,14 @@ A zero-configuration smart document search system with automatic discovery and r
 ### FR-008: Developer Tools
 | ID | Requirement | Status |
 |----|-------------|--------|
-| FR-007.1 | Sync copilot-instructions.md across repos | Done |
-| FR-007.2 | Auto-detect source file in current repo | Done |
-| FR-007.3 | Configure .git/info/exclude automatically | Done |
-| FR-007.4 | Verify git exclusion with status check | Done |
-| FR-007.5 | Find highest version across all repos | Done |
-| FR-007.6 | Reverse sync from targets if newer | Done |
-| FR-007.7 | Session startup sync reminder | Done |
+| FR-008.1 | Sync copilot-instructions.md across repos | Done |
+| FR-008.2 | Auto-detect source file in current repo | Done |
+| FR-008.3 | Configure .git/info/exclude automatically | Done |
+| FR-008.4 | Verify git exclusion with status check | Done |
+| FR-008.5 | Find highest version across all repos | Done |
+| FR-008.6 | Reverse sync from targets if newer | Done |
+| FR-008.7 | Session startup sync reminder | Done |
+| FR-008.8 | Model benchmark tool for speed/quality comparison | Done |
 
 ## Non-Functional Requirements
 
@@ -84,7 +86,7 @@ A zero-configuration smart document search system with automatic discovery and r
 |----|-------------|--------|----------|
 | NFR-001.1 | Index build time | < 60s | 40.34s |
 | NFR-001.2 | Query response time | < 200ms | 17.4ms |
-| NFR-001.3 | Answer generation time | < 60s | ~46s |
+| NFR-001.3 | Answer generation time | < 60s | 63s (improved from 126s) |
 
 ### NFR-002: Resource Usage
 | ID | Requirement | Target |
@@ -107,4 +109,4 @@ A zero-configuration smart document search system with automatic discovery and r
 
 ---
 
-*Last Updated: 2025-12-21*
+*Last Updated: 2025-12-25*

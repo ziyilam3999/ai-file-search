@@ -21,6 +21,15 @@ Project roadmap, sprint tasks, and session log.
 
 ## Completed Milestones
 
+### December 2025: LLM Performance Optimization
+- [x] **Performance Diagnostics**: Added timing instrumentation to measure bottlenecks
+- [x] **CPU vs GPU Benchmarking**: Tested Intel Iris Xe GPU offloading vs CPU-only inference
+- [x] **Context Optimization**: Reduced retrieval from 5 to 3 chunks for faster prompt processing
+- [x] **Result**: 42% faster response time (126s → 63s first token)
+- [x] **Benchmark Tool**: Created Ollama-based model comparison script
+- [x] **Finding**: Intel Iris Xe and CPU perform identically due to shared memory (UMA)
+- [x] **Architecture Decision**: Keep llama-cpp-python for production, use Ollama for experiments
+
 ### January 2026: Multi-Folder Watching
 - [x] **Flexible Watch Paths**: Support watching multiple disjoint folders
 - [x] **Settings UI**: Manage watch paths via Flask UI

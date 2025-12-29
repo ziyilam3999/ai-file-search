@@ -94,8 +94,28 @@ python tools/verify_index_sync.py stats      # Show detailed statistics
 |------|--------|----------|
 | Index build | < 60s | 40.34s |
 | Query response | < 200ms | 17.4ms |
-| Answer generation | < 60s | ~46s |
+| Answer generation | < 60s | 63s (improved from 126s) |
 | Full test suite | < 10min | 8m 13s |
+
+### Model Benchmarking Tool
+
+**Purpose:** Compare different LLM models for speed/quality trade-offs
+
+**Tool:** `tools/benchmark_models.py` (requires Ollama)
+
+**Models Tested:**
+- Phi-3.5-mini (current production model)
+- Qwen2.5 (1.5b, 0.5b variants)
+- Gemma2 (2b variant)
+
+**Usage:**
+```bash
+# Install Ollama first
+# Pull models: ollama pull phi3.5
+poetry run python tools/benchmark_models.py
+```
+
+**Output:** Comparison table with first token time, generation speed, answer quality
 
 ## Test Configuration
 

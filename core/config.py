@@ -34,13 +34,22 @@ def load_watch_paths() -> list[str]:
 
 
 # LLM Generation Settings - OPTIMIZED FOR SPEED
+# Environment variable GPU_LAYERS can override n_gpu_layers for A/B testing:
+#   GPU_LAYERS=0 (CPU only - default, 18% faster on Intel iGPU)
+#   GPU_LAYERS=99 (full GPU offload - slower on Intel iGPU with Vulkan)
+# Benchmark 2025-12-28: CPU=105s first token, GPU=126s first token
+import os
+
+_gpu_layers_env = os.environ.get("GPU_LAYERS")
+_gpu_layers = int(_gpu_layers_env) if _gpu_layers_env is not None else 0  # CPU default
+
 LLM_CONFIG = {
     "max_tokens": 50,  # Increased for better responses (~50 words)
     "temperature": 0.1,  # Keep deterministic
-    "n_ctx": 2048,  # Context window (must fit prompt + retrieved chunks + output)
+    "n_ctx": 2048,  # Context window (needs 1776+ for 5 chunks; reduced from original would break)
     "n_threads": 8,  # CPU threads for inference
     "n_batch": 384,  # Larger batch for higher throughput (watch RAM)
-    "n_gpu_layers": 99,  # GPU layers for Vulkan acceleration (99=all layers)
+    "n_gpu_layers": _gpu_layers,  # GPU layers (env GPU_LAYERS overrides; 0=CPU, 99=full GPU)
 }
 
 # Performance Presets for easy speed vs quality tuning

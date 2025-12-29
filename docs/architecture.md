@@ -158,5 +158,31 @@ SPEED_PRESETS = {
 |--------|--------|----------|
 | Index Build | < 60s | 40.34s |
 | Query Response | < 200ms | 17.4ms |
-| Answer Generation | < 60s | ~46s |
+| Answer Generation | < 60s | ~63s (improved from 126s) |
 | Chunks Processed | - | 7,670 |
+
+### LLM Performance Optimizations (December 2025)
+
+**Achieved 42% improvement** (126s → 63s first token time) through:
+
+1. **Context Chunk Reduction** (5→3 chunks)
+   - Reduced prompt processing load significantly
+   - No quality degradation observed
+   - Changed in `ui/flask_app.py` top_k parameter
+
+2. **GPU Testing** (Intel Iris Xe iGPU)
+   - CPU and GPU perform identically (~105-110s)
+   - Root cause: UMA architecture (shared memory), 2GB reserved < 2.39GB model
+   - Production uses CPU-only (GPU_LAYERS=0) for consistency
+
+3. **Diagnostic Logging** (`core/ask.py`)
+   - Added timing breakdown: LLM GET + first token + generation
+   - Identified bottleneck: prompt processing (105s of 109s)
+   - Singleton pattern confirmed working (0.00s-0.02s lookup)
+
+4. **Benchmark Tool** (`tools/benchmark_models.py`)
+   - Ollama-based multi-model comparison
+   - Tests Phi-3.5, Qwen2.5 (1.5b/0.5b), Gemma2 (2b)
+   - Enables speed/quality trade-off analysis
+
+**Architecture Decision:** Keep llama-cpp-python for production stability, use Ollama for experimentation.

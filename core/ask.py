@@ -291,13 +291,17 @@ def _generate_streaming_answer_with_phi3(
         Partial answer strings as they are generated
     """
     try:
-        # Get Phi-3 instance
+        # Get Phi-3 instance with timing diagnostic
+        pre_get_llm = time.time()
         llm = get_phi3_llm()
+        llm_get_time = time.time() - pre_get_llm
+        logger.info(f"⏱️ LLM GET: {llm_get_time:.2f}s (singleton lookup)")
 
         # Generate streaming answer using Phi-3 with timing
         full_answer = ""
         token_count = 0
         first_token_time: float | None = None
+        pre_generate = time.time()
 
         for token in llm.generate_streaming_answer(
             prompt=prompt,
@@ -309,16 +313,20 @@ def _generate_streaming_answer_with_phi3(
                 if first_token_time is None:
                     first_token_time = time.time()
                     time_to_first = first_token_time - generation_start
+                    prompt_processing_time = first_token_time - pre_generate
                     logger.info(
-                        f"⏱️ FIRST TOKEN: {time_to_first:.2f}s (includes model load)"
+                        f"⏱️ FIRST TOKEN: {time_to_first:.2f}s total "
+                        f"(LLM get: {llm_get_time:.2f}s, prompt processing: {prompt_processing_time:.2f}s)"
                     )
                 full_answer += token
                 yield token
 
-        # Log total generation time (streaming)
+        # Log total generation time (streaming) with detailed breakdown
         total_generation_time = time.time() - generation_start
+        tokens_per_sec = token_count / total_generation_time if total_generation_time > 0 else 0
         logger.info(
-            f"⏱️ GENERATION TIME (stream): {total_generation_time:.2f}s (tokens={token_count})"
+            f"⏱️ GENERATION TIME (stream): {total_generation_time:.2f}s "
+            f"(tokens={token_count}, rate={tokens_per_sec:.2f} tok/s)"
         )
         logger.info(
             f"⏱️ TOTAL TIME (stream): {retrieval_time + total_generation_time:.2f}s"

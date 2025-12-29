@@ -1,6 +1,6 @@
-"""🔧 debug_phi3.py
-Purpose: Debug Phi-3 generation issues
-Usage: python debug_phi3.py
+"""🔧 debug_llm.py
+Purpose: Debug LLM generation issues
+Usage: python debug_llm.py
 """
 
 import sys
@@ -114,7 +114,7 @@ Answer:"""
 
 
 def main():
-    print("🔧 Phi-3 Debug Tool")
+    print("🔧 LLM Debug Tool")
     print("=" * 50)
 
     # Test 1: Simple generation

@@ -1,6 +1,6 @@
-"""TEST: test_phi3_integration.py
-Purpose: Test Phi-3 model integration and performance
-Usage: python test_phi3_integration.py
+"""TEST: test_llm_integration.py
+Purpose: Test LLM integration and performance
+Usage: python test_llm_integration.py
 """
 
 import sys
@@ -31,7 +31,7 @@ def test_model_loading():
         return True
 
     except Exception as e:
-        print(f"ERROR: Failed to load Phi-3: {e}")
+        print(f"ERROR: Failed to load LLM: {e}")
         return False
 
 
@@ -121,9 +121,9 @@ def test_rag_integration():
     return successful == len(test_questions)
 
 
-def test_phi3_vs_context():
-    """Test Phi-3 performance with different context lengths"""
-    print(f"\nCOMPARE: Testing Phi-3 vs Context-based comparison...")
+def test_llm_vs_context():
+    """Test LLM performance with different context lengths"""
+    print(f"\nCOMPARE: Testing LLM vs Context-based comparison...")
 
     try:
 
@@ -134,11 +134,11 @@ def test_phi3_vs_context():
 
         # Test with RAG system
         start_time = time.time()
-        phi3_answer, phi3_citations = answer_question(test_question)
-        phi3_time = (time.time() - start_time) * 1000
+        llm_answer, llm_citations = answer_question(test_question)
+        llm_time = (time.time() - start_time) * 1000
 
-        print(f"AI: Phi-3 answer ({phi3_time:.1f}ms): {phi3_answer[:100]}...")
-        print(f"SOURCES: Citations: {len(phi3_citations)}")
+        print(f"AI: LLM answer ({llm_time:.1f}ms): {llm_answer[:100]}...")
+        print(f"SOURCES: Citations: {len(llm_citations)}")
 
         return True
 
@@ -171,8 +171,8 @@ def run_test(test_name, test_func):
 
 
 def main():
-    """Run all Phi-3 integration tests"""
-    print("Phi-3 Integration Test Suite")
+    """Run all LLM integration tests"""
+    print("LLM Integration Test Suite")
     print("=" * 50)
 
     # Test suite
@@ -180,7 +180,7 @@ def main():
         ("Model Loading", test_model_loading),
         ("Basic Generation", test_basic_generation),
         ("RAG Integration", test_rag_integration),
-        ("Context Comparison", test_phi3_vs_context),
+        ("Context Comparison", test_llm_vs_context),
     ]
 
     results = []
@@ -207,7 +207,7 @@ def main():
     print(f"SPEED: Total time: {total_time:.2f}s")
 
     if passed == total:
-        print("SUCCESS: All tests passed! Phi-3 integration is working correctly.")
+        print("SUCCESS: All tests passed! LLM integration is working correctly.")
     else:
         print("WARNING: Some tests failed. Check the output above for details.")
 

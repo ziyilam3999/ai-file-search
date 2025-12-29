@@ -29,7 +29,7 @@ class CacheBenchmark:
     """Benchmark different KV cache configurations."""
 
     def __init__(self):
-        self.model_path = Path("ai_models/Phi-3-mini-4k-instruct-q4.gguf")
+        self.model_path = Path("ai_models/qwen2.5-1.5b-instruct-q4_k_m.gguf")
         self.test_prompts = [
             "The capital of France is",
             "Artificial intelligence is defined as",

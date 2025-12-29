@@ -2,7 +2,7 @@
 Purpose : Given a user question, find best answer chunk(s) and cite source files.
 Inputs  : user query (str)
 Outputs : answer (str), citations (list)
-Uses    : prompts/retrieval_prompt.md, all-MiniLM-L6-v2 embeddings, Phi-3 LLM
+Uses    : prompts/retrieval_prompt.md, all-MiniLM-L6-v2 embeddings, Local LLM (Qwen2.5-1.5B)
 """
 
 import time
@@ -184,13 +184,13 @@ def answer_question(
         generation_start = time.time()
         if streaming:
             # Return streaming generator; log timing inside generator
-            answer_generator = _generate_streaming_answer_with_phi3(
+            answer_generator = _generate_streaming_answer_with_llm(
                 full_prompt, citations, generation_start, retrieval_time
             )
             return answer_generator, citations
         else:
             # Return complete answer (existing behavior)
-            answer = _generate_answer_with_phi3(full_prompt, citations)
+            answer = _generate_answer_with_llm(full_prompt, citations)
             generation_time = time.time() - generation_start
             logger.info(f"⏱️ GENERATION TIME: {generation_time:.2f}s")
             logger.info(f"⏱️ TOTAL TIME: {retrieval_time + generation_time:.2f}s")
@@ -203,7 +203,7 @@ def answer_question(
         return fallback_answer, citations
 
 
-def _generate_answer_with_phi3(prompt: str, citations: List[Dict]) -> str:
+def _generate_answer_with_llm(prompt: str, citations: List[Dict]) -> str:
     """
     Generate an answer using Phi-3 LLM with config settings.
 
@@ -274,7 +274,7 @@ def _generate_fallback_answer(query: str, results: List, citations: List[Dict]) 
     return answer
 
 
-def _generate_streaming_answer_with_phi3(
+def _generate_streaming_answer_with_llm(
     prompt: str,
     citations: List[Dict],
     generation_start: float,

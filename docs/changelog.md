@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **LLM Migration:** Migrated from Phi-3.5-mini to Qwen2.5-1.5B-Instruct:
+  - **Performance:** 2.6x faster first token (51s → 19s average on benchmark suite)
+  - **Quality:** 3x better accuracy (31% → 92% on 26-query benchmark)
+  - **Reliability:** Zero hallucinations (vs 5 hallucinations in Phi-3.5)
+  - **Size:** Smaller model file (2.4GB → 1.1GB)
+  - **Benchmark:** Comprehensive testing via `tools/benchmark_models.py` (4 models, 26 queries)
+  - **Code Refactor:** Renamed `Phi3LLM` → `LocalLLM` in `core/llm.py` for model-agnostic design
+  - **Config:** Updated `core/config.py` max_tokens from 50→100 (faster model allows longer responses)
+
 ### Performance
 - **LLM Inference Optimization:** Response time improved by 42% through diagnostic analysis:
   - **Diagnostic Logging:** Added detailed timing metrics in `core/ask.py` (LLM lookup, first token, generation rate)

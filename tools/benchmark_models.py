@@ -39,7 +39,7 @@ BENCHMARK_OUTPUT_DIR = project_root / "benchmark_results"
 
 # Models to benchmark (must be pulled first: ollama pull <model>)
 DEFAULT_MODELS = [
-    "phi3.5",  # Current production model (3.8B)
+    "phi3.5",  # Legacy baseline model (3.8B, replaced by qwen2.5:1.5b)
     "qwen2.5:1.5b",  # Smaller alternative (1.5B)
     "qwen2.5:0.5b",  # Fastest option (0.5B)
     "gemma2:2b",  # Google's compact model (2B)
@@ -690,7 +690,7 @@ def print_overall_summary(results: list):
             * 100
         )
         print(
-            f"\n   Baseline (phi3.5): {baseline_first:.1f}s avg first token, {baseline_quality:.0f}% quality"
+            f"\n   Baseline (phi3.5-legacy): {baseline_first:.1f}s avg first token, {baseline_quality:.0f}% quality"
         )
 
         for model, data in models.items():

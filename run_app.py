@@ -45,7 +45,7 @@ def preload_models():
     """Pre-load AI models (LLM + embeddings) in the background.
 
     This eliminates cold-start delays on the first query by loading:
-    1. Phi-3.5 LLM (~3s cold load)
+    1. LLM (Qwen2.5-1.5B, ~2s cold load)
     2. Sentence transformer embedding model (~4s cold load)
     3. FAISS index and metadata cache (~1s cold load)
     """
@@ -64,12 +64,12 @@ def preload_models():
         embedder._get_metadata()  # Load metadata cache
         print("Launcher: Embedding model ready.")
 
-        # 2. Pre-load Phi-3 LLM
-        _PRELOAD_STATUS.update({"stage": "Loading Phi-3 LLM...", "progress": 75})
-        print("Launcher: Pre-loading Phi-3 LLM...")
-        from core.llm import preload_phi3_llm
+        # 2. Pre-load LLM
+        _PRELOAD_STATUS.update({"stage": "Loading LLM...", "progress": 75})
+        print("Launcher: Pre-loading LLM...")
+        from core.llm import preload_llm
 
-        preload_phi3_llm()
+        preload_llm()
 
         _PRELOAD_STATUS.update({"ready": True, "stage": "Ready", "progress": 100})
         print("Launcher: All AI models ready for queries!")

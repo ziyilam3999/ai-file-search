@@ -74,9 +74,9 @@ def get_status():
         # Check if AI model is loaded
         model_loaded = False
         try:
-            from core.llm import _phi3_instance
+            from core.llm import _llm_instance
 
-            model_loaded = _phi3_instance is not None
+            model_loaded = _llm_instance is not None
         except Exception:
             pass
 
@@ -106,9 +106,9 @@ def get_preload_status_endpoint():
     except Exception:
         # If not available, check if models are loaded directly
         from core.embedding import _MODEL_CACHE
-        from core.llm import _phi3_instance
+        from core.llm import _llm_instance
 
-        models_ready = _phi3_instance is not None and _MODEL_CACHE is not None
+        models_ready = _llm_instance is not None and _MODEL_CACHE is not None
         return jsonify(
             {
                 "ready": models_ready,
@@ -182,11 +182,11 @@ def get_activity():
 
         def to_activity(line: str) -> str | None:
             # Map known log lines to user-friendly milestones.
-            if "PRELOAD: Pre-loading Phi-3 model" in line:
+            if "PRELOAD: Pre-loading LLM model" in line:
                 return "AI Model: Loading…"
-            if "SUCCESS: Phi-3 model loaded successfully" in line:
+            if "SUCCESS: LLM model loaded successfully" in line:
                 return "AI Model: Loaded"
-            if "PRELOAD: Phi-3 model ready for queries" in line:
+            if "PRELOAD: LLM model ready for queries" in line:
                 return "AI Model: Ready"
             if "THINKING: Answering question:" in line:
                 return "AI: Processing your question…"

@@ -1,6 +1,6 @@
-"""⚡ bench_phi3_performance.py
-Purpose: Benchmark Phi-3 performance and compare generation modes
-Usage: python tests/bench_phi3_performance.py
+"""⚡ bench_llm_performance.py
+Purpose: Benchmark LLM performance and compare generation modes
+Usage: python tests/bench_llm_performance.py
 """
 
 import sys

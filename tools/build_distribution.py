@@ -32,12 +32,14 @@ EXCLUDE_PATTERNS = [
     ".git/",
     ".gitignore",
     ".gitattributes",
+    ".github/",
     # IDE
     ".vscode/",
     ".idea/",
     "*.code-workspace",
     # User data (regenerated per user)
     "index.faiss",
+    "index.db",
     "meta.sqlite",
     "logs/",
     "extracts/",
@@ -49,8 +51,18 @@ EXCLUDE_PATTERNS = [
     # Development files
     ".env",
     ".env.local",
+    ".env.example",
+    ".flake8",
+    ".pre-commit-config.yaml",
+    ".mypy_cache/",
     "*.log",
     "_TASK_STATUS.md",
+    # Dev-only folders
+    "docs/",
+    "tests/",
+    "tools/",
+    # Unused config
+    "package.json",
     # Test artifacts
     ".pytest_cache/",
     "test_regression_results/",

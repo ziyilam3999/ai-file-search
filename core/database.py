@@ -160,12 +160,18 @@ class DatabaseManager:
                 id INTEGER PRIMARY KEY,
                 file TEXT,
                 chunk TEXT,
-                doc_chunk_id INTEGER
+                doc_chunk_id INTEGER,
+                source_url TEXT
             )
         """
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(create_table_sql)
+            # Add source_url column if it doesn't exist (migration)
+            try:
+                cursor.execute("ALTER TABLE meta ADD COLUMN source_url TEXT")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
             conn.commit()
         logger.debug("Ensured meta table exists")
 

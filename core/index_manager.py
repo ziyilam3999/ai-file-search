@@ -277,7 +277,7 @@ class IndexManager:
 
             # Extract text from all files first
             extractor = Extractor()
-            documents: List[Tuple[str, str]] = []
+            documents: List[Tuple[str, str, str]] = []
 
             for i, file_path in enumerate(files):
                 try:
@@ -285,7 +285,9 @@ class IndexManager:
                     text = extractor.run(file_path)
 
                     if text and len(text.strip()) >= 10:
-                        documents.append((abs_path, text))
+                        documents.append(
+                            (abs_path, text, "")
+                        )  # Empty source_url for local files
 
                     if job_id:
                         self._update_job(
@@ -638,7 +640,7 @@ class IndexManager:
                 return 0, []
 
             # Prepare documents for batch indexing
-            documents: List[Tuple[str, str]] = []
+            documents: List[Tuple[str, str, str]] = []
 
             for page in pages:
                 if not page.content or len(page.content.strip()) < 10:
@@ -659,7 +661,8 @@ class IndexManager:
                 metadata_header += "---\n\n"
 
                 full_content = metadata_header + page.content
-                documents.append((virtual_path, full_content))
+                # Include the actual Confluence URL for direct linking
+                documents.append((virtual_path, full_content, page.url))
 
             if not documents:
                 logger.warning("No valid documents to index from Confluence")

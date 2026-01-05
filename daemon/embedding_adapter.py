@@ -153,7 +153,7 @@ class EmbeddingAdapter:
             return False
 
     def add_documents_batch(
-        self, documents: List[Tuple[str, str]], progress_callback=None
+        self, documents: List[Tuple[str, str, str]], progress_callback=None
     ) -> Tuple[int, int]:
         """
         Add multiple documents in a single batch operation for better performance.
@@ -165,7 +165,8 @@ class EmbeddingAdapter:
         4. Batching database inserts
 
         Args:
-            documents: List of (file_path, text) tuples
+            documents: List of (file_path, text, source_url) tuples.
+                       source_url can be empty string for local files.
             progress_callback: Optional callback(current, total, file_path) for progress updates
 
         Returns:
@@ -184,11 +185,13 @@ class EmbeddingAdapter:
 
                 # Step 1: Remove existing documents and collect all chunks
                 all_chunks: List[str] = []
-                chunk_metadata: List[Tuple[str, int, int]] = (
+                chunk_metadata: List[Tuple[str, int, int, str]] = (
                     []
-                )  # (file_path, start_idx, end_idx)
+                )  # (file_path, start_idx, end_idx, source_url)
 
-                for i, (file_path, text) in enumerate(documents):
+                for i, doc in enumerate(documents):
+                    file_path, text, source_url = doc  # 3-tuple format required
+
                     if progress_callback:
                         progress_callback(i, len(documents), file_path)
 
@@ -201,7 +204,9 @@ class EmbeddingAdapter:
                         start_idx = len(all_chunks)
                         all_chunks.extend(chunks)
                         end_idx = len(all_chunks)
-                        chunk_metadata.append((file_path, start_idx, end_idx))
+                        chunk_metadata.append(
+                            (file_path, start_idx, end_idx, source_url)
+                        )
 
                 if not all_chunks:
                     logger.warning("No valid chunks generated from any document")
@@ -250,7 +255,7 @@ class EmbeddingAdapter:
         self,
         chunks: List[str],
         embeddings: npt.NDArray[np.float32],
-        chunk_metadata: List[Tuple[str, int, int]],
+        chunk_metadata: List[Tuple[str, int, int, str]],
     ) -> bool:
         """
         Add all chunks and embeddings to FAISS and DB in a single batch operation.
@@ -258,7 +263,7 @@ class EmbeddingAdapter:
         Args:
             chunks: All text chunks
             embeddings: Corresponding embeddings array
-            chunk_metadata: List of (file_path, start_idx, end_idx) tuples
+            chunk_metadata: List of (file_path, start_idx, end_idx, source_url) tuples
 
         Returns:
             True if successful
@@ -288,15 +293,18 @@ class EmbeddingAdapter:
             if hasattr(self.embedder, "clear_cache"):
                 self.embedder.clear_cache()
 
-            # Build metadata entries for all chunks
+            # Build metadata entries for all chunks (now includes source_url)
             metadata_entries = []
-            for file_path, start_idx, end_idx in chunk_metadata:
+            for file_path, start_idx, end_idx, source_url in chunk_metadata:
                 for i in range(start_idx, end_idx):
-                    metadata_entries.append((next_id + i, file_path, chunks[i]))
+                    metadata_entries.append(
+                        (next_id + i, file_path, chunks[i], source_url)
+                    )
 
-            # Batch insert all metadata
+            # Batch insert all metadata with source_url
             db.execute_many(
-                "INSERT INTO meta (id, file, chunk) VALUES (?, ?, ?)", metadata_entries
+                "INSERT INTO meta (id, file, chunk, source_url) VALUES (?, ?, ?, ?)",
+                metadata_entries,
             )
 
             logger.debug(

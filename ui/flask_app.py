@@ -85,15 +85,40 @@ def new_search():
 
 @app.route("/api/open-file", methods=["POST"])
 def api_open_file():
-    """API endpoint to open a local file."""
+    """API endpoint to open a local file or Confluence page."""
+    import webbrowser
+
     try:
         data = request.get_json()
         file_path = data.get("file_path")
         if not file_path:
             return jsonify({"error": "No file path provided"}), 400
 
-        open_local_file(file_path)
-        return jsonify({"status": "success", "message": f"Opened {file_path}"})
+        # Check if this is a Confluence path
+        if file_path.startswith("confluence://"):
+            from core.confluence import get_confluence_url_for_path
+
+            confluence_url = get_confluence_url_for_path(file_path)
+            if confluence_url:
+                webbrowser.open(confluence_url)
+                return jsonify(
+                    {
+                        "status": "success",
+                        "message": f"Opened in browser: {confluence_url}",
+                    }
+                )
+            else:
+                return (
+                    jsonify(
+                        {
+                            "error": "Could not resolve Confluence URL. Check your configuration."
+                        }
+                    ),
+                    400,
+                )
+        else:
+            open_local_file(file_path)
+            return jsonify({"status": "success", "message": f"Opened {file_path}"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

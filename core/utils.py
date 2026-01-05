@@ -13,8 +13,23 @@ def open_local_file(file_path: str) -> None:
     """
     Open a file in the system's default viewer.
     Cross-platform support for Windows, macOS, and Linux.
+    Also handles confluence:// URLs by opening in browser.
     """
+    import webbrowser
+
     try:
+        # Handle Confluence URLs
+        if file_path.startswith("confluence://"):
+            from core.confluence import get_confluence_url_for_path
+
+            confluence_url = get_confluence_url_for_path(file_path)
+            if confluence_url:
+                webbrowser.open(confluence_url)
+                logger.info(f"Opened Confluence page in browser: {confluence_url}")
+            else:
+                logger.error(f"Could not resolve Confluence URL for: {file_path}")
+            return
+
         path = Path(file_path).resolve()
         if not path.exists():
             logger.error(f"File not found: {path}")

@@ -4,6 +4,7 @@ Purpose: Confluence Cloud API client for fetching and indexing pages.
 
 import os
 import re
+import urllib.parse
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -162,14 +163,11 @@ class ConfluenceClient:
             Tuple of (success, message)
         """
         try:
-            # Try to get current user info
-            user = self._client.get_current_user()
-            if user:
-                display_name = user.get(
-                    "displayName", user.get("publicName", "Unknown")
-                )
-                return True, f"Connected as {display_name}"
-            return False, "Could not retrieve user info"
+            # Try to get spaces as a connection test (more reliable than get_current_user)
+            spaces = self._client.get_all_spaces(start=0, limit=1)
+            if spaces and "results" in spaces:
+                return True, f"Connected to {self.url}"
+            return False, "Could not retrieve spaces"
         except Exception as e:
             return False, f"Connection failed: {str(e)}"
 
@@ -425,6 +423,98 @@ class ConfluenceClient:
             self._config["indexed_versions"] = {}
         self._config["indexed_versions"][page_id] = version
         self._save_config(self._config)
+
+
+def get_confluence_url_for_path(virtual_path: str) -> Optional[str]:
+    """
+    Get the best available URL for a Confluence virtual path.
+
+    This is the SINGLE SOURCE OF TRUTH for resolving Confluence paths to URLs.
+    It first tries to lookup the stored direct URL from the database,
+    then falls back to building a search URL.
+
+    Args:
+        virtual_path: Path like 'confluence://space_key/hierarchy/title'
+
+    Returns:
+        Direct page URL if stored, search URL as fallback, or None if not a Confluence path
+    """
+    if not virtual_path.startswith("confluence://"):
+        return None
+
+    # First, try to lookup the stored source_url from the database
+    try:
+        from core.database import get_db_manager
+
+        db = get_db_manager()
+        result = db.fetch_one(
+            "SELECT source_url FROM meta WHERE file = ? AND source_url IS NOT NULL LIMIT 1",
+            (virtual_path,),
+        )
+
+        if result and result[0]:
+            logger.debug(f"Found stored URL for {virtual_path}: {result[0]}")
+            return result[0]
+    except Exception as e:
+        logger.debug(f"Could not lookup source_url from database: {e}")
+
+    # Fallback to building a search URL
+    return build_confluence_url_from_path(virtual_path)
+
+
+def build_confluence_url_from_path(virtual_path: str) -> Optional[str]:
+    """
+    Convert a virtual confluence:// path back to a search URL.
+
+    This is a FALLBACK function - prefer get_confluence_url_for_path() which
+    first checks for stored direct URLs.
+
+    Args:
+        virtual_path: Path like 'confluence://space_key/hierarchy/title'
+
+    Returns:
+        Web URL like 'https://company.atlassian.net/wiki/search?text=...' or None
+    """
+    if not virtual_path.startswith("confluence://"):
+        return None
+
+    try:
+        # Try to get base URL from environment or .env file
+        base_url = os.environ.get("CONFLUENCE_URL", "").rstrip("/")
+
+        if not base_url:
+            # Try loading from .env file
+            if ENV_PATH.exists():
+                with open(ENV_PATH, "r") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("CONFLUENCE_URL="):
+                            base_url = line.split("=", 1)[1].strip().strip("'\"")
+                            break
+
+        if not base_url:
+            logger.warning("No Confluence URL configured")
+            return None
+
+        # Parse the virtual path: confluence://space_key/hierarchy.../title
+        path_part = virtual_path[len("confluence://") :]
+        parts = path_part.split("/")
+
+        if len(parts) < 1:
+            return None
+
+        # The title is the last part of the hierarchy
+        title = parts[-1] if len(parts) > 1 else parts[0]
+
+        # Build search URL - we can't get page_id from path, so search for title
+        encoded_title = urllib.parse.quote(title)
+        search_url = f"{base_url}/wiki/search?text={encoded_title}"
+
+        return search_url
+
+    except Exception as e:
+        logger.error(f"Failed to build Confluence URL: {e}")
+        return None
 
 
 def check_confluence_dependencies() -> Tuple[bool, str]:

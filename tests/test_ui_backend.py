@@ -1,7 +1,11 @@
 import json
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 _MOCK_MODULE_NAMES = [
     "smart_watcher",
@@ -135,6 +139,37 @@ class TestUIBackend(unittest.TestCase):
         result = to_activity(line)
 
         self.assertEqual(result, "AI Model: Ready")
+
+    def test_open_file_confluence_path(self):
+        """Test /api/open-file with Confluence path opens browser (T5)."""
+        with patch("webbrowser.open"):  # noqa: F841 - patch needed but not asserted
+            with patch("core.confluence.get_confluence_url_for_path") as mock_url:
+                mock_url.return_value = "https://test.atlassian.net/pages/123"
+
+                response = self.app.post(
+                    "/api/open-file", json={"file_path": "confluence://SPACE/Test Page"}
+                )
+
+        # Just verify endpoint returns success structure
+        self.assertEqual(response.status_code, 200)
+
+    def test_open_file_no_path_error(self):
+        """Test /api/open-file returns error when no path provided (T5)."""
+        response = self.app.post("/api/open-file", json={})
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data)
+        self.assertIn("error", data)
+
+    def test_open_file_local_path(self):
+        """Test /api/open-file with local path calls open_local_file (T5)."""
+        import ui.flask_app
+
+        response = self.app.post(
+            "/api/open-file", json={"file_path": "C:\\Users\\test\\doc.txt"}
+        )
+
+        # open_local_file is mocked, so this should succeed
+        self.assertEqual(response.status_code, 200)
 
 
 if __name__ == "__main__":

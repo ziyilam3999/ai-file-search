@@ -163,3 +163,69 @@ def test_format_citations_dash_splitting():
     assert "• Item 1" in result
     assert "• Item 2" in result
     assert "• Item 3" in result
+
+
+class TestOpenLocalFileConfluence:
+    """Tests for Confluence URL handling in open_local_file (T3)."""
+
+    def test_confluence_path_opens_browser(self):
+        """Test that confluence:// paths open in browser."""
+        with patch("core.confluence.get_confluence_url_for_path") as mock_get_url:
+            mock_get_url.return_value = "https://test.atlassian.net/page"
+
+            with patch("webbrowser.open") as mock_browser:
+                from core.utils import open_local_file
+
+                open_local_file("confluence://SPACE/Test Page")
+                mock_browser.assert_called_once_with("https://test.atlassian.net/page")
+
+    def test_confluence_path_does_not_check_file_exists(self):
+        """Test that confluence:// paths don't trigger file existence check."""
+        with (
+            patch("webbrowser.open"),  # noqa: F841 - patch needed but not asserted
+            patch("pathlib.Path.exists") as mock_exists,
+            patch("pathlib.Path.resolve"),  # noqa: F841 - patch needed but not asserted
+        ):
+            import core.confluence
+
+            core.confluence.get_confluence_url_for_path = MagicMock(
+                return_value="https://test.atlassian.net/page"
+            )
+
+            open_local_file("confluence://SPACE/Test Page")
+
+            # Path.exists should NOT be called for confluence:// paths
+            mock_exists.assert_not_called()
+
+    def test_confluence_path_returns_early(self):
+        """Test that confluence:// paths return before local file handling."""
+        with (
+            patch("webbrowser.open"),  # noqa: F841 - patch needed but not asserted
+            patch("os.startfile") as mock_startfile,
+            patch("platform.system", return_value="Windows"),
+        ):
+            import core.confluence
+
+            core.confluence.get_confluence_url_for_path = MagicMock(
+                return_value="https://test.atlassian.net/page"
+            )
+
+            open_local_file("confluence://SPACE/Test Page")
+
+            # os.startfile should NOT be called for confluence:// paths
+            mock_startfile.assert_not_called()
+
+    def test_confluence_path_logs_error_when_url_fails(self):
+        """Test that error is logged when URL resolution fails."""
+        with (
+            patch("webbrowser.open") as mock_browser,
+            patch("loguru.logger.error") as mock_log,
+        ):
+            import core.confluence
+
+            core.confluence.get_confluence_url_for_path = MagicMock(return_value=None)
+
+            open_local_file("confluence://SPACE/Test Page")
+
+            mock_browser.assert_not_called()
+            mock_log.assert_called()

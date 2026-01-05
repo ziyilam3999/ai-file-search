@@ -237,3 +237,187 @@ class TestIndexManagerConfluenceMethods:
                     assert isinstance(message, str)
         except ImportError as e:
             pytest.skip(f"Could not import IndexManager: {e}")
+
+
+class TestBuildConfluenceUrlFromPath:
+    """Tests for build_confluence_url_from_path function (T1)."""
+
+    def test_returns_none_for_non_confluence_path(self):
+        """Test that non-confluence paths return None."""
+        from core.confluence import build_confluence_url_from_path
+
+        result = build_confluence_url_from_path("/local/file.txt")
+        assert result is None
+
+        result = build_confluence_url_from_path("C:\\Windows\\file.txt")
+        assert result is None
+
+    def test_returns_none_for_empty_path(self):
+        """Test that empty path returns None."""
+        from core.confluence import build_confluence_url_from_path
+
+        result = build_confluence_url_from_path("")
+        assert result is None
+
+    def test_builds_search_url_with_env_var(self):
+        """Test URL building when CONFLUENCE_URL is set in environment."""
+        from core.confluence import build_confluence_url_from_path
+
+        with patch.dict("os.environ", {"CONFLUENCE_URL": "https://test.atlassian.net"}):
+            result = build_confluence_url_from_path(
+                "confluence://SPACE/Folder/Test Page"
+            )
+
+            assert result is not None
+            assert "https://test.atlassian.net" in result
+            assert "wiki/search" in result
+            assert "Test%20Page" in result  # URL encoded
+
+    def test_extracts_title_from_hierarchy(self):
+        """Test that title is correctly extracted from hierarchy path."""
+        from core.confluence import build_confluence_url_from_path
+
+        with patch.dict("os.environ", {"CONFLUENCE_URL": "https://test.atlassian.net"}):
+            result = build_confluence_url_from_path(
+                "confluence://SPACE/Level1/Level2/My Document"
+            )
+
+            assert result is not None
+            assert "My%20Document" in result
+
+    def test_handles_special_characters_in_title(self):
+        """Test that special characters in title are URL encoded."""
+        from core.confluence import build_confluence_url_from_path
+
+        with patch.dict("os.environ", {"CONFLUENCE_URL": "https://test.atlassian.net"}):
+            result = build_confluence_url_from_path(
+                "confluence://SPACE/Test & Review (Draft)"
+            )
+
+            assert result is not None
+            # Special chars should be encoded
+            assert "Test" in result
+
+
+class TestGetConfluenceUrlForPath:
+    """Tests for get_confluence_url_for_path function (T1 + T2)."""
+
+    def test_returns_none_for_non_confluence_path(self):
+        """Test that non-confluence paths return None."""
+        from core.confluence import get_confluence_url_for_path
+
+        result = get_confluence_url_for_path("/local/file.txt")
+        assert result is None
+
+    def test_prefers_stored_url_over_search(self):
+        """Test that stored source_url is preferred over search URL (T2)."""
+        from core.confluence import get_confluence_url_for_path
+
+        mock_db = MagicMock()
+        mock_db.fetch_one.return_value = (
+            "https://test.atlassian.net/wiki/spaces/SPACE/pages/12345",
+        )
+
+        with patch("core.database.get_db_manager", return_value=mock_db):
+            result = get_confluence_url_for_path("confluence://SPACE/Test Page")
+
+            assert result == "https://test.atlassian.net/wiki/spaces/SPACE/pages/12345"
+            mock_db.fetch_one.assert_called_once()
+
+    def test_falls_back_to_search_when_no_stored_url(self):
+        """Test fallback to search URL when source_url not found."""
+        from core.confluence import get_confluence_url_for_path
+
+        mock_db = MagicMock()
+        mock_db.fetch_one.return_value = None  # No stored URL
+
+        with patch("core.database.get_db_manager", return_value=mock_db):
+            with patch.dict(
+                "os.environ", {"CONFLUENCE_URL": "https://test.atlassian.net"}
+            ):
+                result = get_confluence_url_for_path("confluence://SPACE/Test Page")
+
+                assert result is not None
+                assert "wiki/search" in result
+
+    def test_handles_database_error_gracefully(self):
+        """Test that database errors fall back to search URL."""
+        from core.confluence import get_confluence_url_for_path
+
+        with patch("core.database.get_db_manager", side_effect=Exception("DB error")):
+            with patch.dict(
+                "os.environ", {"CONFLUENCE_URL": "https://test.atlassian.net"}
+            ):
+                result = get_confluence_url_for_path("confluence://SPACE/Test Page")
+
+                # Should still return a search URL as fallback
+                assert result is not None
+                assert "wiki/search" in result
+
+
+class TestSourceUrlStorage:
+    """Tests for source_url storage in database (T2)."""
+
+    def test_database_schema_includes_source_url(self):
+        """Test that meta table schema includes source_url column."""
+        import os
+        import sqlite3
+        import tempfile
+
+        # Create temp database
+        with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f:
+            temp_db = f.name
+
+        try:
+            from core.database import DatabaseManager
+
+            db = DatabaseManager(temp_db)
+            db.ensure_table_exists()
+
+            # Check schema
+            with db.get_connection() as conn:
+                cursor = conn.execute("PRAGMA table_info(meta)")
+                columns = {row[1] for row in cursor.fetchall()}
+
+            assert "source_url" in columns
+        finally:
+            os.unlink(temp_db)
+
+    def test_source_url_can_be_stored_and_retrieved(self):
+        """Test that source_url can be stored and retrieved."""
+        import os
+        import sqlite3
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f:
+            temp_db = f.name
+
+        try:
+            from core.database import DatabaseManager
+
+            db = DatabaseManager(temp_db)
+            db.ensure_table_exists()
+
+            # Insert a record with source_url
+            with db.get_connection() as conn:
+                conn.execute(
+                    "INSERT INTO meta (id, file, chunk, source_url) VALUES (?, ?, ?, ?)",
+                    (
+                        1,
+                        "confluence://SPACE/Page",
+                        "chunk text",
+                        "https://test.atlassian.net/pages/123",
+                    ),
+                )
+                conn.commit()
+
+            # Retrieve it
+            result = db.fetch_one(
+                "SELECT source_url FROM meta WHERE file = ?",
+                ("confluence://SPACE/Page",),
+            )
+
+            assert result is not None
+            assert result[0] == "https://test.atlassian.net/pages/123"
+        finally:
+            os.unlink(temp_db)

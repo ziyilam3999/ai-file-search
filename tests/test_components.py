@@ -11,6 +11,8 @@ This script tests the core components of the AI file search system:
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -21,13 +23,11 @@ def test_filewatcher_initialization():
         from daemon.watch import FileWatcher
 
         print("SUCCESS: FileWatcher initialized successfully")
-        return True
+        assert True
     except ImportError as e:
-        print(f"ERROR: Could not import FileWatcher: {e}")
-        return False
+        pytest.fail(f"Could not import FileWatcher: {e}")
     except Exception as e:
-        print(f"ERROR: FileWatcher initialization failed: {e}")
-        return False
+        pytest.fail(f"FileWatcher initialization failed: {e}")
 
 
 def test_file_pattern_matching():
@@ -70,11 +70,10 @@ def test_file_pattern_matching():
         if hasattr(watcher, "file_patterns"):
             print(f"   File patterns: {getattr(watcher, 'file_patterns', 'Not set')}")
 
-        return True
+        assert True
 
     except Exception as e:
-        print(f"ERROR: Pattern matching test failed: {e}")
-        return False
+        pytest.fail(f"Pattern matching test failed: {e}")
 
 
 def test_component_integration():
@@ -87,11 +86,10 @@ def test_component_integration():
         from core.embedding import Embedder
 
         print("   SUCCESS: Components initialized successfully")
-        return True
+        assert True
 
     except Exception as e:
-        print(f"   ERROR: Component initialization failed: {e}")
-        return False
+        pytest.fail(f"Component initialization failed: {e}")
 
 
 def main():

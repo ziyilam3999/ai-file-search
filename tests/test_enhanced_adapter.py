@@ -11,6 +11,8 @@ import tempfile
 import time
 from pathlib import Path
 
+import pytest
+
 # Add the project root to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -205,14 +207,14 @@ def test_enhanced_embedding_adapter():
         else:
             print(f"   ⚠️ {final_stats['operations_failed']} operations failed")
 
-        return True
+        assert final_stats["operations_failed"] == 0, "Some operations failed"
 
     except ImportError as e:
         print(f"❌ Import Error: {e}")
         print(
             "💡 Make sure the enhanced EmbeddingAdapter is implemented in daemon/watch.py"
         )
-        return False
+        pytest.fail(f"Import error: {e}")
 
     except Exception as e:
         print(f"❌ Test failed with error: {e}")
@@ -260,11 +262,11 @@ def test_adapter_vs_original():
         print("   🔒 Thread-safe operations")
         print("   💾 Automatic backup management")
 
-        return True
+        # Success if we got here
+        assert True
 
     except Exception as e:
-        print(f"❌ Comparison test failed: {e}")
-        return False
+        pytest.fail(f"Comparison test failed: {e}")
 
 
 def test_batch_documents_three_tuple_format():
@@ -307,14 +309,14 @@ def test_batch_documents_three_tuple_format():
         stats = adapter.get_adapter_stats()
         print(f"   📊 Total documents added: {stats['documents_added']}")
 
-        return True
+        # Success if we got here
+        assert True
 
     except Exception as e:
-        print(f"❌ 3-tuple format test failed: {e}")
         import traceback
 
         traceback.print_exc()
-        return False
+        pytest.fail(f"3-tuple format test failed: {e}")
 
 
 def test_batch_documents_stores_source_url():
@@ -357,22 +359,20 @@ def test_batch_documents_stores_source_url():
             if result and result[0]:
                 print(f"   ✅ source_url stored correctly: {result[0]}")
                 assert result[0] == "https://test.atlassian.net/pages/789"
-                return True
             else:
                 print("   ⚠️ source_url not found in database (may be using main db)")
                 # Test passes if batch succeeded
-                return successful == 1
+                assert successful == 1, f"Expected 1 successful batch, got {successful}"
 
         finally:
             if os.path.exists(temp_db):
                 os.unlink(temp_db)
 
     except Exception as e:
-        print(f"❌ source_url storage test failed: {e}")
         import traceback
 
         traceback.print_exc()
-        return False
+        pytest.fail(f"source_url storage test failed: {e}")
 
 
 if __name__ == "__main__":

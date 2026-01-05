@@ -130,6 +130,15 @@ def start_app():
     except Exception as e:
         print(f"Launcher: Config migration skipped: {e}")
 
+    # 0.5 Check for updates in background (non-blocking)
+    try:
+        from core.version import check_for_updates_async, get_local_version
+
+        print(f"Launcher: Version {get_local_version()}")
+        check_for_updates_async()
+    except Exception as e:
+        print(f"Launcher: Update check skipped: {e}")
+
     # 1. Ensure Watcher is running
     ensure_watcher_running()
 

@@ -233,6 +233,17 @@ def get_preload_status_endpoint():
         )
 
 
+@app.route("/api/version")
+def get_version_endpoint():
+    """Get version info and update status."""
+    try:
+        from core.version import get_version_info
+
+        return jsonify(get_version_info())
+    except Exception as e:
+        return jsonify({"version": "unknown", "error": str(e)})
+
+
 @app.route("/api/logs")
 def get_logs():
     """Get the last 80 lines of combined logs (app + watcher).

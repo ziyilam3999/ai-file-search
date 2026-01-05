@@ -120,6 +120,65 @@ body {
     border-left: 3px solid #333333;
 }
 
+/* Update Available Banner */
+.update-banner {
+    position: relative;
+    background: linear-gradient(135deg, #1a3a1a 0%, #0d2f0d 100%);
+    border-bottom: 2px solid #22c55e;
+    padding: 10px 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.update-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.update-icon {
+    font-size: 20px;
+}
+
+.update-text {
+    flex: 1;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.update-text strong {
+    color: #22c55e;
+}
+
+.update-link {
+    background-color: #22c55e;
+    color: #000000;
+    padding: 6px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    transition: background-color 0.2s;
+}
+
+.update-link:hover {
+    background-color: #16a34a;
+}
+
+.update-dismiss {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+}
+
+.update-dismiss:hover {
+    color: #fff;
+}
+
 /* Model Loading Banner */
 .model-loading-banner {
     position: relative;

@@ -9,11 +9,13 @@ class AIFileSearchUI {
         this.activityPollInterval = null;
         this.activityExpanded = false;
         this.searchElapsedInterval = null;
+        this.updateDismissed = false; // Track if user dismissed update banner
         this.initializeElements();
         this.bindEvents();
         this.loadChatHistory();
         this.adjustTextareaHeight(); // Initialize textarea height
         this.startStatusPolling(); // Start polling system status
+        this.checkForUpdates(); // Check for updates on startup
     }
 
     initializeElements() {
@@ -24,6 +26,13 @@ class AIFileSearchUI {
         this.settingsBtn = document.getElementById('settings-btn');
         this.logsBtn = document.getElementById('logs-btn');
         this.chatList = document.getElementById('chat-list');
+
+        // Update banner elements
+        this.updateBanner = document.getElementById('update-banner');
+        this.latestVersion = document.getElementById('latest-version');
+        this.currentVersion = document.getElementById('current-version');
+        this.updateDownloadLink = document.getElementById('update-download-link');
+        this.updateDismissBtn = document.getElementById('update-dismiss');
 
         // Activity elements
         this.activityStrip = document.getElementById('activity-strip');
@@ -113,6 +122,46 @@ class AIFileSearchUI {
                 }
             }
         });
+
+        // Update banner dismiss button
+        if (this.updateDismissBtn) {
+            this.updateDismissBtn.addEventListener('click', () => {
+                this.updateDismissed = true;
+                if (this.updateBanner) {
+                    this.updateBanner.style.display = 'none';
+                }
+            });
+        }
+    }
+
+    async checkForUpdates() {
+        // Check for updates after a short delay to not block startup
+        setTimeout(async () => {
+            try {
+                const response = await fetch('/api/version');
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                
+                if (data.update_available && !this.updateDismissed) {
+                    if (this.updateBanner) {
+                        this.updateBanner.style.display = 'block';
+                    }
+                    if (this.latestVersion) {
+                        this.latestVersion.textContent = data.latest_version;
+                    }
+                    if (this.currentVersion) {
+                        this.currentVersion.textContent = data.version;
+                    }
+                    if (this.updateDownloadLink && data.download_url) {
+                        this.updateDownloadLink.href = data.download_url;
+                    }
+                }
+            } catch (e) {
+                // Silently ignore update check failures
+                console.debug('Update check failed:', e);
+            }
+        }, 2000); // Check 2 seconds after startup
     }
 
     adjustTextareaHeight() {

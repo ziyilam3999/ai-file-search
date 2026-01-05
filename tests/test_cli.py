@@ -2,19 +2,25 @@
 
 Tests CLI functions: format_answer, ask_question, main argument parsing
 Uses mocking to avoid LLM loading and file I/O
+
+Refactored: 2026-01-05 to use conftest.py fixtures for proper test isolation
 """
 
-import io
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Mock heavy dependencies BEFORE importing cli
+# =============================================================================
+# MODULE-LEVEL MOCK SETUP WITH PROPER CLEANUP
+# =============================================================================
+# These mocks are needed because cli.py imports heavy dependencies at module level.
+# We use a session-scoped approach with guaranteed cleanup.
+
 _MOCK_MODULES = [
     "faiss",
     "llama_cpp",
@@ -26,10 +32,15 @@ _MOCK_MODULES = [
     "smart_watcher",
 ]
 
-for module_name in _MOCK_MODULES:
-    if module_name not in sys.modules:
-        sys.modules[module_name] = MagicMock()
+# Save original modules BEFORE any mocking
+_ORIGINAL_MODULES = {name: sys.modules.get(name) for name in _MOCK_MODULES}
 
+# Apply mocks for cli import
+for _module_name in _MOCK_MODULES:
+    if _module_name not in sys.modules:
+        sys.modules[_module_name] = MagicMock()
+
+# Now import cli (with mocks in place)
 from cli import (
     ask_question,
     format_answer,
@@ -38,6 +49,17 @@ from cli import (
     print_banner,
     print_help,
 )
+
+# IMMEDIATELY restore modules after cli import
+# This is the key difference - we restore RIGHT AWAY, not in a fixture
+for _name, _original in _ORIGINAL_MODULES.items():
+    if _original is None:
+        sys.modules.pop(_name, None)
+    else:
+        sys.modules[_name] = _original
+
+# Clean up module-level variables
+del _module_name, _name, _original
 
 
 class TestFormatAnswer:

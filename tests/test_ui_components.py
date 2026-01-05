@@ -1,4 +1,7 @@
-"""Tests for ui/components.py"""
+"""Tests for ui/components.py
+
+Refactored: 2026-01-05 to properly manage streamlit mock lifecycle
+"""
 
 import sys
 from pathlib import Path
@@ -9,8 +12,17 @@ import pytest
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Mock streamlit before importing ui.components
-sys.modules["streamlit"] = MagicMock()
+# =============================================================================
+# STREAMLIT MOCK SETUP
+# =============================================================================
+# ui.components imports streamlit at module level, so we must mock it before import.
+# We keep the mock in place for this module since all tests need it.
+
+_ORIGINAL_STREAMLIT = sys.modules.get("streamlit")
+_mock_st = MagicMock()
+sys.modules["streamlit"] = _mock_st
+
+# Get reference to the mock streamlit
 import streamlit as st
 
 from ui.components import (
@@ -19,6 +31,17 @@ from ui.components import (
     load_welcome_text,
     render_interactive_citations,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_streamlit_mocks():
+    """Reset streamlit mocks before each test and ensure mock is in place."""
+    # Ensure our mock is still in sys.modules (conftest might have removed it)
+    sys.modules["streamlit"] = _mock_st
+    # Reset all mock call history
+    _mock_st.reset_mock()
+    yield
+    # Keep mock in place for next test in this module
 
 
 def test_load_welcome_text():
@@ -58,11 +81,6 @@ def test_render_interactive_citations():
     citations = [
         {"id": 1, "file": "test.txt", "page": 1, "chunk": "Content", "score": 0.9}
     ]
-
-    # Reset mocks
-    st.markdown.reset_mock()
-    st.columns.reset_mock()
-    st.button.reset_mock()
 
     # Mock columns to return two mocks
     col1 = MagicMock()

@@ -1,15 +1,34 @@
+"""Unit tests for IndexManager class.
+
+Tests watch path management: add, remove, duplicate detection, reindex.
+Uses temporary directories for full test isolation.
+
+Refactored: 2026-01-05 to use temp directories and conftest.py cleanup
+"""
+
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
 import yaml
 
-from core.index_manager import IndexManager
+# Note: conftest.py's cleanup_mocked_modules fixture automatically ensures
+# we have real modules, not mocks from other tests
 
 
 class TestIndexManager(unittest.TestCase):
+    """Tests for IndexManager watch path operations."""
+
     def setUp(self):
+        # Import here to ensure conftest cleanup has run (validates module is real)
+        from core.index_manager import IndexManager  # noqa: F401
+
+        # Create a unique temp directory for this test to avoid cross-test pollution
+        self.test_temp_dir = tempfile.mkdtemp(prefix="test_index_manager_")
+
         # Scope third-party module mocks to this test case only.
         self._sys_modules_patcher = patch.dict(
             sys.modules,
@@ -22,8 +41,8 @@ class TestIndexManager(unittest.TestCase):
         )
         self._sys_modules_patcher.start()
 
-        self.config_path = "tests/test_config_manager.yaml"
-        self.db_path = "tests/test_meta_manager.sqlite"
+        self.config_path = os.path.join(self.test_temp_dir, "test_config_manager.yaml")
+        self.db_path = os.path.join(self.test_temp_dir, "test_meta_manager.sqlite")
 
         # Create dummy config
         with open(self.config_path, "w") as f:
@@ -47,7 +66,10 @@ class TestIndexManager(unittest.TestCase):
             patch("core.index_manager.SmartWatcherController"),
             patch("core.index_manager.Embedder"),
         ):
-            self.manager = IndexManager()
+            # Import inside patch context; use alias to avoid F811 warning
+            from core.index_manager import IndexManager as IM
+
+            self.manager = IM()
             self.manager.watcher_controller = self.mock_watcher
             self.manager.embedder = self.mock_embedder
 
@@ -55,13 +77,14 @@ class TestIndexManager(unittest.TestCase):
         self.patcher1.stop()
         self.patcher2.stop()
         self._sys_modules_patcher.stop()
-        if os.path.exists(self.config_path):
-            os.remove(self.config_path)
+        # Clean up temp directory
+        if os.path.exists(self.test_temp_dir):
+            shutil.rmtree(self.test_temp_dir, ignore_errors=True)
 
     def test_add_watch_path(self):
         # Test adding a valid path
-        # Create a dummy directory for testing
-        test_dir = os.path.join(os.getcwd(), "tests", "dummy_watch_dir")
+        # Create a dummy directory for testing within our temp dir
+        test_dir = os.path.join(self.test_temp_dir, "watch_dir")
         os.makedirs(test_dir, exist_ok=True)
 
         try:
@@ -89,7 +112,7 @@ class TestIndexManager(unittest.TestCase):
                 os.rmdir(test_dir)
 
     def test_add_duplicate_path(self):
-        test_dir = os.path.join(os.getcwd(), "tests", "dummy_watch_dir")
+        test_dir = os.path.join(self.test_temp_dir, "watch_dir")
         os.makedirs(test_dir, exist_ok=True)
 
         try:
@@ -107,7 +130,7 @@ class TestIndexManager(unittest.TestCase):
                 os.rmdir(test_dir)
 
     def test_remove_watch_path(self):
-        test_dir = os.path.join(os.getcwd(), "tests", "dummy_watch_dir")
+        test_dir = os.path.join(self.test_temp_dir, "watch_dir")
         os.makedirs(test_dir, exist_ok=True)
 
         try:
@@ -138,7 +161,11 @@ class TestIndexManager(unittest.TestCase):
                 os.rmdir(test_dir)
 
     def test_trigger_reindex(self):
-        success, msg = self.manager.trigger_reindex()
+        result = self.manager.trigger_reindex()
+        # Handle tuple return
+        self.assertIsInstance(result, tuple, f"Expected tuple, got {type(result)}")
+        self.assertEqual(len(result), 2, f"Expected 2-tuple, got {len(result)}-tuple")
+        success, msg = result
         self.assertTrue(success)
         self.mock_watcher.stop_watcher.assert_called_once()
         self.mock_watcher.start_watcher.assert_called_once()

@@ -1,3 +1,11 @@
+"""Unit tests for UI Flask backend API endpoints.
+
+Tests API routes: watch paths, reindex, activity log mapping, file opening.
+Uses mocking to avoid heavy dependencies.
+
+Refactored: 2026-01-05 to immediately restore modules after import
+"""
+
 import json
 import sys
 import unittest
@@ -6,6 +14,10 @@ from unittest.mock import MagicMock, patch
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# =============================================================================
+# MODULE-LEVEL MOCK SETUP WITH IMMEDIATE CLEANUP
+# =============================================================================
 
 _MOCK_MODULE_NAMES = [
     "smart_watcher",
@@ -17,28 +29,26 @@ _MOCK_MODULE_NAMES = [
 
 _ORIGINAL_MODULES = {name: sys.modules.get(name) for name in _MOCK_MODULE_NAMES}
 
-try:
-    # Mock dependencies (only for importing ui.flask_app)
-    sys.modules["smart_watcher"] = MagicMock()
-    sys.modules["core.ask"] = MagicMock()
-    sys.modules["core.monitoring"] = MagicMock()
-    sys.modules["core.utils"] = MagicMock()
-    sys.modules["core.index_manager"] = MagicMock()
+# Apply mocks for flask_app import
+for _name in _MOCK_MODULE_NAMES:
+    sys.modules[_name] = MagicMock()
 
-    # Mock IndexManager class
-    MockIndexManager = MagicMock()
-    sys.modules["core.index_manager"].IndexManager = MockIndexManager  # type: ignore
+# Mock IndexManager class specifically
+MockIndexManager = MagicMock()
+sys.modules["core.index_manager"].IndexManager = MockIndexManager  # type: ignore[attr-defined]
 
-    # We need to import app AFTER mocking
-    # But ui.flask_app imports core.index_manager, so our mock in sys.modules should work
-    from ui.flask_app import app
-finally:
-    # IMPORTANT: Restore sys.modules to avoid leaking mocks to other tests.
-    for name, original in _ORIGINAL_MODULES.items():
-        if original is None:
-            sys.modules.pop(name, None)
-        else:
-            sys.modules[name] = original
+# Import app with mocks in place
+from ui.flask_app import app
+
+# IMMEDIATELY restore modules after import
+for _name, _original in _ORIGINAL_MODULES.items():
+    if _original is None:
+        sys.modules.pop(_name, None)
+    else:
+        sys.modules[_name] = _original
+
+# Clean up module-level variables
+del _name, _original
 
 
 class TestUIBackend(unittest.TestCase):

@@ -7,6 +7,7 @@ from flask import (
     Flask,
     Response,
     jsonify,
+    redirect,
     render_template,
     request,
     stream_with_context,
@@ -75,12 +76,53 @@ def to_activity(line: str) -> str | None:
 
 @app.route("/")
 def home():
+    # Check if this is first run (no config)
+    try:
+        from core.user_config import is_first_run
+
+        if is_first_run():
+            return redirect("/setup")
+    except Exception:
+        pass  # If check fails, show normal page
     return render_template("new_search.html")
+
+
+@app.route("/setup")
+def setup_wizard():
+    """First-run setup wizard for new users."""
+    return render_template("setup_wizard.html")
 
 
 @app.route("/new-search")
 def new_search():
     return render_template("new_search.html")
+
+
+@app.route("/api/browse-folder", methods=["POST"])
+def browse_folder():
+    """Open native folder picker dialog via pywebview."""
+    try:
+        import webview
+
+        # Get active window
+        windows = webview.windows
+        if not windows:
+            return jsonify({"error": "No active window found"}), 400
+
+        window = windows[0]
+
+        # Open folder dialog
+        result = window.create_file_dialog(
+            webview.FOLDER_DIALOG, directory="", allow_multiple=False
+        )
+
+        if result and len(result) > 0:
+            return jsonify({"path": result[0]})
+        else:
+            return jsonify({"path": None, "cancelled": True})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/open-file", methods=["POST"])
@@ -507,6 +549,121 @@ def sync_confluence():
             return jsonify(response)
         else:
             return jsonify({"error": message}), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =============================================================================
+# USER CONFIG API ENDPOINTS
+# =============================================================================
+
+
+@app.route("/api/user-config", methods=["GET"])
+def get_user_config():
+    """Get user configuration (non-sensitive settings only)."""
+    try:
+        from core.user_config import get_confluence_config, is_first_run
+
+        return jsonify(
+            {
+                "is_first_run": is_first_run(),
+                "confluence": get_confluence_config(),
+            }
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user-config/confluence", methods=["POST"])
+def save_confluence_settings():
+    """Save Confluence configuration (credentials + settings)."""
+    try:
+        from core.user_config import save_confluence_config
+
+        data = request.json or {}
+
+        # Extract fields (all optional - only provided fields are updated)
+        url = data.get("url")
+        email = data.get("email")
+        token = data.get("token")
+        default_space = data.get("default_space")
+        visible_spaces = data.get("visible_spaces")
+
+        success = save_confluence_config(
+            url=url,
+            email=email,
+            token=token,
+            default_space=default_space,
+            visible_spaces=visible_spaces,
+        )
+
+        if success:
+            return jsonify({"status": "saved", "message": "Confluence settings saved"})
+        else:
+            return jsonify({"error": "Failed to save settings"}), 500
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user-config/confluence/test", methods=["POST"])
+def test_new_confluence_connection():
+    """Test Confluence connection with provided credentials."""
+    try:
+        data = request.json or {}
+        url = data.get("url", "").strip()
+        email = data.get("email", "").strip()
+        token = data.get("token", "").strip()
+
+        if not all([url, email, token]):
+            return jsonify({"error": "URL, email, and token are required"}), 400
+
+        # Try to connect with provided credentials
+        from atlassian import Confluence
+
+        client = Confluence(
+            url=url,
+            username=email,
+            password=token,
+            cloud=True,
+        )
+
+        # Try to get spaces as a connection test
+        client.get_all_spaces(limit=1)
+
+        return jsonify(
+            {
+                "status": "success",
+                "message": f"Connected to {url}",
+            }
+        )
+
+    except Exception as e:
+        return jsonify({"error": f"Connection failed: {str(e)}"}), 400
+
+
+@app.route("/api/user-config/default-space", methods=["POST"])
+def set_default_space():
+    """Set the default Confluence space."""
+    try:
+        from core.user_config import set_setting
+
+        data = request.json or {}
+        space_key = data.get("space_key")
+        space_name = data.get("space_name", "")
+
+        if not space_key:
+            return jsonify({"error": "space_key is required"}), 400
+
+        set_setting("default_space", space_key)
+
+        return jsonify(
+            {
+                "status": "saved",
+                "message": f"Default space set to {space_name or space_key}",
+            }
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

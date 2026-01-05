@@ -154,9 +154,11 @@ class IndexManager:
             yaml.dump(config, f, default_flow_style=False)
 
     def get_watch_paths(self) -> List[str]:
-        """Get current watch paths."""
+        """Get current watch paths (normalized to absolute)."""
         config = self._load_config()
-        return config.get("watch_paths", [])
+        paths = config.get("watch_paths", [])
+        # Normalize all paths to absolute for consistent display and comparison
+        return [normalize_path(p) for p in paths]
 
     def add_watch_path(
         self, path: str, async_mode: bool = True
@@ -361,13 +363,20 @@ class IndexManager:
 
         try:
             config = self._load_config()
-            paths = config.get("watch_paths", [])
+            raw_paths = config.get("watch_paths", [])
 
-            if norm_path not in paths:
+            # Find the matching path (compare normalized versions)
+            matching_raw_path = None
+            for raw_p in raw_paths:
+                if normalize_path(raw_p) == norm_path:
+                    matching_raw_path = raw_p
+                    break
+
+            if matching_raw_path is None:
                 return False, "Path is not being watched", None
 
-            paths.remove(norm_path)
-            config["watch_paths"] = paths
+            raw_paths.remove(matching_raw_path)
+            config["watch_paths"] = raw_paths
             self._save_config(config)
 
             # Signal watcher to reload config instead of full restart
@@ -767,12 +776,19 @@ class IndexManager:
             return False, str(e)
 
     def get_confluence_spaces(self) -> List[Dict[str, str]]:
-        """Get list of accessible Confluence spaces."""
+        """Get list of accessible Confluence spaces.
+
+        Returns:
+            List of space dicts with 'key' and 'name' fields.
+        """
         try:
             from core.confluence import ConfluenceClient
 
             client = ConfluenceClient()
-            return client.get_spaces()
+            spaces = client.get_spaces()
+
+            # Return all spaces - on free tier, all spaces are "personal"
+            return spaces
 
         except Exception as e:
             logger.error(f"Failed to get Confluence spaces: {e}")

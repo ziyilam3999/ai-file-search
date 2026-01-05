@@ -58,5 +58,6 @@ markers = [
 ]
 addopts = "-m 'not slow' --timeout=60"  # Skip slow tests by default, timeout after 60s
 timeout = 60  # Default timeout for all tests
+norecursedirs = ["tools", ".git", "__pycache__", "*.egg-info", ".venv"]
 
 

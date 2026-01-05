@@ -1,3 +1,4 @@
+import importlib
 import os
 import shutil
 import sqlite3
@@ -5,6 +6,18 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
+
+# Ensure real modules are imported (not mocked from other tests like test_cli.py)
+_MODULES_TO_CHECK = ["faiss", "core.embedding", "sentence_transformers"]
+for mod_name in _MODULES_TO_CHECK:
+    if mod_name in sys.modules and isinstance(sys.modules[mod_name], MagicMock):
+        del sys.modules[mod_name]
+        # Force reimport of core.embedding if it was mocked
+        if mod_name == "core.embedding":
+            # Also need to reimport dependent modules
+            for key in list(sys.modules.keys()):
+                if key.startswith("core.") or key.startswith("daemon."):
+                    del sys.modules[key]
 
 import faiss
 import numpy as np

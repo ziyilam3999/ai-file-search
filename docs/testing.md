@@ -12,12 +12,69 @@ Test plans, coverage reports, and quality assurance documentation.
 | test_watch.py | Unit | File watcher tests | 24/25 Passing |
 | test_core_utils.py | Unit | Core utilities (citations, file opening) | Passing |
 | test_core_config.py | Unit | Configuration logic | Passing |
+| test_user_config.py | Unit | Platform-aware user config | 33/33 Passing |
 | test_ui.py | Integration | Streamlit UI tests | 5/5 Passing |
 | test_ui_components.py | Unit | UI components (rendering, styles) | Passing |
+| test_ui_backend.py | Unit | Flask API endpoints | Passing |
+| test_index_manager.py | Unit | Watch path management | 4/4 Passing |
+| test_confluence.py | Unit | Confluence integration | Passing |
 | test_complete_system.py | Integration | Full system tests | Passing |
 | test_regression.py | Regression | Citation accuracy tests | 6/6 Passing |
 | test_faiss_sync.py | Unit | FAISS/SQLite synchronization | Passing |
 | test_quick.py | Smoke | Fast validation tests | 5/5 Passing |
+
+**Total: 186 passed, 20 skipped** (as of 2026-01-05)
+
+## Test Infrastructure
+
+### conftest.py (Shared Fixtures)
+
+The test suite uses `tests/conftest.py` to provide shared fixtures and ensure test isolation:
+
+```python
+# Key fixtures available to all tests:
+
+@pytest.fixture(autouse=True)
+def cleanup_mocked_modules():
+    """Automatically cleans up mocked modules before/after each test."""
+
+@pytest.fixture
+def isolated_index_manager(temp_config_dir):
+    """Provides fully isolated IndexManager with temp config/db."""
+
+@pytest.fixture
+def temp_watch_dir(tmp_path):
+    """Provides temporary directory for watch path testing."""
+
+@pytest.fixture
+def flask_test_client():
+    """Provides Flask test client with mocked dependencies."""
+```
+
+### Mock Management Pattern
+
+Tests that require module-level mocking (e.g., for heavy imports) follow this pattern:
+
+```python
+# 1. Save original modules
+_ORIGINAL_MODULES = {name: sys.modules.get(name) for name in _MOCK_MODULES}
+
+# 2. Apply mocks
+for name in _MOCK_MODULES:
+    sys.modules[name] = MagicMock()
+
+# 3. Import target module
+from target_module import something
+
+# 4. IMMEDIATELY restore modules
+for name, original in _ORIGINAL_MODULES.items():
+    if original is None:
+        sys.modules.pop(name, None)
+    else:
+        sys.modules[name] = original
+```
+
+This pattern prevents mock pollution between test files.
 
 ## Running Tests
 

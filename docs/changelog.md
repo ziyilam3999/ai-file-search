@@ -5,6 +5,27 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Unified User Config Architecture:** Platform-aware config for packaged app distribution:
+  - **New Module:** `core/user_config.py` - Platform-aware config dir (AppData/Library/etc.)
+  - **Config Location:** `%APPDATA%\ai-file-search\` (Windows), `~/Library/Application Support/ai-file-search/` (macOS)
+  - **Files:** `settings.yaml` (URL, email, default_space), `credentials.yaml` (API token)
+  - **Fallback Chain:** user_config → .env → defaults (backwards compatible)
+  - **Auto-Migration:** Automatically migrates .env settings on first run
+  - **First-Run Wizard:** New `/setup` route with step-by-step credential entry
+  - **Settings UI Enhancements:**
+    - Default space selector with "★ Set Default" button
+    - Pre-selection of default space in dropdown
+    - "Edit Credentials" collapsible section with URL/email/token fields
+    - "Sync Now" quick-sync button
+  - **API Endpoints:** `/api/user-config`, `/api/user-config/confluence`, `/api/user-config/default-space`
+
+- **Settings Page Bug Fixes:**
+  - Fixed Remove Path button (path normalization mismatch)
+  - Fixed Add Folder button (event handler attachment)
+  - Added Browse button with native folder picker via pywebview
+  - Fixed page scrolling with CSS overflow fixes
+  - Added Sync Now button for quick Confluence sync
+
 - **Confluence Integration:** Index business rules from Confluence Cloud alongside local documents:
   - **New Module:** `core/confluence.py` - Confluence API client with HTML parsing
   - **API Endpoints:** `/api/confluence/status`, `/api/confluence/sync`, `/api/confluence/spaces`, `/api/confluence/test`

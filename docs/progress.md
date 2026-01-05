@@ -41,6 +41,16 @@ Project roadmap, sprint tasks, and session log.
 - [x] **Finding**: Intel Iris Xe and CPU perform identically due to shared memory (UMA)
 - [x] **Architecture Decision**: Keep llama-cpp-python for production, use Ollama for experiments
 
+### January 2026: User Config Architecture & Settings Fixes
+- [x] **Unified User Config**: Platform-aware config for packaged app distribution
+- [x] **Config Location**: AppData (Windows), Library (macOS), .config (Linux)
+- [x] **Auto-Migration**: Migrates .env settings to user config on first run
+- [x] **First-Run Wizard**: New `/setup` route for new user onboarding
+- [x] **Default Space**: "★ Set Default" button to save preferred Confluence space
+- [x] **Edit Credentials**: Collapsible section to update URL/email/token
+- [x] **Settings Bug Fixes**: Remove path, add folder, browse button, scrolling
+- [x] **Sync Now Button**: Quick sync without selecting space
+
 ### January 2026: Multi-Folder Watching
 - [x] **Flexible Watch Paths**: Support watching multiple disjoint folders
 - [x] **Settings UI**: Manage watch paths via Flask UI

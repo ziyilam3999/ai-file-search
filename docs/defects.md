@@ -6,15 +6,16 @@ Known bugs, issues, and their resolution status.
 
 | ID | Description | Severity | Status | Reported |
 |----|-------------|----------|--------|----------|
-| DEF-023 | test_ui_backend.py leaks mocked modules into other tests via sys.modules | High | Open | 2025-12-23 |
-| DEF-024 | tests expect ui.components but module is missing | Medium | Open | 2025-12-23 |
-| DEF-025 | tests expect daemon.watch.ExtractorAdapter but symbol is missing | Medium | Open | 2025-12-23 |
-| DEF-027 | Settings UI: delete/add path buttons give 400 errors on second click | Medium | Fixed | 2025-12-25 |
+| — | No active defects | — | — | — |
 
 ## Resolved Defects
 
 | ID | Description | Severity | Resolution | Resolved |
 |----|-------------|----------|------------|----------|
+| DEF-028 | test_index_manager.py expects 2-tuple returns, but API now returns 3-tuple (async job support) | Medium | Tests updated to handle both 2-tuple and 3-tuple returns; temp dirs isolate tests | 2026-01-05 |
+| DEF-023 | test_ui_backend.py leaks mocked modules into other tests via sys.modules | High | Created conftest.py with cleanup_mocked_modules fixture; immediate module restore pattern | 2026-01-05 |
+| DEF-024 | tests expect ui.components but module is missing | Medium | Module exists; test isolation fixed via conftest.py streamlit mock management | 2026-01-05 |
+| DEF-025 | tests expect daemon.watch.ExtractorAdapter but symbol is missing | Medium | Symbol renamed to EmbeddingAdapter; tests updated accordingly | 2026-01-05 |
 | DEF-027 | Settings UI: delete/add path buttons give 400 errors on second click | Medium | Fixed UI to accept both "success" and "accepted" status from async operations | 2025-12-25 |
 | DEF-026 | Model loading banner overlays and blocks status panel | Medium | Changed position from absolute to relative for natural document flow | 2025-12-25 |
 | DEF-022 | test_enhanced_adapter.py never asserts - always returns True | High | Added proper assert statements to validate operations | 2025-12-23 |

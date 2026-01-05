@@ -117,6 +117,19 @@ def start_app():
     # Configure app logging before starting threads.
     configure_app_logging()
 
+    # 0. Migrate config from .env to user config dir (one-time on first run)
+    try:
+        from core.user_config import get_settings, get_user_config_dir
+
+        config_dir = get_user_config_dir()
+        print(f"Launcher: User config directory: {config_dir}")
+        # get_settings() will auto-migrate from .env if needed
+        settings = get_settings()
+        if settings:
+            print("Launcher: User configuration loaded.")
+    except Exception as e:
+        print(f"Launcher: Config migration skipped: {e}")
+
     # 1. Ensure Watcher is running
     ensure_watcher_running()
 

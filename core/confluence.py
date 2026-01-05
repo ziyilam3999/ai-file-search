@@ -115,13 +115,37 @@ class ConfluenceClient:
         self._config = self._load_config()
 
     def _get_env(self, key: str) -> Optional[str]:
-        """Get environment variable, loading from .env if needed."""
+        """
+        Get configuration value with fallback chain:
+        1. Environment variable
+        2. User config (AppData/Library)
+        3. .env file in project root
+        """
         # First check environment
         value = os.environ.get(key)
         if value:
             return value
 
-        # Try loading from .env file
+        # Try user_config (for packaged apps)
+        try:
+            from core.user_config import get_credentials, get_settings
+
+            if key == "CONFLUENCE_URL":
+                settings = get_settings()
+                if settings.get("confluence_url"):
+                    return settings["confluence_url"]
+            elif key == "CONFLUENCE_EMAIL":
+                settings = get_settings()
+                if settings.get("confluence_email"):
+                    return settings["confluence_email"]
+            elif key == "CONFLUENCE_API_TOKEN":
+                creds = get_credentials()
+                if creds.get("confluence_api_token"):
+                    return creds["confluence_api_token"]
+        except Exception as e:
+            logger.debug(f"user_config fallback failed: {e}")
+
+        # Try loading from .env file (development fallback)
         if ENV_PATH.exists():
             try:
                 with open(ENV_PATH, "r", encoding="utf-8") as f:

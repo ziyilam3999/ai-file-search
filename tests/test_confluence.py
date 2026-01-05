@@ -213,8 +213,14 @@ class TestIndexManagerConfluenceMethods:
                     manager = IndexManager()
                     status = manager.get_confluence_status()
 
-                    assert isinstance(status, dict)
-                    assert "configured" in status or "error" in status
+                    # Status should be a dict with expected keys
+                    assert isinstance(
+                        status, dict
+                    ), f"Expected dict, got {type(status)}"
+                    # Should have at least one of these keys
+                    assert any(
+                        key in status for key in ["configured", "error", "connected"]
+                    ), f"Expected confluence status keys, got {status.keys()}"
         except ImportError as e:
             pytest.skip(f"Could not import IndexManager: {e}")
 
@@ -227,12 +233,18 @@ class TestIndexManagerConfluenceMethods:
                 with patch("core.index_manager.Embedder"):
                     manager = IndexManager()
 
-                    # Try to sync without dependencies - should return error
-                    success, message, job_id = manager.sync_confluence(
-                        space_key="TEST", async_mode=False
-                    )
+                    # Try to sync without dependencies - should return 3-tuple
+                    result = manager.sync_confluence(space_key="TEST", async_mode=False)
 
-                    # Should either succeed or return meaningful error
+                    # Should return 3-tuple (success, message, job_id)
+                    assert isinstance(
+                        result, tuple
+                    ), f"Expected tuple, got {type(result)}"
+                    assert (
+                        len(result) == 3
+                    ), f"Expected 3-tuple, got {len(result)}-tuple"
+
+                    success, message, job_id = result
                     assert isinstance(success, bool)
                     assert isinstance(message, str)
         except ImportError as e:

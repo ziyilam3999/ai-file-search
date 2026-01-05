@@ -6,8 +6,24 @@
     <title>Settings - AI File Search</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/new_search.css') }}">
     <style>
+        /* Override body for settings page to allow scrolling */
+        body {
+            overflow: auto !important;
+            overflow-y: scroll !important;
+            height: auto !important;
+            min-height: 100vh;
+        }
+        .app-container {
+            height: auto !important;
+            min-height: 100vh;
+            overflow: visible !important;
+        }
+        .main-content {
+            height: auto !important;
+            overflow: visible !important;
+        }
         .settings-container {
-            padding: 20px;
+            padding: 40px 20px 80px 20px;
             color: #e0e0e0;
             max-width: 800px;
             margin: 0 auto;
@@ -161,6 +177,55 @@
             color: #888;
             margin-top: 10px;
         }
+        /* Confluence Setup Form */
+        .confluence-setup-form .form-group {
+            margin-bottom: 15px;
+        }
+        .confluence-setup-form label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+            font-size: 0.9em;
+        }
+        .confluence-setup-form .form-input {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px 12px;
+            background: #1e1e1e;
+            border: 1px solid #404040;
+            color: white;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+        .confluence-setup-form .form-input:focus {
+            outline: none;
+            border-color: #1976d2;
+        }
+        .confluence-setup-form .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .test-result {
+            margin-top: 15px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+        .test-result.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+            color: #4caf50;
+        }
+        .test-result.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 0.85em;
+        }
     </style>
 </head>
 <body>
@@ -183,6 +248,7 @@
                     
                     <div class="add-path-form">
                         <input type="text" id="new-path-input" class="path-input" placeholder="Enter absolute path to folder (e.g. C:\Users\Name\Documents)">
+                        <button id="browse-folder-btn" class="btn btn-secondary" title="Browse for folder">📁 Browse</button>
                         <button id="add-path-btn" class="btn btn-primary">Add Folder</button>
                     </div>
                 </div>
@@ -202,24 +268,48 @@
                     </div>
 
                     <div id="confluence-status" class="confluence-info">
-                        <p><label>Status:</label> <span id="conf-status-badge" class="status-badge status-not-configured">Loading...</span></p>
+                        <p style="display:flex;align-items:center;gap:10px;">
+                            <label>Status:</label> 
+                            <span id="conf-status-badge" class="status-badge status-not-configured">Loading...</span>
+                            <button id="quick-sync-btn" class="btn btn-success btn-sm" style="display:none;" title="Sync all configured spaces">↻ Sync Now</button>
+                        </p>
                         <p id="conf-connection-msg" style="display:none;"><label>Connection:</label> <span id="conf-connection-text"></span></p>
                         <p id="conf-last-sync" style="display:none;"><label>Last Sync:</label> <span id="conf-last-sync-text"></span></p>
                         <p id="conf-pages-count" style="display:none;"><label>Pages Indexed:</label> <span id="conf-pages-text"></span></p>
                     </div>
 
                     <div id="confluence-not-configured" style="display:none;">
-                        <p class="help-text">
-                            To configure Confluence integration:
-                        </p>
-                        <ol class="help-text">
-                            <li>Copy <code>.env.example</code> to <code>.env</code></li>
-                            <li>Set <code>CONFLUENCE_URL</code> (e.g., https://company.atlassian.net)</li>
-                            <li>Set <code>CONFLUENCE_EMAIL</code> (your Atlassian email)</li>
-                            <li>Set <code>CONFLUENCE_API_TOKEN</code> (<a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" style="color:#64b5f6;">Generate API Token</a>)</li>
-                            <li>Restart the application</li>
-                        </ol>
-                        <button id="test-confluence-btn" class="btn btn-secondary" style="margin-top:15px;">Test Connection</button>
+                        <div class="confluence-setup-form">
+                            <p class="help-text" style="margin-bottom: 15px;">
+                                Configure your Confluence Cloud connection. You'll need an 
+                                <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" style="color:#64b5f6;">API Token</a>.
+                            </p>
+                            
+                            <div class="form-group">
+                                <label for="conf-url-input">Confluence URL</label>
+                                <input type="url" id="conf-url-input" class="form-input" 
+                                       placeholder="https://yourcompany.atlassian.net" />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="conf-email-input">Email</label>
+                                <input type="email" id="conf-email-input" class="form-input" 
+                                       placeholder="you@company.com" />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="conf-token-input">API Token</label>
+                                <input type="password" id="conf-token-input" class="form-input" 
+                                       placeholder="Your Atlassian API token" />
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button id="test-confluence-btn" class="btn btn-secondary">Test Connection</button>
+                                <button id="save-confluence-btn" class="btn btn-primary" disabled>Save & Connect</button>
+                            </div>
+                            
+                            <p id="conf-test-result" class="test-result" style="display:none;"></p>
+                        </div>
                     </div>
 
                     <div id="confluence-configured" style="display:none;">
@@ -228,10 +318,15 @@
                                 <option value="">Select a Confluence space...</option>
                             </select>
                             <button id="sync-confluence-btn" class="btn btn-primary" disabled>Sync Space</button>
+                            <button id="set-default-btn" class="btn btn-secondary" disabled title="Set as default space">★ Set Default</button>
                             <label style="display:flex;align-items:center;gap:5px;">
                                 <input type="checkbox" id="incremental-sync" checked> Incremental
                             </label>
                         </div>
+                        
+                        <p id="default-space-indicator" class="help-text" style="display:none; color:#4caf50;">
+                            ★ Default space: <span id="default-space-name"></span>
+                        </p>
 
                         <div id="sync-progress" class="sync-progress">
                             <p id="sync-status-text">Syncing...</p>
@@ -244,6 +339,26 @@
                             Incremental sync only fetches pages that have changed since the last sync.
                             Uncheck to force a full sync of all pages.
                         </p>
+                        
+                        <details style="margin-top: 15px;">
+                            <summary style="cursor: pointer; color: #888;">Edit Credentials</summary>
+                            <div class="confluence-setup-form" style="margin-top: 10px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                                <div class="form-group">
+                                    <label for="conf-url-edit">Confluence URL</label>
+                                    <input type="url" id="conf-url-edit" class="form-input" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="conf-email-edit">Email</label>
+                                    <input type="email" id="conf-email-edit" class="form-input" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="conf-token-edit">API Token (leave blank to keep current)</label>
+                                    <input type="password" id="conf-token-edit" class="form-input" 
+                                           placeholder="Enter new token or leave blank" />
+                                </div>
+                                <button id="update-confluence-btn" class="btn btn-secondary">Update Credentials</button>
+                            </div>
+                        </details>
                     </div>
                 </div>
             </div>
@@ -251,9 +366,73 @@
     </div>
 
     <script>
-        // Load paths on startup
-        loadPaths();
-        loadConfluenceStatus();
+        // Wrap in DOMContentLoaded to ensure all elements are ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load paths on startup
+            loadPaths();
+            loadConfluenceStatus();
+            loadUserConfig();
+            
+            // Attach event listeners
+            document.getElementById('add-path-btn').addEventListener('click', addPath);
+            document.getElementById('browse-folder-btn').addEventListener('click', browseFolder);
+            document.getElementById('new-path-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') addPath();
+            });
+            document.getElementById('reindex-btn').addEventListener('click', triggerReindex);
+            document.getElementById('space-select').addEventListener('change', function(e) {
+                const hasValue = !!e.target.value;
+                document.getElementById('sync-confluence-btn').disabled = !hasValue;
+                document.getElementById('set-default-btn').disabled = !hasValue;
+            });
+            document.getElementById('sync-confluence-btn').addEventListener('click', startConfluenceSync);
+            
+            const testBtn = document.getElementById('test-confluence-btn');
+            if (testBtn) testBtn.addEventListener('click', testConfluenceConnectionNew);
+            
+            const saveBtn = document.getElementById('save-confluence-btn');
+            if (saveBtn) saveBtn.addEventListener('click', saveConfluenceCredentials);
+            
+            const setDefaultBtn = document.getElementById('set-default-btn');
+            if (setDefaultBtn) setDefaultBtn.addEventListener('click', setDefaultSpace);
+            
+            const updateBtn = document.getElementById('update-confluence-btn');
+            if (updateBtn) updateBtn.addEventListener('click', updateConfluenceCredentials);
+            
+            const quickSyncBtn = document.getElementById('quick-sync-btn');
+            if (quickSyncBtn) quickSyncBtn.addEventListener('click', quickSyncConfluence);
+            
+            // Enable save button when all fields are filled
+            ['conf-url-input', 'conf-email-input', 'conf-token-input'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', checkSaveButtonState);
+            });
+        });
+
+        async function browseFolder() {
+            try {
+                const btn = document.getElementById('browse-folder-btn');
+                btn.disabled = true;
+                btn.textContent = '...';
+                
+                const response = await fetch('/api/browse-folder', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.path) {
+                    document.getElementById('new-path-input').value = result.path;
+                } else if (result.error) {
+                    console.error('Browse error:', result.error);
+                }
+                // If cancelled, do nothing
+                
+                btn.disabled = false;
+                btn.textContent = '📁 Browse';
+            } catch (error) {
+                console.error('Error opening folder dialog:', error);
+                document.getElementById('browse-folder-btn').disabled = false;
+                document.getElementById('browse-folder-btn').textContent = '📁 Browse';
+            }
+        }
 
         async function loadPaths() {
             try {
@@ -276,10 +455,13 @@
             }
         }
 
-        document.getElementById('add-path-btn').addEventListener('click', async () => {
+        async function addPath() {
             const input = document.getElementById('new-path-input');
             const path = input.value.trim();
-            if (!path) return;
+            if (!path) {
+                alert('Please enter a folder path');
+                return;
+            }
             
             try {
                 const response = await fetch('/api/settings/watch-paths', {
@@ -292,13 +474,14 @@
                 if (result.status === 'success' || result.status === 'accepted') {
                     input.value = '';
                     loadPaths();
+                    alert('Folder added successfully! Indexing in background.');
                 } else {
                     alert('Error: ' + result.error);
                 }
             } catch (error) {
                 alert('Error adding path: ' + error);
             }
-        });
+        }
 
         async function removePath(path) {
             if (!confirm(`Are you sure you want to stop watching "${path}"? This will remove its documents from the index.`)) return;
@@ -313,6 +496,7 @@
                 
                 if (result.status === 'success' || result.status === 'accepted') {
                     loadPaths();
+                    alert('Folder removed successfully!');
                 } else {
                     alert('Error: ' + result.error);
                 }
@@ -321,7 +505,7 @@
             }
         }
 
-        document.getElementById('reindex-btn').addEventListener('click', async () => {
+        async function triggerReindex() {
             if (!confirm('Are you sure you want to rebuild the entire index? This may take a while.')) return;
             
             try {
@@ -344,11 +528,213 @@
                 btn.textContent = 'Rebuild Index (Full Reset)';
             } catch (error) {
                 alert('Error triggering reindex: ' + error);
+                document.getElementById('reindex-btn').disabled = false;
+                document.getElementById('reindex-btn').textContent = 'Rebuild Index (Full Reset)';
             }
-        });
+        }
 
         // =====================================================================
-        // Confluence Integration
+        // User Config & Confluence Setup
+        // =====================================================================
+
+        let userConfig = null;
+
+        async function loadUserConfig() {
+            try {
+                const response = await fetch('/api/user-config');
+                userConfig = await response.json();
+                
+                // Pre-fill edit fields if configured
+                if (userConfig.confluence) {
+                    const conf = userConfig.confluence;
+                    
+                    // Fill edit form (in "Edit Credentials" section)
+                    const urlEdit = document.getElementById('conf-url-edit');
+                    const emailEdit = document.getElementById('conf-email-edit');
+                    if (urlEdit) urlEdit.value = conf.url || '';
+                    if (emailEdit) emailEdit.value = conf.email || '';
+                    
+                    // Show default space indicator
+                    if (conf.default_space) {
+                        const indicator = document.getElementById('default-space-indicator');
+                        const nameSpan = document.getElementById('default-space-name');
+                        if (indicator && nameSpan) {
+                            indicator.style.display = 'block';
+                            nameSpan.textContent = conf.default_space;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user config:', error);
+            }
+        }
+
+        function checkSaveButtonState() {
+            const url = document.getElementById('conf-url-input').value.trim();
+            const email = document.getElementById('conf-email-input').value.trim();
+            const token = document.getElementById('conf-token-input').value.trim();
+            const saveBtn = document.getElementById('save-confluence-btn');
+            if (saveBtn) {
+                saveBtn.disabled = !(url && email && token);
+            }
+        }
+
+        async function testConfluenceConnectionNew() {
+            const url = document.getElementById('conf-url-input').value.trim();
+            const email = document.getElementById('conf-email-input').value.trim();
+            const token = document.getElementById('conf-token-input').value.trim();
+            
+            if (!url || !email || !token) {
+                showTestResult('Please fill in all fields first.', false);
+                return;
+            }
+            
+            const btn = document.getElementById('test-confluence-btn');
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('/api/user-config/confluence/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, email, token })
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showTestResult('✓ ' + result.message, true);
+                    document.getElementById('save-confluence-btn').disabled = false;
+                } else {
+                    showTestResult('✗ ' + result.error, false);
+                }
+            } catch (error) {
+                showTestResult('✗ Connection error: ' + error, false);
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Test Connection';
+        }
+
+        function showTestResult(message, isSuccess) {
+            const resultEl = document.getElementById('conf-test-result');
+            if (resultEl) {
+                resultEl.style.display = 'block';
+                resultEl.textContent = message;
+                resultEl.className = 'test-result ' + (isSuccess ? 'success' : 'error');
+            }
+        }
+
+        async function saveConfluenceCredentials() {
+            const url = document.getElementById('conf-url-input').value.trim();
+            const email = document.getElementById('conf-email-input').value.trim();
+            const token = document.getElementById('conf-token-input').value.trim();
+            
+            const btn = document.getElementById('save-confluence-btn');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            
+            try {
+                const response = await fetch('/api/user-config/confluence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, email, token })
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showTestResult('✓ Settings saved! Refreshing...', true);
+                    setTimeout(() => {
+                        loadConfluenceStatus();
+                        loadUserConfig();
+                    }, 1000);
+                } else {
+                    showTestResult('✗ ' + result.error, false);
+                }
+            } catch (error) {
+                showTestResult('✗ Save error: ' + error, false);
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Save & Connect';
+        }
+
+        async function updateConfluenceCredentials() {
+            const url = document.getElementById('conf-url-edit').value.trim();
+            const email = document.getElementById('conf-email-edit').value.trim();
+            const token = document.getElementById('conf-token-edit').value.trim();
+            
+            const btn = document.getElementById('update-confluence-btn');
+            btn.disabled = true;
+            btn.textContent = 'Updating...';
+            
+            try {
+                const data = { url, email };
+                if (token) data.token = token;  // Only include token if provided
+                
+                const response = await fetch('/api/user-config/confluence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Credentials updated!');
+                    loadConfluenceStatus();
+                } else {
+                    alert('Update failed: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error);
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Update Credentials';
+        }
+
+        async function setDefaultSpace() {
+            const select = document.getElementById('space-select');
+            const spaceKey = select.value;
+            const spaceName = select.options[select.selectedIndex].textContent;
+            
+            if (!spaceKey) return;
+            
+            const btn = document.getElementById('set-default-btn');
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/user-config/default-space', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ space_key: spaceKey, space_name: spaceName })
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Update indicator
+                    const indicator = document.getElementById('default-space-indicator');
+                    const nameSpan = document.getElementById('default-space-name');
+                    if (indicator && nameSpan) {
+                        indicator.style.display = 'block';
+                        nameSpan.textContent = spaceName;
+                    }
+                    btn.textContent = '★ Default Set!';
+                    setTimeout(() => {
+                        btn.textContent = '★ Set Default';
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    alert('Failed to set default: ' + result.error);
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                alert('Error: ' + error);
+                btn.disabled = false;
+            }
+        }
+
+        // =====================================================================
+        // Confluence Integration (Status & Sync)
         // =====================================================================
 
         async function loadConfluenceStatus() {
@@ -377,6 +763,10 @@
                     badge.className = 'status-badge status-connected';
                     notConfigured.style.display = 'none';
                     configured.style.display = 'block';
+
+                    // Show quick sync button when connected
+                    const quickSyncBtn = document.getElementById('quick-sync-btn');
+                    if (quickSyncBtn) quickSyncBtn.style.display = 'inline-block';
 
                     // Show connection message
                     document.getElementById('conf-connection-msg').style.display = 'block';
@@ -414,24 +804,34 @@
 
                 select.innerHTML = '<option value="">Select a Confluence space...</option>';
 
+                // Get default space from user config
+                const defaultSpace = userConfig?.confluence?.default_space || '';
+
                 if (data.spaces && data.spaces.length > 0) {
                     data.spaces.forEach(space => {
                         const option = document.createElement('option');
                         option.value = space.key;
-                        option.textContent = `${space.name} (${space.key})`;
+                        option.textContent = space.name;
+                        // Pre-select if this is the default space
+                        if (space.key === defaultSpace) {
+                            option.selected = true;
+                        }
                         select.appendChild(option);
                     });
+                    
+                    // Enable buttons if default was selected
+                    if (defaultSpace && select.value) {
+                        document.getElementById('sync-confluence-btn').disabled = false;
+                        document.getElementById('set-default-btn').disabled = false;
+                    }
                 }
             } catch (error) {
                 console.error('Error loading spaces:', error);
             }
         }
 
-        document.getElementById('space-select').addEventListener('change', (e) => {
-            document.getElementById('sync-confluence-btn').disabled = !e.target.value;
-        });
-
-        document.getElementById('test-confluence-btn')?.addEventListener('click', async () => {
+        async function testConfluenceConnection() {
+            // Legacy function - kept for compatibility
             const btn = document.getElementById('test-confluence-btn');
             btn.disabled = true;
             btn.textContent = 'Testing...';
@@ -452,11 +852,11 @@
 
             btn.disabled = false;
             btn.textContent = 'Test Connection';
-        });
+        }
 
         let currentSyncJobId = null;
 
-        document.getElementById('sync-confluence-btn').addEventListener('click', async () => {
+        async function startConfluenceSync() {
             const spaceKey = document.getElementById('space-select').value;
             if (!spaceKey) return;
 
@@ -488,7 +888,7 @@
                 btn.disabled = false;
                 btn.textContent = 'Sync Space';
             }
-        });
+        }
 
         function showSyncProgress() {
             document.getElementById('sync-progress').classList.add('active');
@@ -539,6 +939,54 @@
                 console.error('Error polling job:', error);
                 hideSyncProgress();
             }
+        }
+
+        async function quickSyncConfluence() {
+            // Quick sync: sync all pages that have changed (incremental)
+            const btn = document.getElementById('quick-sync-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Syncing...';
+
+            try {
+                // Get the first space from the dropdown, or use a default
+                const select = document.getElementById('space-select');
+                let spaceKey = select.value;
+                
+                if (!spaceKey && select.options.length > 1) {
+                    spaceKey = select.options[1].value; // Use first actual space
+                }
+                
+                if (!spaceKey) {
+                    alert('Please select a Confluence space first.');
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    return;
+                }
+
+                const response = await fetch('/api/confluence/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ space_key: spaceKey, incremental: true })
+                });
+                const result = await response.json();
+
+                if (result.job_id) {
+                    currentSyncJobId = result.job_id;
+                    showSyncProgress();
+                    pollSyncJob(result.job_id);
+                } else if (result.status === 'success') {
+                    alert('Sync completed: ' + result.message);
+                    loadConfluenceStatus();
+                } else if (result.error) {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error starting sync: ' + error);
+            }
+
+            btn.disabled = false;
+            btn.textContent = originalText;
         }
     </script>
 </body>

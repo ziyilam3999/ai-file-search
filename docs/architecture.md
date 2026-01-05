@@ -71,6 +71,25 @@ Watched Paths (User Files)
    Original Files
 ```
 
+## User Configuration Architecture
+
+For packaged app distribution (.exe/macOS), user config is stored in platform-specific directories:
+
+| Platform | Config Directory |
+|----------|------------------|
+| Windows | `%APPDATA%\ai-file-search\` |
+| macOS | `~/Library/Application Support/ai-file-search/` |
+| Linux | `~/.config/ai-file-search/` |
+
+**Config Files:**
+- `settings.yaml` - Confluence URL, email, default_space, visible_spaces
+- `credentials.yaml` - API token (stored separately for security)
+
+**Fallback Chain:**
+1. User config dir (for packaged apps)
+2. `.env` file in project root (for development)
+3. Default values
+
 ## Directory Structure
 
 ```
@@ -88,6 +107,7 @@ ai-file-search/
 │   ├── extract.py               # Document processing
 │   ├── index_manager.py         # Index lifecycle management
 │   ├── path_utils.py            # Path validation and stats
+│   ├── user_config.py           # Platform-aware user settings
 │   └── llm.py                   # AI model interface
 │
 ├── daemon/                      # Background services

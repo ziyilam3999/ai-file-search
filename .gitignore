@@ -50,5 +50,8 @@ index_backup_*.faiss
 # Benchmark Results (local testing only)
 benchmark_results/
 
+# Build/Distribution Output
+dist/
+
 # Temporary Status Files
 _TASK_STATUS.md

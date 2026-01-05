@@ -73,6 +73,7 @@ def to_activity(line: str) -> str | None:
     return None
 
 
+@app.route("/")
 def home():
     return render_template("new_search.html")
 
@@ -414,6 +415,76 @@ def trigger_reindex():
         return jsonify({"status": "success", "message": message})
     else:
         return jsonify({"error": message}), 500
+
+
+# =============================================================================
+# Confluence Integration API
+# =============================================================================
+
+
+@app.route("/api/confluence/status", methods=["GET"])
+def get_confluence_status():
+    """Get Confluence connection and sync status."""
+    try:
+        status = index_manager.get_confluence_status()
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/confluence/test", methods=["POST"])
+def test_confluence_connection():
+    """Test Confluence connection with current credentials."""
+    try:
+        success, message = index_manager.test_confluence_connection()
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route("/api/confluence/spaces", methods=["GET"])
+def get_confluence_spaces():
+    """Get list of accessible Confluence spaces."""
+    try:
+        spaces = index_manager.get_confluence_spaces()
+        return jsonify({"spaces": spaces})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/confluence/sync", methods=["POST"])
+def sync_confluence():
+    """Start Confluence sync for a space."""
+    try:
+        data = request.json or {}
+        space_key = data.get("space_key")
+
+        if not space_key:
+            return jsonify({"error": "space_key is required"}), 400
+
+        incremental = data.get("incremental", True)
+        async_mode = data.get("async", True)
+
+        success, message, job_id = index_manager.sync_confluence(
+            space_key=space_key,
+            async_mode=async_mode,
+            incremental=incremental,
+        )
+
+        if success:
+            response = {
+                "status": "accepted" if job_id else "success",
+                "message": message,
+            }
+            if job_id:
+                response["job_id"] = job_id
+                response["poll_url"] = f"/api/jobs/{job_id}"
+            return jsonify(response)
+        else:
+            return jsonify({"error": message}), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # Pre-warm the embedding adapter at startup for faster first requests

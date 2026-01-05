@@ -63,6 +63,10 @@
             background: #616161;
             color: white;
         }
+        .btn-success {
+            background: #388e3c;
+            color: white;
+        }
         .add-path-form {
             display: flex;
             gap: 10px;
@@ -82,6 +86,80 @@
             color: #64b5f6;
             text-decoration: none;
             font-size: 1.1em;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .status-connected {
+            background: #2e7d32;
+            color: white;
+        }
+        .status-disconnected {
+            background: #d32f2f;
+            color: white;
+        }
+        .status-not-configured {
+            background: #616161;
+            color: white;
+        }
+        .confluence-info {
+            background: #363636;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .confluence-info p {
+            margin: 5px 0;
+        }
+        .confluence-info label {
+            color: #888;
+            min-width: 120px;
+            display: inline-block;
+        }
+        .space-select {
+            padding: 8px;
+            background: #1e1e1e;
+            border: 1px solid #404040;
+            color: white;
+            border-radius: 4px;
+            min-width: 300px;
+        }
+        .sync-options {
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .sync-progress {
+            margin-top: 15px;
+            padding: 10px;
+            background: #1e1e1e;
+            border-radius: 4px;
+            display: none;
+        }
+        .sync-progress.active {
+            display: block;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #404040;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #1976d2;
+            transition: width 0.3s ease;
+        }
+        .help-text {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -116,6 +194,58 @@
                     <p>If search results seem outdated or incorrect, you can rebuild the index.</p>
                     <button id="reindex-btn" class="btn btn-danger">Rebuild Index (Full Reset)</button>
                 </div>
+
+                <div class="settings-section">
+                    <div class="settings-header">
+                        <h2>Confluence Integration</h2>
+                        <p>Sync documents from your Confluence Cloud instance.</p>
+                    </div>
+
+                    <div id="confluence-status" class="confluence-info">
+                        <p><label>Status:</label> <span id="conf-status-badge" class="status-badge status-not-configured">Loading...</span></p>
+                        <p id="conf-connection-msg" style="display:none;"><label>Connection:</label> <span id="conf-connection-text"></span></p>
+                        <p id="conf-last-sync" style="display:none;"><label>Last Sync:</label> <span id="conf-last-sync-text"></span></p>
+                        <p id="conf-pages-count" style="display:none;"><label>Pages Indexed:</label> <span id="conf-pages-text"></span></p>
+                    </div>
+
+                    <div id="confluence-not-configured" style="display:none;">
+                        <p class="help-text">
+                            To configure Confluence integration:
+                        </p>
+                        <ol class="help-text">
+                            <li>Copy <code>.env.example</code> to <code>.env</code></li>
+                            <li>Set <code>CONFLUENCE_URL</code> (e.g., https://company.atlassian.net)</li>
+                            <li>Set <code>CONFLUENCE_EMAIL</code> (your Atlassian email)</li>
+                            <li>Set <code>CONFLUENCE_API_TOKEN</code> (<a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" style="color:#64b5f6;">Generate API Token</a>)</li>
+                            <li>Restart the application</li>
+                        </ol>
+                        <button id="test-confluence-btn" class="btn btn-secondary" style="margin-top:15px;">Test Connection</button>
+                    </div>
+
+                    <div id="confluence-configured" style="display:none;">
+                        <div class="sync-options">
+                            <select id="space-select" class="space-select">
+                                <option value="">Select a Confluence space...</option>
+                            </select>
+                            <button id="sync-confluence-btn" class="btn btn-primary" disabled>Sync Space</button>
+                            <label style="display:flex;align-items:center;gap:5px;">
+                                <input type="checkbox" id="incremental-sync" checked> Incremental
+                            </label>
+                        </div>
+
+                        <div id="sync-progress" class="sync-progress">
+                            <p id="sync-status-text">Syncing...</p>
+                            <div class="progress-bar">
+                                <div id="sync-progress-fill" class="progress-fill" style="width:0%"></div>
+                            </div>
+                        </div>
+
+                        <p class="help-text">
+                            Incremental sync only fetches pages that have changed since the last sync.
+                            Uncheck to force a full sync of all pages.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -123,6 +253,7 @@
     <script>
         // Load paths on startup
         loadPaths();
+        loadConfluenceStatus();
 
         async function loadPaths() {
             try {
@@ -215,6 +346,200 @@
                 alert('Error triggering reindex: ' + error);
             }
         });
+
+        // =====================================================================
+        // Confluence Integration
+        // =====================================================================
+
+        async function loadConfluenceStatus() {
+            try {
+                const response = await fetch('/api/confluence/status');
+                const status = await response.json();
+
+                const badge = document.getElementById('conf-status-badge');
+                const notConfigured = document.getElementById('confluence-not-configured');
+                const configured = document.getElementById('confluence-configured');
+
+                if (!status.configured) {
+                    badge.textContent = 'Not Configured';
+                    badge.className = 'status-badge status-not-configured';
+                    notConfigured.style.display = 'block';
+                    configured.style.display = 'none';
+
+                    if (status.error) {
+                        const errorP = document.createElement('p');
+                        errorP.style.color = '#ff8a80';
+                        errorP.textContent = status.error;
+                        document.getElementById('confluence-status').appendChild(errorP);
+                    }
+                } else if (status.connected) {
+                    badge.textContent = 'Connected';
+                    badge.className = 'status-badge status-connected';
+                    notConfigured.style.display = 'none';
+                    configured.style.display = 'block';
+
+                    // Show connection message
+                    document.getElementById('conf-connection-msg').style.display = 'block';
+                    document.getElementById('conf-connection-text').textContent = status.connection_message;
+
+                    // Show last sync info
+                    if (status.last_sync) {
+                        document.getElementById('conf-last-sync').style.display = 'block';
+                        document.getElementById('conf-last-sync-text').textContent = new Date(status.last_sync).toLocaleString();
+                        document.getElementById('conf-pages-count').style.display = 'block';
+                        document.getElementById('conf-pages-text').textContent = status.pages_indexed || 0;
+                    }
+
+                    // Load available spaces
+                    loadConfluenceSpaces();
+                } else {
+                    badge.textContent = 'Disconnected';
+                    badge.className = 'status-badge status-disconnected';
+                    notConfigured.style.display = 'block';
+                    configured.style.display = 'none';
+
+                    document.getElementById('conf-connection-msg').style.display = 'block';
+                    document.getElementById('conf-connection-text').textContent = status.connection_message || 'Connection failed';
+                }
+            } catch (error) {
+                console.error('Error loading Confluence status:', error);
+            }
+        }
+
+        async function loadConfluenceSpaces() {
+            try {
+                const response = await fetch('/api/confluence/spaces');
+                const data = await response.json();
+                const select = document.getElementById('space-select');
+
+                select.innerHTML = '<option value="">Select a Confluence space...</option>';
+
+                if (data.spaces && data.spaces.length > 0) {
+                    data.spaces.forEach(space => {
+                        const option = document.createElement('option');
+                        option.value = space.key;
+                        option.textContent = `${space.name} (${space.key})`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading spaces:', error);
+            }
+        }
+
+        document.getElementById('space-select').addEventListener('change', (e) => {
+            document.getElementById('sync-confluence-btn').disabled = !e.target.value;
+        });
+
+        document.getElementById('test-confluence-btn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('test-confluence-btn');
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+
+            try {
+                const response = await fetch('/api/confluence/test', { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Connection successful: ' + result.message);
+                    loadConfluenceStatus();
+                } else {
+                    alert('Connection failed: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error testing connection: ' + error);
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Test Connection';
+        });
+
+        let currentSyncJobId = null;
+
+        document.getElementById('sync-confluence-btn').addEventListener('click', async () => {
+            const spaceKey = document.getElementById('space-select').value;
+            if (!spaceKey) return;
+
+            const incremental = document.getElementById('incremental-sync').checked;
+            const btn = document.getElementById('sync-confluence-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Starting...';
+
+            try {
+                const response = await fetch('/api/confluence/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ space_key: spaceKey, incremental: incremental })
+                });
+                const result = await response.json();
+
+                if (result.job_id) {
+                    currentSyncJobId = result.job_id;
+                    showSyncProgress();
+                    pollSyncJob(result.job_id);
+                } else if (result.error) {
+                    alert('Error: ' + result.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Sync Space';
+                }
+            } catch (error) {
+                alert('Error starting sync: ' + error);
+                btn.disabled = false;
+                btn.textContent = 'Sync Space';
+            }
+        });
+
+        function showSyncProgress() {
+            document.getElementById('sync-progress').classList.add('active');
+            document.getElementById('sync-status-text').textContent = 'Starting sync...';
+            document.getElementById('sync-progress-fill').style.width = '0%';
+        }
+
+        function hideSyncProgress() {
+            document.getElementById('sync-progress').classList.remove('active');
+            document.getElementById('sync-confluence-btn').disabled = false;
+            document.getElementById('sync-confluence-btn').textContent = 'Sync Space';
+        }
+
+        async function pollSyncJob(jobId) {
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`);
+                const job = await response.json();
+
+                if (job.progress) {
+                    const pct = job.progress.percent_complete || 0;
+                    document.getElementById('sync-progress-fill').style.width = pct + '%';
+
+                    let statusText = 'Syncing...';
+                    if (job.progress.current_file) {
+                        statusText = job.progress.current_file;
+                    }
+                    if (job.progress.files_indexed) {
+                        statusText += ` (${job.progress.files_indexed} pages indexed)`;
+                    }
+                    document.getElementById('sync-status-text').textContent = statusText;
+                }
+
+                if (job.status === 'completed') {
+                    document.getElementById('sync-status-text').textContent = job.message || 'Sync completed!';
+                    document.getElementById('sync-progress-fill').style.width = '100%';
+                    setTimeout(() => {
+                        hideSyncProgress();
+                        loadConfluenceStatus();
+                    }, 2000);
+                } else if (job.status === 'failed') {
+                    alert('Sync failed: ' + (job.message || 'Unknown error'));
+                    hideSyncProgress();
+                } else {
+                    // Still in progress, poll again
+                    setTimeout(() => pollSyncJob(jobId), 1000);
+                }
+            } catch (error) {
+                console.error('Error polling job:', error);
+                hideSyncProgress();
+            }
+        }
     </script>
 </body>
 </html>

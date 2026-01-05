@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Confluence Integration:** Index business rules from Confluence Cloud alongside local documents:
+  - **New Module:** `core/confluence.py` - Confluence API client with HTML parsing
+  - **API Endpoints:** `/api/confluence/status`, `/api/confluence/sync`, `/api/confluence/spaces`, `/api/confluence/test`
+  - **CLI Commands:** `python cli.py sync-confluence --space SPACE_KEY`, `python cli.py confluence-status`
+  - **UI Settings:** Full Confluence settings panel with space selector, sync button, and progress tracking
+  - **HTML Parsing:** Robust extraction of Confluence macros (tables, code blocks, expand sections, info panels)
+  - **Incremental Sync:** Only re-indexes pages that have changed since last sync
+  - **Metadata Preservation:** Preserves page hierarchy, labels, and source URLs in indexed content
+  - **Virtual Paths:** Confluence pages indexed as `confluence://space/path/title` for unified search
+  - **Dependencies:** Added `atlassian-python-api` and `beautifulsoup4` to pyproject.toml
+  - **Config Files:** `.env.example` for credentials, `config/confluence.yaml` for sync settings
+  - **Tests:** `tests/test_confluence.py` with unit tests for parsing and integration
+
 ### Changed
 - **LLM Migration:** Migrated from Phi-3.5-mini to Qwen2.5-1.5B-Instruct:
   - **Performance:** 2.6x faster first token (51s → 19s average on benchmark suite)

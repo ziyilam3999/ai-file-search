@@ -483,3 +483,294 @@ class IndexManager:
 
         except Exception as e:
             return False, str(e)
+
+    # =========================================================================
+    # Confluence Integration
+    # =========================================================================
+
+    def sync_confluence(
+        self,
+        space_key: str,
+        async_mode: bool = True,
+        incremental: bool = True,
+    ) -> Tuple[bool, str, Optional[str]]:
+        """
+        Sync pages from a Confluence space into the search index.
+
+        Args:
+            space_key: The Confluence space key to sync
+            async_mode: If True, return immediately and sync in background
+            incremental: If True, only sync pages that have changed
+
+        Returns:
+            Tuple of (success, message, job_id). job_id is None if sync mode.
+        """
+        try:
+            # Check dependencies
+            from core.confluence import check_confluence_dependencies
+
+            deps_ok, deps_msg = check_confluence_dependencies()
+            if not deps_ok:
+                return False, deps_msg, None
+
+            if async_mode:
+                # Create background job and return immediately
+                job_id = self._create_job("confluence_sync", space_key)
+
+                # Start background sync thread
+                thread = threading.Thread(
+                    target=self._background_confluence_sync,
+                    args=(job_id, space_key, incremental),
+                    daemon=True,
+                )
+                self._worker_threads[job_id] = thread
+                thread.start()
+
+                return True, "Confluence sync started in background.", job_id
+            else:
+                # Synchronous mode
+                pages_indexed, errors = self._sync_confluence_pages(
+                    space_key, incremental
+                )
+                if errors:
+                    return (
+                        True,
+                        f"Synced {pages_indexed} pages with {len(errors)} errors",
+                        None,
+                    )
+                return True, f"Successfully synced {pages_indexed} pages", None
+
+        except Exception as e:
+            logger.error(f"Confluence sync failed: {e}")
+            return False, str(e), None
+
+    def _background_confluence_sync(
+        self, job_id: str, space_key: str, incremental: bool
+    ) -> None:
+        """Background worker to sync Confluence pages."""
+        try:
+            self._update_job(job_id, status="in_progress")
+            pages_indexed, errors = self._sync_confluence_pages(
+                space_key, incremental, job_id=job_id
+            )
+
+            if errors:
+                self._update_job(
+                    job_id,
+                    status="completed",
+                    message=f"Synced {pages_indexed} pages with {len(errors)} errors",
+                )
+            else:
+                self._update_job(
+                    job_id,
+                    status="completed",
+                    message=f"Successfully synced {pages_indexed} pages",
+                )
+        except Exception as e:
+            logger.error(f"Background Confluence sync failed: {e}")
+            self._update_job(job_id, status="failed", message=str(e))
+
+    def _sync_confluence_pages(
+        self,
+        space_key: str,
+        incremental: bool = True,
+        job_id: Optional[str] = None,
+    ) -> Tuple[int, List[str]]:
+        """
+        Sync Confluence pages to the index.
+
+        Args:
+            space_key: The Confluence space key
+            incremental: Only sync changed pages
+            job_id: Optional job ID for progress updates
+
+        Returns:
+            Tuple of (pages_indexed, list of error messages)
+        """
+        from core.confluence import ConfluenceClient, ConfluencePage
+
+        errors: List[str] = []
+        pages_indexed = 0
+
+        try:
+            client = ConfluenceClient()
+
+            # Test connection first
+            connected, conn_msg = client.test_connection()
+            if not connected:
+                errors.append(f"Connection failed: {conn_msg}")
+                return 0, errors
+
+            logger.info(f"Connected to Confluence: {conn_msg}")
+
+            # Get previously indexed versions for incremental sync
+            indexed_versions = client.get_indexed_versions() if incremental else {}
+
+            # Fetch all pages
+            pages: List[ConfluencePage] = []
+            page_count = 0
+
+            for page in client.get_all_pages(space_key):
+                page_count += 1
+
+                # Check if page needs to be re-indexed
+                if incremental and page.page_id in indexed_versions:
+                    if indexed_versions[page.page_id] >= page.version:
+                        logger.debug(f"Skipping unchanged page: {page.title}")
+                        continue
+
+                pages.append(page)
+
+                if job_id:
+                    self._update_job(
+                        job_id,
+                        progress={
+                            "files_found": page_count,
+                            "current_file": f"Fetching: {page.title}",
+                            "percent_complete": min(40.0, page_count),  # Cap at 40%
+                        },
+                    )
+
+            logger.info(f"Found {len(pages)} pages to index (of {page_count} total)")
+
+            if not pages:
+                client.update_sync_status(space_key, 0, [])
+                return 0, []
+
+            # Prepare documents for batch indexing
+            documents: List[Tuple[str, str]] = []
+
+            for page in pages:
+                if not page.content or len(page.content.strip()) < 10:
+                    logger.warning(f"Skipping empty page: {page.title}")
+                    continue
+
+                # Create a virtual file path for Confluence pages
+                # Format: confluence://<space_key>/<hierarchy>/<title>
+                virtual_path = f"confluence://{page.space_key}/{page.hierarchy_path}"
+
+                # Prepend metadata to content for better search context
+                metadata_header = f"Title: {page.title}\n"
+                if page.labels:
+                    metadata_header += f"Labels: {', '.join(page.labels)}\n"
+                if page.ancestors:
+                    metadata_header += f"Location: {' > '.join(page.ancestors)}\n"
+                metadata_header += f"Source: Confluence ({page.url})\n"
+                metadata_header += "---\n\n"
+
+                full_content = metadata_header + page.content
+                documents.append((virtual_path, full_content))
+
+            if not documents:
+                logger.warning("No valid documents to index from Confluence")
+                client.update_sync_status(space_key, 0, [])
+                return 0, []
+
+            # Batch index documents
+            def progress_callback(current: int, total: int, file_path: str) -> None:
+                if job_id:
+                    self._update_job(
+                        job_id,
+                        progress={
+                            "files_indexed": current,
+                            "current_file": Path(file_path).name,
+                            "percent_complete": 40 + ((current / total) * 60),
+                        },
+                    )
+
+            successful, failed = self.embedding_adapter.add_documents_batch(
+                documents, progress_callback=progress_callback
+            )
+
+            pages_indexed = successful
+
+            # Update indexed versions for incremental sync
+            for page in pages:
+                client.update_indexed_version(page.page_id, page.version)
+
+            # Update sync status
+            client.update_sync_status(space_key, pages_indexed, errors)
+
+            if job_id:
+                self._update_job(
+                    job_id,
+                    progress={
+                        "files_indexed": pages_indexed,
+                        "percent_complete": 100.0,
+                    },
+                )
+
+            logger.success(f"Indexed {pages_indexed} Confluence pages from {space_key}")
+            return pages_indexed, errors
+
+        except Exception as e:
+            error_msg = f"Confluence sync error: {e}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+            return pages_indexed, errors
+
+    def get_confluence_status(self) -> Dict[str, Any]:
+        """Get Confluence sync status."""
+        try:
+            from core.confluence import ConfluenceClient, check_confluence_dependencies
+
+            deps_ok, deps_msg = check_confluence_dependencies()
+            if not deps_ok:
+                return {
+                    "configured": False,
+                    "error": deps_msg,
+                }
+
+            try:
+                client = ConfluenceClient()
+                connected, conn_msg = client.test_connection()
+                sync_status = client.get_sync_status()
+
+                return {
+                    "configured": True,
+                    "connected": connected,
+                    "connection_message": conn_msg,
+                    "last_sync": sync_status.get("last_sync"),
+                    "pages_indexed": sync_status.get("pages_indexed", 0),
+                    "space_key": sync_status.get("space_key"),
+                    "errors": sync_status.get("errors", []),
+                }
+            except ValueError as e:
+                # Missing credentials
+                return {
+                    "configured": False,
+                    "error": str(e),
+                }
+
+        except Exception as e:
+            return {
+                "configured": False,
+                "error": str(e),
+            }
+
+    def test_confluence_connection(self) -> Tuple[bool, str]:
+        """Test Confluence connection with current credentials."""
+        try:
+            from core.confluence import ConfluenceClient, check_confluence_dependencies
+
+            deps_ok, deps_msg = check_confluence_dependencies()
+            if not deps_ok:
+                return False, deps_msg
+
+            client = ConfluenceClient()
+            return client.test_connection()
+
+        except Exception as e:
+            return False, str(e)
+
+    def get_confluence_spaces(self) -> List[Dict[str, str]]:
+        """Get list of accessible Confluence spaces."""
+        try:
+            from core.confluence import ConfluenceClient
+
+            client = ConfluenceClient()
+            return client.get_spaces()
+
+        except Exception as e:
+            logger.error(f"Failed to get Confluence spaces: {e}")
+            return []

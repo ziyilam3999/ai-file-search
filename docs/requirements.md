@@ -67,6 +67,18 @@ A zero-configuration smart document search system with automatic discovery and r
 | FR-007.2 | Unified Launcher (Auto-start watcher) | Pending |
 | FR-007.3 | Embedded System Status Panel | Pending |
 
+### FR-009: Confluence Integration
+| ID | Requirement | Status |
+|----|-------------|--------|
+| FR-009.1 | Connect to Confluence Cloud via API | Done |
+| FR-009.2 | Fetch pages from Confluence space | Done |
+| FR-009.3 | Parse Confluence HTML and macros to plain text | Done |
+| FR-009.4 | Preserve folder hierarchy in metadata | Done |
+| FR-009.5 | Support incremental sync (only changed pages) | Done |
+| FR-009.6 | CLI command for Confluence sync | Done |
+| FR-009.7 | UI settings panel for Confluence | Done |
+| FR-009.8 | Index Confluence attachments (PDF, DOCX) | Pending |
+
 ### FR-008: Developer Tools
 | ID | Requirement | Status |
 |----|-------------|--------|

@@ -1,0 +1,29 @@
+# Confluence Integration Configuration
+# This file stores sync settings (not credentials - those go in .env)
+
+# Space to sync (set via UI or CLI)
+space_key: null
+
+# Last successful sync timestamp
+last_sync: null
+
+# Number of pages indexed in last sync
+pages_indexed: 0
+
+# Version tracking for incremental sync
+# Maps page_id -> version_number
+indexed_versions: {}
+
+# Any errors from last sync
+errors: []
+
+# Sync settings
+settings:
+  # Maximum pages to sync per run
+  max_pages: 500
+  
+  # Include page labels as tags
+  include_labels: true
+  
+  # Preserve folder hierarchy in metadata
+  preserve_hierarchy: true

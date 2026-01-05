@@ -4,6 +4,7 @@ A command-line interface for semantic document search with citations.
 Usage:
     python cli.py "Who is Alice?"
     python cli.py "What happens in Wonderland?"
+    python cli.py sync-confluence --space SPACE_KEY
     python cli.py --help
 """
 
@@ -14,6 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 from core.ask import answer_question
+from core.index_manager import IndexManager
 
 
 def print_banner():
@@ -31,12 +33,15 @@ AI File Search CLI
 USAGE:
     python cli.py "your question here"
     python cli.py --interactive
+    python cli.py sync-confluence --space SPACE_KEY
+    python cli.py confluence-status
     python cli.py --help
 
 EXAMPLES:
     python cli.py "Who is Alice?"
     python cli.py "What is Wonderland?"
     python cli.py "Who is Ebenezer Scrooge?"
+    python cli.py sync-confluence --space "~7120204a948e27a13f46bcbef088b0aa7a498b"
 
 OPTIONS:
     --interactive, -i    Start interactive mode
@@ -44,6 +49,12 @@ OPTIONS:
     --citations, -c      Show detailed citation info
     --no-llm            Disable LLM (use context-based answers)
     --help, -h          Show this help message
+
+CONFLUENCE COMMANDS:
+    sync-confluence      Sync pages from Confluence space
+      --space KEY        Space key to sync (required)
+      --full             Force full sync (not incremental)
+    confluence-status    Show Confluence connection status
     """
     )
 
@@ -188,8 +199,117 @@ Example questions you can try:
             break
 
 
+def sync_confluence_command(space_key: str, full_sync: bool = False) -> None:
+    """Sync Confluence space to the search index."""
+    print_banner()
+    print(f"CONFLUENCE SYNC: Space '{space_key}'")
+    print("-" * 50)
+
+    index_manager = IndexManager()
+    incremental = not full_sync
+
+    if incremental:
+        print("Mode: Incremental (only changed pages)")
+    else:
+        print("Mode: Full sync (all pages)")
+
+    print()
+    print("Starting sync...")
+
+    start_time = time.time()
+
+    # Use synchronous mode for CLI (shows progress)
+    success, message, _ = index_manager.sync_confluence(
+        space_key=space_key,
+        async_mode=False,
+        incremental=incremental,
+    )
+
+    elapsed = time.time() - start_time
+
+    print()
+    if success:
+        print(f"SUCCESS: {message}")
+    else:
+        print(f"ERROR: {message}")
+
+    print(f"TIMING: Completed in {elapsed:.1f}s")
+
+
+def confluence_status_command() -> None:
+    """Show Confluence connection status."""
+    print_banner()
+    print("CONFLUENCE STATUS")
+    print("-" * 50)
+
+    index_manager = IndexManager()
+    status = index_manager.get_confluence_status()
+
+    if not status.get("configured"):
+        print(f"Status: Not configured")
+        print(f"Error: {status.get('error', 'Unknown')}")
+        print()
+        print("To configure Confluence:")
+        print("  1. Copy .env.example to .env")
+        print("  2. Fill in CONFLUENCE_URL, CONFLUENCE_EMAIL, CONFLUENCE_API_TOKEN")
+        print("  3. Run: python cli.py confluence-status")
+        return
+
+    print(f"Configured: Yes")
+    print(f"Connected: {'Yes' if status.get('connected') else 'No'}")
+    print(f"Connection: {status.get('connection_message', 'N/A')}")
+    print()
+
+    if status.get("last_sync"):
+        print(f"Last Sync: {status.get('last_sync')}")
+        print(f"Pages Indexed: {status.get('pages_indexed', 0)}")
+        print(f"Space Key: {status.get('space_key', 'N/A')}")
+
+        errors = status.get("errors", [])
+        if errors:
+            print(f"Errors: {len(errors)}")
+            for err in errors[:3]:  # Show first 3 errors
+                print(f"  - {err}")
+    else:
+        print("Last Sync: Never")
+        print()
+        print("To sync Confluence:")
+        print("  python cli.py sync-confluence --space YOUR_SPACE_KEY")
+
+    # Show available spaces if connected
+    if status.get("connected"):
+        print()
+        print("Available spaces:")
+        spaces = index_manager.get_confluence_spaces()
+        if spaces:
+            for space in spaces[:10]:  # Show first 10
+                print(f"  - {space['key']}: {space['name']}")
+        else:
+            print("  (No spaces found or no access)")
+
+
 def main():
     """Main CLI entry point."""
+    # Check for Confluence subcommands first
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "sync-confluence":
+            # Parse sync-confluence arguments
+            parser = argparse.ArgumentParser(description="Sync Confluence space")
+            parser.add_argument("command", help="Command name")
+            parser.add_argument(
+                "--space", "-s", required=True, help="Confluence space key"
+            )
+            parser.add_argument(
+                "--full", action="store_true", help="Force full sync (not incremental)"
+            )
+            args = parser.parse_args()
+            sync_confluence_command(args.space, args.full)
+            return
+
+        if sys.argv[1] == "confluence-status":
+            confluence_status_command()
+            return
+
     parser = argparse.ArgumentParser(
         description="AI File Search - Semantic document search with citations",
         add_help=False,  # We'll handle help ourselves

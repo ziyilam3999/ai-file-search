@@ -18,10 +18,14 @@ VERSION_FILE = Path(__file__).parent.parent / "VERSION"
 # To set up: Upload a text file with just the version number to Google Drive,
 # then get a shareable link and convert to direct download format.
 # Format: https://drive.google.com/uc?export=download&id=FILE_ID
-REMOTE_VERSION_URL: Optional[str] = None  # Set via configure_update_check()
+REMOTE_VERSION_URL: Optional[str] = (
+    "https://drive.google.com/uc?export=download&id=1je9zcc3uje51mn32bnBfMcTaFANHGRON"
+)
 
 # Download URL for new versions
-DOWNLOAD_URL: Optional[str] = None  # Set via configure_update_check()
+DOWNLOAD_URL: Optional[str] = (
+    "https://drive.google.com/uc?export=download&id=1l-3oulawRXgGHaHbwRIeSta4cQ6CsOMc"
+)
 
 # Cached version info
 _cached_local_version: Optional[str] = None

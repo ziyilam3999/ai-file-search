@@ -130,7 +130,7 @@ Performance Testing
 python tests/test_regression.py --verbose
 
 # Performance benchmarking
-python tests/bench_phi3_performance.py
+python tests/bench_llm_performance.py
 
 # Monitor live performance
 python tools/live_monitor.py
@@ -165,7 +165,7 @@ This ensures users can always access and modify their original documents.
 
 AI Model
 Embedding Model: all-MiniLM-L6-v2 (384-dimensional vectors)
-Language Model: Phi-3-mini-4k-instruct (4K context, quantized)
+Language Model: Qwen2.5-1.5B-Instruct (2K context, Q4_K_M quantized)
 Search Engine: FAISS with L2 distance indexing
 Database: SQLite for metadata storage
 Contributing

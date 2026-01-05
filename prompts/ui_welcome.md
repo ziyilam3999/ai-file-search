@@ -8,16 +8,16 @@ Welcome to your local AI-powered document search system!
 3. **See performance stats** in the sidebar
 
 ## Features:
-- 🤖 **Phi-3 Local LLM**: No cloud dependencies
-- 📚 **20+ Documents**: Children's literature indexed
-- ⚡ **Fast**: ~52 second average response time
+- 🤖 **Qwen2.5 Local LLM**: No cloud dependencies, privacy-first
+- 📚 **Multi-Format**: PDF, DOCX, TXT, Markdown support
+- ⚡ **Fast**: ~19 second average response time
 - 📖 **Citations**: Page references for all sources
+- 🔗 **Confluence**: Search your team's wiki
 
 ## Sample Questions:
-- "Who is Alice?"
-- "What is Wonderland like?"  
-- "Who is Ebenezer Scrooge?"
-- "What happens in the secret garden?"
+- "What are the key requirements for X?"
+- "How does the authentication flow work?"
+- "What decisions were made in the last meeting?"
 
 ---
-*Powered by Phi-3-mini-4k-instruct, FAISS, and Sentence Transformers*
+*Powered by Qwen2.5-1.5B-Instruct, FAISS, and Sentence Transformers*

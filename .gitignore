@@ -36,7 +36,12 @@ ai_search_docs/
 
 # Generated index and database files
 index.faiss
+index.db
 meta.sqlite
+
+# Runtime config (user-specific)
+config/confluence.yaml
+prompts/watcher_config.yaml
 
 # Backups
 backups/

@@ -1,7 +1,4 @@
 {
-  // tell VS Code which formatter to use for ALL languages unless overridden
-  "editor.defaultFormatter": "ms-python.black-formatter",
-
   // Completely disable all formatting on save
   "editor.formatOnSave": false,
   "editor.formatOnPaste": false,

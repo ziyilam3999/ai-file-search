@@ -59,6 +59,7 @@ A zero-configuration smart document search system with automatic discovery and r
 | FR-006.2 | Configure watch paths via UI | Done |
 | FR-006.3 | Validate paths (security check) | Done |
 | FR-006.4 | Remove intermediate extracts folder | Done |
+| FR-006.5 | Startup sync check for interrupted indexing | Done |
 
 ### FR-007: Future Enhancements
 | ID | Requirement | Status |

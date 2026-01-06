@@ -14,6 +14,12 @@ All notable changes to this project are documented in this file.
   - Added logging to `remove_watch_path()` and `_remove_path_from_index()` for debugging
 
 ### Added
+- **Startup Sync Check:** Automatic recovery of interrupted indexing on app launch
+  - New `startup_sync_check()` method in IndexManager compares watched folders against indexed files
+  - Automatically indexes any missing files that weren't indexed (e.g., app closed during indexing)
+  - New `get_indexed_files()` method in DatabaseManager for efficient file lookup
+  - Runs during warm-up phase on first request, non-blocking for app startup
+
 - **Version Checker & Update Notifications:**
   - **VERSION file:** Single source of truth for semantic versioning (1.0.0)
   - **Version Module:** `core/version.py` - Version management and update checking

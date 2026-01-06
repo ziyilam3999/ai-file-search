@@ -81,6 +81,112 @@ class IndexManager:
         """Pre-warm the embedding adapter. Call this at app startup."""
         _ = self.embedding_adapter  # Trigger lazy initialization
 
+    def startup_sync_check(self) -> Dict[str, Any]:
+        """
+        Check watched folders against indexed files and index any missing files.
+
+        This ensures resilience against interrupted indexing (e.g., app closed
+        before indexing completed).
+
+        Returns:
+            Dict with sync results: {checked, missing, indexed, errors}
+        """
+        from core.database import DatabaseManager
+        from core.path_utils import get_supported_files
+
+        checked = 0
+        missing_count = 0
+        indexed = 0
+        errors = 0
+        paths_synced: List[str] = []
+
+        watch_paths = self.get_watch_paths()
+        if not watch_paths:
+            logger.debug("Startup sync: No watch paths configured")
+            return {
+                "checked": checked,
+                "missing": missing_count,
+                "indexed": indexed,
+                "errors": errors,
+                "paths_synced": paths_synced,
+            }
+
+        logger.info(f"Startup sync: Checking {len(watch_paths)} watch paths...")
+
+        db = DatabaseManager()
+
+        for watch_path in watch_paths:
+            try:
+                # Get files that should be indexed (on disk)
+                disk_files = get_supported_files(watch_path)
+                if not disk_files:
+                    continue
+
+                # Normalize disk paths to forward slashes (matching DB format)
+                disk_paths = set(
+                    str(f.resolve()).replace("\\", "/") for f in disk_files
+                )
+                checked += len(disk_paths)
+
+                # Get files that are already indexed (in DB)
+                indexed_paths = set(db.get_indexed_files(watch_path))
+
+                # Find missing files
+                missing = disk_paths - indexed_paths
+
+                if missing:
+                    logger.info(
+                        f"Startup sync: Found {len(missing)} missing files in {watch_path}"
+                    )
+                    missing_count += len(missing)
+                    paths_synced.append(watch_path)
+
+                    # Index missing files
+                    from pathlib import Path as PathLib
+
+                    from core.extract import Extractor
+
+                    extractor = Extractor()
+                    documents = []
+
+                    for file_path in missing:
+                        try:
+                            text = extractor.run(PathLib(file_path))
+                            if text and len(text.strip()) >= 10:
+                                documents.append((file_path, text, ""))
+                        except Exception as e:
+                            logger.warning(
+                                f"Startup sync: Error extracting {file_path}: {e}"
+                            )
+                            errors += 1
+
+                    if documents:
+                        successful, failed = self.embedding_adapter.add_documents_batch(
+                            documents
+                        )
+                        indexed += successful
+                        errors += failed
+                        logger.success(
+                            f"Startup sync: Indexed {successful}/{len(documents)} missing files"
+                        )
+
+            except Exception as e:
+                logger.error(f"Startup sync: Error checking {watch_path}: {e}")
+                errors += 1
+
+        if indexed > 0:
+            logger.success(f"Startup sync complete: {indexed} files recovered")
+        else:
+            logger.debug("Startup sync: All files already indexed")
+
+        return {
+            "checked": checked,
+            "missing": missing_count,
+            "indexed": indexed,
+            "errors": errors,
+            "paths_synced": paths_synced,
+        }
+
     def _create_job(self, operation: str, path: Optional[str] = None) -> str:
         """Create a new background job and return its ID."""
         job_id = f"job_{uuid.uuid4().hex[:12]}"

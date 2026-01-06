@@ -200,6 +200,28 @@ class DatabaseManager:
         result = self.fetch_one("SELECT COUNT(DISTINCT file) FROM meta")
         return result[0] if result else 0
 
+    def get_indexed_files(self, path_prefix: Optional[str] = None) -> List[str]:
+        """
+        Get all distinct file paths from the database.
+
+        Args:
+            path_prefix: Optional prefix to filter files (e.g., watch path)
+
+        Returns:
+            List of unique file paths in the index
+        """
+        if path_prefix:
+            # Normalize to forward slashes for LIKE query
+            normalized = path_prefix.replace("\\", "/")
+            if not normalized.endswith("/"):
+                normalized += "/"
+            results = self.fetch_all(
+                "SELECT DISTINCT file FROM meta WHERE file LIKE ?", (normalized + "%",)
+            )
+        else:
+            results = self.fetch_all("SELECT DISTINCT file FROM meta")
+        return [row[0] for row in results]
+
     def file_exists(self, file_path: str) -> bool:
         """
         Check if a file path exists in the database.

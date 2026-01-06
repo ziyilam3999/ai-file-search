@@ -683,10 +683,12 @@ def set_default_space():
 # Pre-warm the embedding adapter at startup for faster first requests
 @app.before_request
 def warm_up_once():
-    """Warm up the embedding adapter on first request."""
+    """Warm up the embedding adapter on first request and sync missing files."""
     if not getattr(app, "_warmed_up", False):
         try:
             index_manager.warm_up()
+            # Check for files that weren't indexed (e.g., app closed during indexing)
+            index_manager.startup_sync_check()
             app._warmed_up = True
         except Exception:
             pass  # Ignore warm-up errors

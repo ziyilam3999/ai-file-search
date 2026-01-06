@@ -54,6 +54,12 @@ All previously tracked items have been completed:
 | 2025-12-23 | tools/sync_copilot_instructions.ps1 | Comprehensive refactoring: Reduced main loop from ~100 lines to 15 lines, extracted 3 high-level functions (`Sync-CopilotInstructions`, `Sync-ScriptFile`, `Ensure-GitProtection`), consolidated git operations, added path validation, extracted pattern constants. Result: 40% complexity reduction, improved testability and maintainability |
 | 2025-12-23 | tools/sync_copilot_instructions.ps1 | PowerShell best practices: Added `[CmdletBinding()]`, parameter validation with `[Parameter(Mandatory)]`, extracted constants, introduced result object, added verbose logging |
 
+## Future Enhancements (Low Priority)
+
+| ID | Description | Rationale | Effort |
+|----|-------------|-----------|--------|
+| FE-001 | **Orphan Cleanup on Startup:** Detect and remove vectors for paths no longer in `watch_config.yaml` | Handles edge case where app crashes mid-removal (power loss, system crash). Currently minor impact - orphaned vectors just waste space. Existing tool: `verify_index_sync.py repair` | Low |
+
 ## Completed Refactoring
 
 | ID | Description | Completed |

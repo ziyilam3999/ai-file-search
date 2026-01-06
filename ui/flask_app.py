@@ -26,6 +26,48 @@ watcher = SmartWatcherController()
 index_manager = IndexManager()
 
 
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+
+def _check_models_loaded() -> tuple[bool, bool]:
+    """Check if AI models are loaded.
+
+    Returns:
+        Tuple of (llm_ready, embedding_ready) booleans.
+    """
+    llm_ready = False
+    embedding_ready = False
+    try:
+        from core.llm import _llm_instance
+
+        llm_ready = _llm_instance is not None
+    except Exception:
+        pass
+    try:
+        from core.embedding import _MODEL_CACHE
+
+        embedding_ready = _MODEL_CACHE is not None
+    except Exception:
+        pass
+    return llm_ready, embedding_ready
+
+
+def _preload_response(ready: bool, stage: str, progress: int) -> dict:
+    """Create a standardized preload status response.
+
+    Args:
+        ready: Whether models are ready for use.
+        stage: Current loading stage description.
+        progress: Loading progress percentage (0-100).
+
+    Returns:
+        Dictionary with ready, stage, and progress keys.
+    """
+    return {"ready": ready, "stage": stage, "progress": progress}
+
+
 def to_activity(line: str) -> str | None:
     """Map log lines to user-friendly activity events.
 
@@ -186,14 +228,8 @@ def get_status():
         # Get file counts
         (sample_count, extracts_count, indexed_count, _, _) = get_file_counts()
 
-        # Check if AI model is loaded
-        model_loaded = False
-        try:
-            from core.llm import _llm_instance
-
-            model_loaded = _llm_instance is not None
-        except Exception:
-            pass
+        # Check if AI model is loaded using helper
+        llm_ready, _ = _check_models_loaded()
 
         return jsonify(
             {
@@ -202,7 +238,7 @@ def get_status():
                 "extracts": extracts_count,
                 "indexed": indexed_count,
                 "progress": progress,
-                "model_loaded": model_loaded,
+                "model_loaded": llm_ready,
             }
         )
     except Exception as e:
@@ -213,24 +249,32 @@ def get_status():
 def get_preload_status_endpoint():
     """Get AI model preload status."""
     try:
-        # Try to import preload status from run_app
-        import run_app
+        # First, check if models are actually loaded (ground truth)
+        llm_ready, embedding_ready = _check_models_loaded()
+        models_ready = llm_ready and embedding_ready
 
-        status = run_app.get_preload_status()
-        return jsonify(status)
+        # If models are ready, return ready status regardless of run_app state
+        if models_ready:
+            return jsonify(_preload_response(True, "Ready", 100))
+
+        # Try to get progress from run_app (only useful during loading)
+        try:
+            import run_app
+
+            status = run_app.get_preload_status()
+            # If run_app says ready but models aren't loaded, trust the model check
+            if status.get("ready") and not models_ready:
+                status["ready"] = False
+                status["stage"] = "Loading..."
+            return jsonify(status)
+        except Exception:
+            pass
+
+        # Fallback: models not ready and no run_app status
+        return jsonify(_preload_response(False, "Loading...", 50))
     except Exception:
-        # If not available, check if models are loaded directly
-        from core.embedding import _MODEL_CACHE
-        from core.llm import _llm_instance
-
-        models_ready = _llm_instance is not None and _MODEL_CACHE is not None
-        return jsonify(
-            {
-                "ready": models_ready,
-                "stage": "Ready" if models_ready else "Loading...",
-                "progress": 100 if models_ready else 50,
-            }
-        )
+        # On any error, assume ready to not block the UI
+        return jsonify(_preload_response(True, "Ready", 100))
 
 
 @app.route("/api/version")

@@ -12,6 +12,7 @@ Known bugs, issues, and their resolution status.
 
 | ID | Description | Severity | Resolution | Resolved |
 |----|-------------|----------|------------|----------|
+| DEF-031 | Search button always disabled (stuck at "Starting...") | High | Fixed preload status endpoint to check actual model state first; added JS error handling fallback | 2026-01-06 |
 | DEF-030 | Citations disappear after navigating to Settings and back | Medium | Updated addToChat() to save citations param; displayChat() now renders saved citations | 2026-01-06 |
 | DEF-029 | Removed folder still returns search results (index not cleaned) | High | Changed removePath() to use sync mode (async=false) ensuring cleanup completes before response | 2026-01-06 |
 | DEF-028 | test_index_manager.py expects 2-tuple returns, but API now returns 3-tuple (async job support) | Medium | Tests updated to handle both 2-tuple and 3-tuple returns; temp dirs isolate tests | 2026-01-05 |

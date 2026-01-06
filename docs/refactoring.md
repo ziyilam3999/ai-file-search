@@ -47,6 +47,9 @@ All previously tracked items have been completed:
 
 | Date | File | Improvement |
 |------|------|-------------|
+| 2026-01-06 | ui/flask_app.py | Extracted `_check_models_loaded()` and `_preload_response()` helpers; reduced duplicate model status checks; consistent response formatting |
+| 2026-01-06 | ui/static/js/new_search.js | Consolidated button state management into single `setSearchButtonState(state)` method; `setLoadingState()` and `enableSearchButtonFallback()` now delegate to it |
+| 2026-01-06 | tests/test_ui_backend.py | Added `create_mock_model_modules()` fixture for reusable mock setup; reduces test boilerplate |
 | 2025-12-25 | tools/sync_copilot_instructions.ps1 | Major cleanup: Removed 256 lines of dead code (Sync-PillarSnapperDocs, Find-HighestDocVersion, legacy hardcoded variables), added ${base_path} variable expansion for DRY config paths, fixed True console noise from unsuppressed function returns. Reduced from 1694→1438 lines (-15%) |
 | 2025-12-25 | sync_config.yaml | Added ${base_path} variable expansion, reduced 12 hardcoded paths to single base_path definition. Reduced from 94→74 lines (-21%) |
 | 2025-12-25 | .github/copilot-instructions.md | Made version bump instructions project-agnostic (removed pubspec.yaml references), removed duplicate "Doc Files Reference" table (kept DOCUMENT MAP), bumped to v2.9. Reduced from 489→351 lines (-28%) |

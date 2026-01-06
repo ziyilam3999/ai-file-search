@@ -4,6 +4,7 @@ Tests API routes: watch paths, reindex, activity log mapping, file opening.
 Uses mocking to avoid heavy dependencies.
 
 Refactored: 2026-01-05 to immediately restore modules after import
+Refactored: 2026-01-06 to add helper function tests and mock fixtures
 """
 
 import json
@@ -49,6 +50,33 @@ for _name, _original in _ORIGINAL_MODULES.items():
 
 # Clean up module-level variables
 del _name, _original
+
+
+# =============================================================================
+# TEST FIXTURES / HELPERS
+# =============================================================================
+
+
+def create_mock_model_modules(llm_loaded: bool = False, embedding_loaded: bool = False):
+    """Create mock modules for core.llm and core.embedding.
+
+    Args:
+        llm_loaded: Whether to simulate LLM being loaded.
+        embedding_loaded: Whether to simulate embedding model being loaded.
+
+    Returns:
+        Dictionary suitable for use with patch.dict(sys.modules, ...).
+    """
+    mock_llm = MagicMock()
+    mock_llm._llm_instance = "mock_llm" if llm_loaded else None
+
+    mock_embedding = MagicMock()
+    mock_embedding._MODEL_CACHE = "mock_model" if embedding_loaded else None
+
+    return {
+        "core.llm": mock_llm,
+        "core.embedding": mock_embedding,
+    }
 
 
 class TestUIBackend(unittest.TestCase):
@@ -180,6 +208,124 @@ class TestUIBackend(unittest.TestCase):
 
         # open_local_file is mocked, so this should succeed
         self.assertEqual(response.status_code, 200)
+
+    # =========================================================================
+    # HELPER FUNCTION TESTS
+    # =========================================================================
+
+    def test_preload_response_helper(self):
+        """Test _preload_response() returns correctly formatted dict."""
+        import ui.flask_app
+
+        result = ui.flask_app._preload_response(True, "Ready", 100)
+
+        self.assertEqual(result, {"ready": True, "stage": "Ready", "progress": 100})
+
+    def test_preload_response_helper_not_ready(self):
+        """Test _preload_response() with not ready state."""
+        import ui.flask_app
+
+        result = ui.flask_app._preload_response(False, "Loading...", 50)
+
+        self.assertEqual(
+            result, {"ready": False, "stage": "Loading...", "progress": 50}
+        )
+
+    def test_check_models_loaded_both_loaded(self):
+        """Test _check_models_loaded() when both models are loaded."""
+        import ui.flask_app
+
+        with patch.dict(
+            sys.modules,
+            create_mock_model_modules(llm_loaded=True, embedding_loaded=True),
+        ):
+            llm_ready, embedding_ready = ui.flask_app._check_models_loaded()
+
+        self.assertTrue(llm_ready)
+        self.assertTrue(embedding_ready)
+
+    def test_check_models_loaded_only_llm(self):
+        """Test _check_models_loaded() when only LLM is loaded."""
+        import ui.flask_app
+
+        with patch.dict(
+            sys.modules,
+            create_mock_model_modules(llm_loaded=True, embedding_loaded=False),
+        ):
+            llm_ready, embedding_ready = ui.flask_app._check_models_loaded()
+
+        self.assertTrue(llm_ready)
+        self.assertFalse(embedding_ready)
+
+    def test_check_models_loaded_neither(self):
+        """Test _check_models_loaded() when neither model is loaded."""
+        import ui.flask_app
+
+        with patch.dict(
+            sys.modules,
+            create_mock_model_modules(llm_loaded=False, embedding_loaded=False),
+        ):
+            llm_ready, embedding_ready = ui.flask_app._check_models_loaded()
+
+        self.assertFalse(llm_ready)
+        self.assertFalse(embedding_ready)
+
+    # =========================================================================
+    # PRELOAD STATUS ENDPOINT TESTS
+    # =========================================================================
+
+    def test_preload_status_models_ready(self):
+        """Test /api/preload-status returns ready when models are loaded."""
+        with patch.dict(
+            sys.modules,
+            create_mock_model_modules(llm_loaded=True, embedding_loaded=True),
+        ):
+            response = self.app.get("/api/preload-status")
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertTrue(data["ready"])
+        self.assertEqual(data["stage"], "Ready")
+        self.assertEqual(data["progress"], 100)
+
+    def test_preload_status_models_not_ready_with_run_app(self):
+        """Test /api/preload-status returns run_app status when models not loaded."""
+        mock_status = {"ready": False, "stage": "Loading LLM...", "progress": 75}
+
+        mock_modules = create_mock_model_modules(
+            llm_loaded=False, embedding_loaded=False
+        )
+        mock_run_app = MagicMock()
+        mock_run_app.get_preload_status.return_value = mock_status
+        mock_modules["run_app"] = mock_run_app
+
+        with patch.dict(sys.modules, mock_modules):
+            response = self.app.get("/api/preload-status")
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertFalse(data["ready"])
+        self.assertEqual(data["stage"], "Loading LLM...")
+        self.assertEqual(data["progress"], 75)
+
+    def test_preload_status_fallback_when_no_run_app(self):
+        """Test /api/preload-status returns fallback when models not ready and no run_app."""
+        mock_modules = create_mock_model_modules(
+            llm_loaded=False, embedding_loaded=False
+        )
+
+        # Remove run_app from modules to trigger fallback
+        with patch.dict(sys.modules, mock_modules):
+            # Make run_app import raise an exception
+            with patch.dict(sys.modules, {"run_app": None}):
+                response = self.app.get("/api/preload-status")
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        # Fallback returns not ready with 50% progress
+        self.assertFalse(data["ready"])
+        self.assertEqual(data["stage"], "Loading...")
+        self.assertEqual(data["progress"], 50)
 
 
 if __name__ == "__main__":

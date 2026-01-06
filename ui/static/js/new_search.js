@@ -467,10 +467,7 @@ class AIFileSearchUI {
                     }
                     
                     // Disable search button
-                    if (this.searchBtn) {
-                        this.searchBtn.disabled = true;
-                        this.searchBtn.style.opacity = '0.5';
-                    }
+                    this.setSearchButtonState('disabled');
                     
                     // Check again in 500ms
                     setTimeout(() => this.checkPreloadStatus(), 500);
@@ -481,14 +478,51 @@ class AIFileSearchUI {
                     }
                     
                     // Enable search button
-                    if (this.searchBtn) {
-                        this.searchBtn.disabled = false;
-                        this.searchBtn.style.opacity = '1';
-                    }
+                    this.setSearchButtonState('ready');
                 }
+            } else {
+                // API returned error status - enable button to not block user
+                console.warn('Preload status API returned error, enabling search button');
+                this.enableSearchButtonFallback();
             }
         } catch (error) {
+            // Network or other error - enable button to not block user
             console.error('Error checking preload status:', error);
+            this.enableSearchButtonFallback();
+        }
+    }
+
+    enableSearchButtonFallback() {
+        // Enable search button as fallback when API fails
+        if (this.modelLoadingBanner) {
+            this.modelLoadingBanner.style.display = 'none';
+        }
+        this.setSearchButtonState('ready');
+    }
+
+    /**
+     * Consolidated search button state management.
+     * @param {'ready' | 'loading' | 'disabled'} state - The button state to set.
+     */
+    setSearchButtonState(state) {
+        if (!this.searchBtn) return;
+        
+        switch (state) {
+            case 'ready':
+                this.searchBtn.disabled = false;
+                this.searchBtn.textContent = 'Search';
+                this.searchBtn.style.opacity = '1';
+                break;
+            case 'loading':
+                this.searchBtn.disabled = true;
+                this.searchBtn.textContent = 'Searching...';
+                this.searchBtn.style.opacity = '1';
+                break;
+            case 'disabled':
+                this.searchBtn.disabled = true;
+                this.searchBtn.textContent = 'Search';
+                this.searchBtn.style.opacity = '0.5';
+                break;
         }
     }
 
@@ -581,8 +615,8 @@ class AIFileSearchUI {
     }
 
     setLoadingState(loading) {
-        this.searchBtn.disabled = loading;
-        this.searchBtn.textContent = loading ? 'Searching...' : 'Search';
+        // Delegate to consolidated button state manager
+        this.setSearchButtonState(loading ? 'loading' : 'ready');
     }
 
     createNewChat() {

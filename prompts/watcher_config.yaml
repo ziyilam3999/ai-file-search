@@ -13,7 +13,4 @@ file_patterns:
   - '*.pdf'
   - '*.docx'
   - '*.md'
-watch_paths:
-- ai_search_docs
-- C:\Users\ziyil\Documents\To Google Drive\Jalil Sutera\Tenancy\2026
-- C:\Users\ziyil\file search backup docs\classic_literature
+watch_paths: []

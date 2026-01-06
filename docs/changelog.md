@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **DEF-031:** Search button always disabled (stuck at "Starting..." state)
+  - Root cause: Preload status endpoint trusted stale `run_app` status instead of checking actual model state
+  - Added `_check_models_loaded()` helper to check ground truth (`_llm_instance`, `_MODEL_CACHE`)
+  - Added JS error handling: `enableSearchButtonFallback()` enables button on API failures
+  - Prevents UI from being permanently blocked if status check fails
+
 - **DEF-030:** Citations now persist when navigating away from main screen and back
   - `addToChat()` now saves citations HTML as part of chat history entry
   - `displayChat()` restores and renders saved citations on chat reload

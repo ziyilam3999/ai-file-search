@@ -15,7 +15,7 @@ Test plans, coverage reports, and quality assurance documentation.
 | test_user_config.py | Unit | Platform-aware user config | 33/33 Passing |
 | test_ui.py | Integration | Streamlit UI tests | 5/5 Passing |
 | test_ui_components.py | Unit | UI components (rendering, styles) | Passing |
-| test_ui_backend.py | Unit | Flask API endpoints | Passing |
+| test_ui_backend.py | Unit | Flask API endpoints, helper functions | 19/19 Passing |
 | test_index_manager.py | Unit | Watch path management | 4/4 Passing |
 | test_confluence.py | Unit | Confluence integration | Passing |
 | test_complete_system.py | Integration | Full system tests | Passing |

@@ -360,6 +360,9 @@ class IndexManager:
             Tuple of (success, message, job_id). job_id is None if sync mode.
         """
         norm_path = normalize_path(path)
+        logger.info(
+            f"Removing watch path: {path} (normalized: {norm_path}, async={async_mode})"
+        )
 
         try:
             config = self._load_config()
@@ -432,9 +435,11 @@ class IndexManager:
         Returns:
             Number of chunks removed
         """
+        logger.info(f"Starting index cleanup for path: {path}")
         deleted_count = 0
 
         if not os.path.exists(DATABASE_PATH):
+            logger.warning(f"Database not found at {DATABASE_PATH}, skipping cleanup")
             return 0
 
         try:
@@ -443,6 +448,7 @@ class IndexManager:
 
             # Use forward slashes for consistency in DB
             search_path = path.replace("\\", "/") + "%"
+            logger.info(f"Searching for files matching pattern: {search_path}")
 
             # Get IDs BEFORE deleting from DB (for FAISS removal)
             cursor.execute("SELECT id FROM meta WHERE file LIKE ?", (search_path,))

@@ -686,7 +686,12 @@ class AIFileSearchUI {
             } else if (item.type === 'answer') {
                 const answerDiv = document.createElement('div');
                 answerDiv.className = 'message answer-message';
-                answerDiv.innerHTML = `<p class="answer-text">${this.formatText(item.content)}</p>`;
+                let answerHtml = `<p class="answer-text">${this.formatText(item.content)}</p>`;
+                // Restore citations if they were saved
+                if (item.citations) {
+                    answerHtml += `<div class="citations-container">${item.citations}</div>`;
+                }
+                answerDiv.innerHTML = answerHtml;
                 conversationContainer.appendChild(answerDiv);
             }
         });
@@ -694,11 +699,15 @@ class AIFileSearchUI {
         this.scrollToBottom();
     }
 
-    addToChat(chatId, type, content) {
+    addToChat(chatId, type, content, citations = null) {
         if (!this.chatHistory.has(chatId)) {
             this.chatHistory.set(chatId, []);
         }
-        this.chatHistory.get(chatId).push({ type, content, timestamp: Date.now() });
+        const entry = { type, content, timestamp: Date.now() };
+        if (citations) {
+            entry.citations = citations;
+        }
+        this.chatHistory.get(chatId).push(entry);
         this.saveChatHistory();
     }
 

@@ -487,18 +487,36 @@
             if (!confirm(`Are you sure you want to stop watching "${path}"? This will remove its documents from the index.`)) return;
             
             try {
+                // Show loading state
+                const pathItems = document.querySelectorAll('.path-item');
+                let targetBtn = null;
+                pathItems.forEach(item => {
+                    if (item.querySelector('.path-text')?.textContent === path) {
+                        targetBtn = item.querySelector('.remove-btn');
+                        if (targetBtn) {
+                            targetBtn.disabled = true;
+                            targetBtn.textContent = 'Removing...';
+                        }
+                    }
+                });
+                
+                // Use sync mode (async: false) to ensure cleanup completes before response
                 const response = await fetch('/api/settings/watch-paths', {
                     method: 'DELETE',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({path})
+                    body: JSON.stringify({path, async: false})
                 });
                 const result = await response.json();
                 
                 if (result.status === 'success' || result.status === 'accepted') {
                     loadPaths();
-                    alert('Folder removed successfully!');
+                    alert('Folder removed and index cleaned up successfully!');
                 } else {
                     alert('Error: ' + result.error);
+                    if (targetBtn) {
+                        targetBtn.disabled = false;
+                        targetBtn.textContent = 'Remove';
+                    }
                 }
             } catch (error) {
                 alert('Error removing path: ' + error);

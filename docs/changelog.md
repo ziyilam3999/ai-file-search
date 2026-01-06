@@ -4,7 +4,34 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **DEF-030:** Citations now persist when navigating away from main screen and back
+  - `addToChat()` now saves citations HTML as part of chat history entry
+  - `displayChat()` restores and renders saved citations on chat reload
+- **DEF-029:** Removed watch folders now properly clean up their indexed documents
+  - Changed Settings UI to use synchronous mode (`async: false`) for folder removal
+  - Ensures index cleanup completes before returning success to user
+  - Added logging to `remove_watch_path()` and `_remove_path_from_index()` for debugging
+
 ### Added
+- **Version Checker & Update Notifications:**
+  - **VERSION file:** Single source of truth for semantic versioning (1.0.0)
+  - **Version Module:** `core/version.py` - Version management and update checking
+  - **API Endpoint:** `/api/version` returns current version and update availability
+  - **Update Banner:** Green notification bar when updates are available, with download link
+  - **Non-blocking Check:** Async update check on startup, fail-silent design
+  - **Build Script:** `tools/build_distribution.py` creates distributable ZIPs
+  - **Cloud Support:** `latest_version.txt` generation for Google Drive hosting
+
+- **Team Distribution System:** Cross-platform installer and launcher scripts for easy team deployment:
+  - **Windows Installer:** `installers/install_windows.ps1` - Installs Python, Poetry, dependencies, and AI model
+  - **macOS Installer:** `installers/install_macos.sh` - Homebrew-based installation
+  - **Linux Installer:** `installers/install_linux.sh` - Supports apt/dnf/pacman/zypper
+  - **Launchers:** `AI-File-Search.bat` (Windows), `AI-File-Search.command` (macOS), `AI-File-Search.sh` (Linux)
+  - **Model Source:** Hugging Face Hub automatic download (Qwen/Qwen2.5-1.5B-Instruct-GGUF)
+  - **Desktop Shortcuts:** Auto-created on Windows, desktop entry on Linux
+  - **Team Guide:** `docs/guides/TEAM_INSTALL.md` with step-by-step instructions
+
 - **Unified User Config Architecture:** Platform-aware config for packaged app distribution:
   - **New Module:** `core/user_config.py` - Platform-aware config dir (AppData/Library/etc.)
   - **Config Location:** `%APPDATA%\ai-file-search\` (Windows), `~/Library/Application Support/ai-file-search/` (macOS)
@@ -48,6 +75,10 @@ All notable changes to this project are documented in this file.
   - **Benchmark:** Comprehensive testing via `tools/benchmark_models.py` (4 models, 26 queries)
   - **Code Refactor:** Renamed `Phi3LLM` → `LocalLLM` in `core/llm.py` for model-agnostic design
   - **Config:** Updated `core/config.py` max_tokens from 50→100 (faster model allows longer responses)
+
+### Removed
+- **Phi-3.5 Model:** Removed `ai_models/Phi-3.5-mini-instruct-Q4_K_M.gguf` (2.4GB) - Qwen2.5-1.5B is now the only LLM
+- **Migration Script:** Removed `tools/test_migration.py` (no longer needed)
 
 ### Performance
 - **LLM Inference Optimization:** Response time improved by 42% through diagnostic analysis:

@@ -91,6 +91,28 @@ A zero-configuration smart document search system with automatic discovery and r
 | FR-008.7 | Session startup sync reminder | Done |
 | FR-008.8 | Model benchmark tool for speed/quality comparison | Done |
 
+### FR-010: Team Distribution
+| ID | Requirement | Status |
+|----|-------------|--------|
+| FR-010.1 | Cross-platform installer scripts (Windows/macOS/Linux) | Done |
+| FR-010.2 | One-click launcher scripts | Done |
+| FR-010.3 | Automatic AI model download from Hugging Face | Done |
+| FR-010.4 | Desktop shortcut creation | Done |
+| FR-010.5 | Team installation guide | Done |
+| FR-010.6 | Remove legacy Phi-3.5 model (use Qwen2.5 only) | Done |
+
+### FR-011: Version Checker & Distribution Automation
+| ID | Requirement | Status |
+|----|-------------|--------|
+| FR-011.1 | VERSION file as single source of truth | Done |
+| FR-011.2 | Version management module (core/version.py) | Done |
+| FR-011.3 | API endpoint for version info (/api/version) | Done |
+| FR-011.4 | Update notification banner in UI | Done |
+| FR-011.5 | Non-blocking async update check on startup | Done |
+| FR-011.6 | ZIP build script with proper exclusions | Done |
+| FR-011.7 | latest_version.txt for cloud hosting | Done |
+| FR-011.8 | Google Drive distribution support | Done |
+
 ## Non-Functional Requirements
 
 ### NFR-001: Performance

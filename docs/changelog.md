@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **copilot-instructions v3.1:** Added Chain-of-Verification (CoV) protocol
+  - New CoV section in Role & Philosophy with 4-step verification process
+  - Scenario A Critical Review now uses CoV (Initial plan → List gaps → Verify → Corrected plan)
+  - Scenario E Debugging Hypothesize phase now uses CoV with confidence percentages
+  - CoV triggers: "Are you sure?", complex trade-offs, unverified hypotheses
+  - Removed TABLE OF CONTENTS (caused false positive markdown warnings with emoji anchors)
+
 ### Fixed
 - **DEF-031:** Search button always disabled (stuck at "Starting..." state)
   - Root cause: Preload status endpoint trusted stale `run_app` status instead of checking actual model state

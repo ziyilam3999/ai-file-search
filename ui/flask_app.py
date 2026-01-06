@@ -688,7 +688,15 @@ def warm_up_once():
         try:
             index_manager.warm_up()
             # Check for files that weren't indexed (e.g., app closed during indexing)
-            index_manager.startup_sync_check()
+            # Run in background thread so it doesn't block the window from opening
+            import threading
+
+            sync_thread = threading.Thread(
+                target=index_manager.startup_sync_check,
+                daemon=True,
+                name="StartupSyncCheck",
+            )
+            sync_thread.start()
             app._warmed_up = True
         except Exception:
             pass  # Ignore warm-up errors

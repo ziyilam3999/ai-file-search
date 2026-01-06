@@ -105,7 +105,7 @@ Write-Host ""
 Write-Host "[3/5] Installing Python dependencies..." -ForegroundColor Yellow
 Write-Host "  This may take 2-5 minutes on first run." -ForegroundColor Gray
 
-poetry install --no-interaction
+poetry install --no-interaction --no-root
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  Failed to install dependencies." -ForegroundColor Red
     exit 1

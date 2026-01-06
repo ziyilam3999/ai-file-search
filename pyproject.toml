@@ -1,8 +1,10 @@
+[tool.poetry]
+package-mode = false
+
 [project]
 name = "ai-file-search"
 version = "0.1.0"
 description = "Local AI file-search"
-package-mode = false
 authors = [
     {name = "Anson Lam",email = "ziyilam@gmail.com"}
 ]

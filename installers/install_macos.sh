@@ -90,7 +90,7 @@ echo ""
 echo -e "\033[33m[4/5] Installing Python dependencies...\033[0m"
 echo "  This may take 2-5 minutes on first run."
 
-poetry install --no-interaction
+poetry install --no-interaction --no-root
 
 echo -e "\033[32m  Dependencies installed.\033[0m"
 

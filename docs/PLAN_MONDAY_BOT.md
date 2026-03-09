@@ -1,5 +1,17 @@
 # Plan: Rewrite as TypeScript Headless Slack Bot — "Monday"
 
+**Version**: 1.0.0
+**Date**: 2026-03-09
+**Status**: Draft — pending approval
+
+### Changelog
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2026-03-09 | Initial comprehensive plan with 19 sections covering: model selection (Qwen3.5-2B), hosting strategy (Malaysia), headless architecture, TypeScript project structure, module mapping, Slack Bolt integration, RAG pipeline with section-aware chunking (S15), facts-only prompt (S18), 200-word answers (S16), hardware auto-detection (S17), GPU analysis (S19), and 5-phase implementation plan |
+
+---
+
 ## Context
 
 The user wants to evolve the AI File Search app from a local Python desktop tool into a **team-shared Slack AI assistant**. Rather than migrating the Python codebase incrementally, a **full rewrite in TypeScript** is the better approach because:
@@ -241,6 +253,20 @@ interface RagResponse {
   generationTimeMs: number;
 }
 
+// Section 15: Section-aware document extraction
+interface Section {
+  heading: string;         // e.g., "VPN Setup"
+  startOffset: number;     // character offset in full text
+  endOffset: number;
+  level: number;           // 1=h1, 2=h2, 3=h3
+  parents?: string[];      // parent headings for hierarchy
+}
+
+interface ExtractedDocument {
+  text: string;
+  sections: Section[];     // empty array if no headings detected
+}
+
 // src/config.ts
 
 interface AppConfig {
@@ -377,6 +403,11 @@ If `chatStream()` is available in Bolt SDK, use that instead for native streamin
 ### Query Flow (`src/rag/pipeline.ts`)
 
 ```typescript
+import { loadPromptTemplate } from "./prompt";
+
+// Load the facts-only prompt (Section 18: 9 rules, 200-word max, no reasoning)
+const promptTemplate = loadPromptTemplate("prompts/retrieval.md");
+
 async function answerQuestion(
   query: string,
   options: { topK?: number; stream?: boolean }
@@ -384,35 +415,53 @@ async function answerQuestion(
   // 1. Embed query
   const queryVector = await embedder.embed(query); // 384-dim float32
 
-  // 2. Search vector index
+  // 2. Search vector index (top 5 — Section 16)
   const results = vectorStore.search(queryVector, options.topK ?? 5);
 
   // 3. Filter by relevance threshold (1.2 L2 distance)
   const relevant = results.filter(r => r.score < RELEVANCE_THRESHOLD);
 
   // 4. Build citations
+  //    Note: chunk text may include section heading prefix (Section 15)
+  //    e.g., "VPN Setup > Configuration: Enter the server address..."
+  //    Strip the heading prefix for citation display, keep it for context
   const citations = relevant.map((r, i) => ({
     id: i + 1,
     file: r.filePath,
     page: calculatePage(r.docChunkId),
-    chunk: r.chunkText.slice(0, 300),
+    chunk: stripSectionPrefix(r.chunkText).slice(0, 300),
     score: r.score,
   }));
 
-  // 5. Format prompt
+  // 5. Format prompt using Section 18 facts-only template
+  //    Chunk text sent to LLM includes section headings (Section 15)
+  //    This helps the LLM understand document structure without reasoning
   const context = relevant.map((r, i) => `[${i + 1}] ${r.chunkText}`).join("\n\n");
   const prompt = promptTemplate
     .replace("{question}", query)
     .replace("{context}", context);
 
-  // 6. Generate answer via LLM
+  // 6. Generate facts-only answer via LLM (300 max_tokens — Section 16)
   const answer = await llm.generate(prompt, {
-    maxTokens: config.llm.maxTokens,
-    temperature: config.llm.temperature,
+    maxTokens: config.llm.maxTokens,   // 300
+    temperature: config.llm.temperature, // 0.1
     stopSequences: ["<|im_end|>", "\n\nQuestion:", "\n\nContext:"],
   });
 
   return { answer, citations, retrievalTimeMs, generationTimeMs };
+}
+
+// Helper: strip "Section > Subsection: " prefix for clean citation display
+function stripSectionPrefix(chunkText: string): string {
+  const colonIndex = chunkText.indexOf(": ");
+  if (colonIndex > 0 && colonIndex < 80) {
+    // Check if prefix looks like a heading (contains > or is short)
+    const prefix = chunkText.slice(0, colonIndex);
+    if (prefix.includes(">") || prefix.length < 60) {
+      return chunkText.slice(colonIndex + 2);
+    }
+  }
+  return chunkText;
 }
 ```
 
@@ -420,13 +469,21 @@ async function answerQuestion(
 
 ```typescript
 async function* streamAnswer(query: string, topK = 5): AsyncGenerator<string> {
-  // Steps 1-5 same as above
-  // Step 6: stream tokens
+  // Steps 1-5 same as above (section-aware context, facts-only prompt)
+  // Step 6: stream tokens — LLM generates facts-only answer progressively
   for await (const token of llm.stream(prompt, options)) {
     yield token;
   }
 }
 ```
+
+### Key Design Decisions in This Pipeline
+
+1. **Section headings stay in context** (Section 15): The LLM sees `[1] VPN Setup > Configuration: Enter the server address...` — this helps it understand which section the chunk belongs to, producing more organized answers without needing reasoning.
+
+2. **Section headings stripped from citations** (Section 15): The user sees `"Enter the server address..."` in the citation preview, not the heading prefix. Cleaner display.
+
+3. **Facts-only prompt** (Section 18): The 9-rule prompt in `prompts/retrieval.md` ensures the LLM reports what the documents say, not its own conclusions. Rule 9 makes it say "I found X but the documents don't cover Y" instead of guessing.
 
 ---
 
@@ -450,21 +507,29 @@ watcher
   .on("unlink", (path) => indexingQueue.remove(path));
 ```
 
-### Incremental Indexing (`src/indexing/incremental.ts`)
+### Incremental Indexing with Section-Aware Chunking (`src/indexing/incremental.ts`)
 
 ```typescript
+import { ExtractedDocument, Section } from "../rag/types";
+
 async function addDocument(filePath: string): Promise<void> {
   // 1. Remove existing chunks for this file (handles updates)
   await removeDocument(filePath);
 
-  // 2. Extract text
-  const text = await extractor.extract(filePath);
-  if (!text) return;
+  // 2. Extract text WITH section detection (Section 15)
+  //    Returns { text, sections[] } where sections have heading + offsets
+  const doc: ExtractedDocument = await extractor.extract(filePath);
+  if (!doc.text) return;
 
-  // 3. Chunk text (200 words, 50 overlap)
-  const chunks = chunkText(text, config.embedding.chunkSize, config.embedding.chunkOverlap);
+  // 3. Chunk text with section-aware prefixing (Section 15)
+  //    Each chunk gets its nearest heading prepended before embedding
+  const rawChunks = chunkText(doc.text, config.embedding.chunkSize, config.embedding.chunkOverlap);
+  const chunks = chunkWithSections(rawChunks, doc.sections);
+  // Example: "VPN Setup > Configuration: Enter the server address..."
 
   // 4. Embed all chunks in one batch call
+  //    Section headings in the chunk text make the embedding "section-aware"
+  //    A query for "VPN setup" will naturally match heading-tagged chunks higher
   const vectors = await embedder.embedBatch(chunks);
 
   // 5. Add to hnswlib index + SQLite
@@ -476,6 +541,35 @@ async function addDocument(filePath: string): Promise<void> {
 
   // 6. Save index to disk
   vectorStore.save();
+}
+
+// Section 15: Prepend nearest heading to each chunk
+function chunkWithSections(chunks: ChunkWithOffset[], sections: Section[]): string[] {
+  return chunks.map(chunk => {
+    const section = findSectionForOffset(sections, chunk.startOffset);
+    if (section) {
+      // Build hierarchy: "Parent > Child: chunk text"
+      const heading = section.parents
+        ? [...section.parents, section.heading].join(" > ")
+        : section.heading;
+      return `${heading}: ${chunk.text}`;
+    }
+    return chunk.text; // No section detected — use raw text
+  });
+}
+
+// Find the section that contains a given text offset
+function findSectionForOffset(sections: Section[], offset: number): Section | null {
+  // Walk backwards through sections to find the last heading before this offset
+  let best: Section | null = null;
+  for (const section of sections) {
+    if (section.startOffset <= offset) {
+      best = section;
+    } else {
+      break; // Sections are sorted by offset
+    }
+  }
+  return best;
 }
 ```
 
@@ -492,11 +586,47 @@ cron.schedule("0 2 * * *", async () => {
   for (const watchPath of config.watcher.paths) {
     const files = glob.sync(`${watchPath}/**/*.{txt,pdf,docx,md}`);
     for (const file of files) {
-      await addDocument(file);
+      await addDocument(file); // Uses section-aware chunking (Section 15)
     }
   }
   logger.info("Nightly reindex complete.");
 });
+```
+
+### Section Detection per File Type (`src/core/extractor.ts`)
+
+```typescript
+interface Section {
+  heading: string;         // e.g., "VPN Setup"
+  startOffset: number;     // character offset in full text
+  endOffset: number;
+  level: number;           // 1=h1, 2=h2, 3=h3
+  parents?: string[];      // parent headings for hierarchy
+}
+
+interface ExtractedDocument {
+  text: string;
+  sections: Section[];
+}
+
+// Detection strategies per file type:
+//
+// Markdown:   /^(#{1,3})\s+(.+)$/gm  → heading level from # count
+// DOCX:       mammoth paragraph styles "Heading 1/2/3" → heading
+// PDF:        font-size heuristics (>14pt = heading, bold = subheading)
+// Confluence: <h1>, <h2>, <h3> from HTML storage format
+// TXT:        ALL CAPS lines, or lines followed by === / ---
+
+async function extract(filePath: string): Promise<ExtractedDocument> {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case ".md":  return extractMarkdown(filePath);
+    case ".docx": return extractDocx(filePath);
+    case ".pdf":  return extractPdf(filePath);
+    case ".txt":  return extractTxt(filePath);
+    default:      return { text: await fs.readFile(filePath, "utf-8"), sections: [] };
+  }
+}
 ```
 
 ---
@@ -624,53 +754,81 @@ index:
 
 ### Phase 1: Core Foundation (Week 1)
 Files to create:
-- `src/config.ts` — config loading
+- `src/config.ts` — config loading (4096 context, 300 max_tokens, topK 5 — Section 16)
 - `src/core/database.ts` — better-sqlite3 wrapper (same schema as Python)
-- `src/core/extractor.ts` — PDF/DOCX/TXT/MD extraction
+- `src/core/extractor.ts` — PDF/DOCX/TXT/MD extraction **with section detection** (Section 15: parse headings from MD/DOCX/PDF/TXT, return `ExtractedDocument` with `sections[]`)
 - `src/core/embedder.ts` — Transformers.js embedding
 - `src/core/vector-store.ts` — hnswlib-node index
-- `src/core/llm.ts` — node-llama-cpp wrapper
-- `src/rag/types.ts` — TypeScript interfaces
-- `src/rag/prompt.ts` — prompt template
-- `src/rag/pipeline.ts` — RAG orchestration
+- `src/core/llm.ts` — node-llama-cpp wrapper (auto hardware detection — Section 17)
+- `src/rag/types.ts` — TypeScript interfaces (including `Section`, `ExtractedDocument` types for Section 15)
+- `src/rag/prompt.ts` — prompt template loader (**Section 18 facts-only prompt** with 9 rules, single source of truth)
+- `src/rag/pipeline.ts` — RAG orchestration (top 5 chunks, 300 max_tokens)
 - `src/utils/logger.ts` — pino setup
 - `src/utils/paths.ts` — path utilities
+- `prompts/retrieval.md` — **Section 18 final prompt** (facts-only, 200-word max, 9 rules)
 
-**Verification**: Run a query programmatically (no Slack yet) and get an answer with citations.
+**Section 15 integration in this phase:**
+- `extractor.ts` returns `{ text, sections[] }` — sections detected per file type (MD headers, DOCX heading styles, PDF font-size heuristics, TXT ALL CAPS lines)
+- No section detection = chunks still work fine (graceful fallback)
+
+**Section 18 integration in this phase:**
+- `prompts/retrieval.md` uses the final 9-rule prompt from Section 18 (includes Rule 2: "report facts, not interpretations" and Rule 9: "say what you found and what's missing")
+
+**Verification**: Run a query programmatically (no Slack yet) and get a 200-word facts-only answer with citations. Test with a structured MD file to verify section headings appear in chunk text.
 
 ### Phase 2: Slack Integration (Week 2)
 Files to create:
-- `src/slack/app.ts` — Bolt setup
-- `src/slack/commands/ask.ts` — /ask handler with streaming
+- `src/slack/app.ts` — Bolt setup (Socket Mode for dev — Section 17)
+- `src/slack/commands/ask.ts` — /ask handler with streaming (200-word answers — Section 16)
 - `src/slack/commands/status.ts` — /status handler
 - `src/slack/commands/help.ts` — /help handler
 - `src/slack/events/mention.ts` — @mention handler
-- `src/slack/formatters/blocks.ts` — Block Kit formatting
+- `src/slack/formatters/blocks.ts` — Block Kit formatting (citations with source links)
 
-**Verification**: Send `/ask` in Slack, get streamed answer with citations in thread.
+**Verification**: Send `/ask` in Slack, get streamed facts-only answer with citations in thread.
 
 ### Phase 3: Indexing Pipeline (Week 3)
 Files to create:
 - `src/indexing/watcher.ts` — chokidar watcher
-- `src/indexing/incremental.ts` — add/remove/update documents
+- `src/indexing/incremental.ts` — add/remove/update documents **with section-aware chunking** (Section 15: prepend nearest heading to each chunk before embedding)
 - `src/indexing/scheduler.ts` — nightly reindex cron
 
-**Verification**: Add/modify/delete a file in docs/ → see it reflected in search results.
+**Section 15 integration in this phase:**
+- `incremental.ts` calls `chunkWithSections()` — prepends section heading to chunk text before embedding
+- Example: `"VPN Setup > Configuration: Enter the server address..."` instead of just `"Enter the server address..."`
+- Chunks without detected sections remain unchanged (no heading prefix)
+
+**Verification**: Add a structured DOCX with headings → verify chunks include section names. Add/modify/delete a file in docs/ → see it reflected in search results within 5 seconds.
 
 ### Phase 4: Confluence + Polish (Week 4)
 Files to create:
-- `src/indexing/confluence.ts` — REST API sync
+- `src/indexing/confluence.ts` — REST API sync (**Section 15: extract `<h1>`-`<h3>` from Confluence HTML for section-aware chunking**)
 - `src/slack/commands/sync.ts` — /sync handler
 - `src/slack/commands/reindex.ts` — /reindex handler
 - `src/slack/commands/feedback.ts` — /feedback handler
 - `Dockerfile` + `docker-compose.yml` — deployment
 
-**Verification**: Sync a Confluence space, search its content via Slack.
+**Section 15 integration in this phase:**
+- Confluence pages have `<h1>`, `<h2>`, `<h3>` tags in their HTML storage format — these are the most reliable source of section headings
+- `confluence.ts` extracts these headings and passes them as `sections[]` to the chunking pipeline
+
+**Verification**: Sync a Confluence space → verify page section headings appear in chunk text → search for a section title → verify it returns relevant chunks from that section.
 
 ### Phase 5: Testing & Deployment
 Files to create:
 - `tests/unit/*.test.ts` — unit tests for each core module
+  - `extractor.test.ts` — verify section detection for MD, DOCX, PDF, TXT, and Confluence HTML (Section 15)
+  - `pipeline.test.ts` — verify facts-only answers (no reasoning/interpretation in output) (Section 18)
+  - `pipeline.test.ts` — verify "I found X but couldn't find Y" behavior when context is incomplete (Section 18 Rule 9)
 - `tests/integration/*.test.ts` — end-to-end RAG + Slack tests
+
+**Section 15 verification:**
+- Test: Index a file with clear headings → query for a heading title → verify the heading-tagged chunks score higher than untagged chunks
+- Test: Index a file without headings → verify chunks still work normally
+
+**Section 18 verification:**
+- Test: Ask a question where the answer requires reasoning → verify Monday says "the documents don't cover this" instead of guessing
+- Test: Ask a factual question → verify answer only contains information from the source chunks
 
 **Verification**: All tests pass. Deploy to Oracle Cloud Malaysia. Team members can use the bot.
 

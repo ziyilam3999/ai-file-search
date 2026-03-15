@@ -55,3 +55,11 @@ dist/
 
 # Temporary Status Files
 _TASK_STATUS.md
+
+# Internal AI development files
+.claude/
+.github/copilot-instructions.md
+.github/rules/
+docs/PRD_*
+docs/PLAN_*
+docs/changelog.md

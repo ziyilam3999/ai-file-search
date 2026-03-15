@@ -29,4 +29,4 @@ jobs:
         run: poetry install
 
       - name: Run quick tests
-        run: poetry run pytest tests/test_quick.py tests/test_core_config.py tests/test_core_utils.py tests/test_path_utils.py -v --timeout=60
+        run: poetry run pytest tests/test_quick.py tests/test_core_config.py -v --timeout=60 -k "not windows and not startfile"

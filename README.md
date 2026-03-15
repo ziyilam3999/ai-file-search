@@ -1,5 +1,9 @@
 # AI File Search
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/ziyilam3999/ai-file-search/actions/workflows/ci.yml/badge.svg)](https://github.com/ziyilam3999/ai-file-search/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.12%2B-blue)
+
 Zero-configuration smart document search system with semantic search and AI-powered Q&A. Drop in your documents, ask questions in natural language, and get answers with citations.
 
 ## Features

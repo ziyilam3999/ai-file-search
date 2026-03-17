@@ -1,8 +1,0 @@
-name: "✨ Feature Request"
-body: |
-  ---
-  Goal: <say what you want>
-  Constraints: []
-  Acceptance:
-    - "tests pass"
-  ---

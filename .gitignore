@@ -56,19 +56,15 @@ dist/
 # Temporary Status Files
 _TASK_STATUS.md
 
-# Internal AI development files
+# Internal AI development files (scratch, not public)
 .claude/
-.github/
 
-# Removed non-production directories
-tests/
+# Removed non-production directories (kept out of the public repo)
 tools/
-docs/
 installers/
 
-# Dev tool configs
+# Dev tool configs (local only)
 .flake8
 .pre-commit-config.yaml
-CONTRIBUTING.md
 QUICK_START.md
 COMPLETE_USER_GUIDE.md

@@ -1,7 +1,7 @@
 # AI File Search
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://github.com/ziyilam3999/ai-file-search/actions/workflows/ci.yml/badge.svg)](https://github.com/ziyilam3999/ai-file-search/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/ziyilam3999/ai-file-search)](https://github.com/ziyilam3999/ai-file-search/releases)
 ![Python](https://img.shields.io/badge/Python-3.12%2B-blue)
 
 Zero-configuration smart document search system with semantic search and AI-powered Q&A. Drop in your documents, ask questions in natural language, and get answers with citations.
@@ -45,17 +45,16 @@ python run_app.py
 
 ## How It Works
 
-```
-Documents (PDF, DOCX, TXT, MD)
-    |
-    v
-Auto-Discovery & Extraction
-    |
-    v
-Embedding (all-MiniLM-L6-v2) --> FAISS Index
-    |
-    v
-Query --> Semantic Search --> Top Results --> LLM Q&A --> Answer + Citations
+```mermaid
+graph TB
+    D[Documents<br/>PDF · DOCX · TXT · MD] --> A[Auto-Discovery<br/>& Text Extraction]
+    A --> E[Embedding<br/>all-MiniLM-L6-v2]
+    E --> I[FAISS Index]
+    Q[Query] --> S[Semantic Search]
+    I --> S
+    S --> T[Top Results]
+    T --> L[LLM Q&A<br/>Qwen2.5-1.5B, local]
+    L --> R[Answer + Citations]
 ```
 
 1. **Drop documents** into `ai_search_docs/` (auto-organized by category)
